@@ -1,0 +1,21 @@
+name: penny_ui_widgetbook
+description: Widgetbook catalogue of every penny_ui component in each state. Run with `task ui:catalogue`.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  penny_ui:
+    path: ..
+  # A catalogue for browsing components in every state (ADR 016).
+  widgetbook: ^3.25.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
