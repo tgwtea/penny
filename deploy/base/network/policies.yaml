@@ -1,0 +1,92 @@
+# Default deny for ingress in Penny's namespace, then one allow per real
+# path. K3s enforces NetworkPolicy with its embedded controller.
+#
+# Namespace assumptions, check them against the cluster:
+#   kube-system   Traefik (K3s default)
+#   cnpg-system   the CloudNativePG operator and Barman Cloud plugin
+#   monitoring    Prometheus
+#
+# Egress is not restricted yet: the API calls Firebase and the email
+# provider, and the database ships backups off-site. Tightening egress is
+# part of Phase 9 hardening.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-from-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: penny-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: metrics-from-prometheus
+spec:
+  # Every pod, including the database pods CloudNativePG labels itself.
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 9090 # api
+        - port: 9187 # postgres exporter in CloudNativePG pods
+        - port: 2000 # cloudflared
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: penny-db
+  policyTypes: ["Ingress"]
+  ingress:
+    # The API and the migrate Job.
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [penny-api, penny-migrate]
+      ports:
+        - port: 5432
+    # Replication between instances.
+    - from:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: penny-db
+      ports:
+        - port: 5432
+        - port: 8000
+    # The operator checks each instance's status endpoint.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - port: 8000
+        - port: 5432

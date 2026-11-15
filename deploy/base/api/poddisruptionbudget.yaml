@@ -1,0 +1,10 @@
+# Node drains (for example K3s upgrades) take down one API pod at a time.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: penny-api
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: penny-api

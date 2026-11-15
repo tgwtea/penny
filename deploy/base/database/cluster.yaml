@@ -1,0 +1,76 @@
+# PostgreSQL 18 with PostGIS, run by CloudNativePG (ADR 008): three
+# instances, one per node, on local storage. Replication gives HA without
+# shared storage. WAL and base backups go off-site through the Barman Cloud
+# plugin (objectstore.yaml).
+#
+# Two roles (ADR 006):
+#   penny_migrator  owns the database and schema; used only by the migrate Job
+#   penny_app       reads and writes rows; used by the API and the worker
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: penny-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: 3
+  # Same Postgres and PostGIS versions as compose.yaml.
+  imageName: ghcr.io/cloudnative-pg/postgis:18-3.7-standard-trixie
+  primaryUpdateStrategy: unsupervised
+
+  storage:
+    storageClass: local-path
+    size: 10Gi
+
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+  postgresql:
+    parameters:
+      timezone: UTC
+      log_min_duration_statement: "500ms"
+
+  bootstrap:
+    initdb:
+      database: penny
+      owner: penny_migrator
+      secret:
+        name: penny-migrator-db
+      # Runs once, as a superuser, in the penny database. PostGIS is not a
+      # trusted extension, so the migrator could not create it; the first
+      # migration's CREATE EXTENSION IF NOT EXISTS then finds it in place.
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS postgis
+        - CREATE EXTENSION IF NOT EXISTS btree_gist
+        - CREATE EXTENSION IF NOT EXISTS citext
+        # The app role is created here so privileges can be granted before
+        # the managed-roles reconciler gives it a login and password.
+        - CREATE ROLE penny_app NOLOGIN
+        - GRANT CONNECT ON DATABASE penny TO penny_app
+        - GRANT USAGE ON SCHEMA public TO penny_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE penny_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO penny_app
+        - ALTER DEFAULT PRIVILEGES FOR ROLE penny_migrator IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO penny_app
+
+  managed:
+    roles:
+      - name: penny_app
+        ensure: present
+        login: true
+        inherit: true
+        passwordSecret:
+          name: penny-app-db
+
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: penny-backups

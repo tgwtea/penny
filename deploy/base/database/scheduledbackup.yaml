@@ -1,0 +1,16 @@
+# A daily base backup at 03:00 Singapore time (19:00 UTC). WAL archiving
+# runs continuously in between. Restores are drilled monthly
+# (docs/runbooks/restore-database.md).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: penny-db-daily
+spec:
+  # Six fields: seconds first.
+  schedule: "0 0 19 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: penny-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

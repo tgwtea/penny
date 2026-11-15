@@ -1,0 +1,12 @@
+# CloudNativePG's built-in exporter: replication lag, WAL archiving, backups.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: penny-db
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: penny-db
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 30s

@@ -1,0 +1,14 @@
+# cloudflared configuration for the dev tunnel. Create the tunnel once with
+# `cloudflared tunnel create penny-dev`, put its ID below, seal its
+# credentials file (deploy/README.md), and point each hostname's DNS at
+# <tunnel-id>.cfargotunnel.com.
+tunnel: TUNNEL_ID
+credentials-file: /etc/cloudflared/credentials/credentials.json
+metrics: 0.0.0.0:2000
+no-autoupdate: true
+
+ingress:
+  # Cloudflare terminates TLS; Traefik routes by hostname inside the cluster.
+  - hostname: api.dev.penny.invalid
+    service: http://traefik.kube-system.svc.cluster.local:80
+  - service: http_status:404

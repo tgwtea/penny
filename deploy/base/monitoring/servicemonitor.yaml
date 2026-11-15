@@ -1,0 +1,16 @@
+# Prometheus scrapes the API's admin port (request rate, errors, latency per
+# route, connection pool). If the Prometheus instance selects monitors by
+# label (kube-prometheus-stack's default is `release: <helm release>`), add
+# that label in the overlay.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: penny-api
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: penny-api
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

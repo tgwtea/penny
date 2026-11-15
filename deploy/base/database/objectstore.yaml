@@ -1,0 +1,27 @@
+# Off-site backup storage for penny-db: continuous WAL archiving plus base
+# backups, for point-in-time recovery. Overlays set the bucket path and the
+# S3-compatible endpoint (Cloudflare R2 or Backblaze B2).
+#
+# Needs the Barman Cloud plugin installed next to the CloudNativePG operator.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: penny-backups
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  retentionPolicy: 30d
+  configuration:
+    destinationPath: s3://SET-IN-OVERLAY/
+    endpointURL: https://SET-IN-OVERLAY
+    s3Credentials:
+      accessKeyId:
+        name: penny-backup-s3
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: penny-backup-s3
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip

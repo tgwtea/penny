@@ -1,0 +1,78 @@
+# Applies migrations before new API pods start (ADR 006).
+#
+# This is a Sync hook in wave 0 rather than a PreSync hook. PreSync hooks run
+# before any resource is created, so on the very first sync the database
+# (wave -1) would not exist yet. The effect is the same: the API Deployment
+# (wave 1) rolls out only after this Job succeeds, and a failed migration
+# stops the sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: penny-migrate
+  labels:
+    app.kubernetes.io/name: penny-migrate
+    app.kubernetes.io/component: migrate
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: penny-migrate
+        app.kubernetes.io/component: migrate
+        app.kubernetes.io/part-of: penny
+    spec:
+      restartPolicy: Never
+      serviceAccountName: penny-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          # Same image as the API, so schema and code always match.
+          image: ghcr.io/tgwtea/penny-api
+          command: ["/usr/local/bin/migrate", "up"]
+          env:
+            # The migrator role owns the schema. The API's role cannot run DDL.
+            - name: PENNY_DATABASE_URL
+              value: postgres://penny-db-rw:5432/penny?sslmode=verify-full&sslrootcert=/etc/penny/db-ca/ca.crt
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: penny-migrator-db
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: penny-migrator-db
+                  key: password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: db-ca
+              mountPath: /etc/penny/db-ca
+              readOnly: true
+      volumes:
+        - name: db-ca
+          secret:
+            secretName: penny-db-ca
+            items:
+              - key: ca.crt
+                path: ca.crt

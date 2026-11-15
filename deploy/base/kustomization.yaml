@@ -1,0 +1,34 @@
+# Everything Penny runs in one namespace. Overlays set the namespace, image
+# digests, hostnames, backup destination and sealed secrets.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: penny
+    includeSelectors: false
+
+resources:
+  - api/serviceaccount.yaml
+  - api/deployment.yaml
+  - api/service.yaml
+  - api/poddisruptionbudget.yaml
+  - api/migrate-job.yaml
+  - database/cluster.yaml
+  - database/objectstore.yaml
+  - database/scheduledbackup.yaml
+  - ingress/api.yaml
+  - tunnel/cloudflared.yaml
+  - network/policies.yaml
+  - monitoring/servicemonitor.yaml
+  - monitoring/podmonitor.yaml
+
+configMapGenerator:
+  - name: penny-grafana-dashboards
+    files:
+      - monitoring/dashboards/penny-api.json
+    options:
+      # The Grafana dashboard sidecar loads every ConfigMap with this label.
+      labels:
+        grafana_dashboard: "1"
+      disableNameSuffixHash: true

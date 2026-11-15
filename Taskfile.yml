@@ -127,14 +127,23 @@ tasks:
         flutter analyze
 
   lint:deploy:
-    desc: Render every Kustomize overlay and validate it against Kubernetes schemas
+    desc: Render every Kustomize overlay and validate it against Kubernetes and CRD schemas
+    vars:
+      # Custom resources (CloudNativePG, Traefik, Prometheus, Sealed Secrets,
+      # ArgoCD) are validated against the community CRD catalog.
+      KUBECONFORM: >-
+        kubeconform -strict -summary
+        -schema-location default
+        -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{"{{"}}.Group{{"}}"}}/{{"{{"}}.ResourceKind{{"}}"}}_{{"{{"}}.ResourceAPIVersion{{"}}"}}.json'
     cmds:
       - |
         if [ ! -f deploy/base/kustomization.yaml ]; then echo "skipped: deploy/base has no kustomization.yaml yet"; exit 0; fi
         for overlay in deploy/overlays/*/; do
           echo "validating ${overlay}"
-          kustomize build "${overlay}" | kubeconform -strict -summary -ignore-missing-schemas
+          kustomize build "${overlay}" | {{.KUBECONFORM}}
         done
+        echo "validating deploy/argocd"
+        {{.KUBECONFORM}} deploy/argocd
 
   vuln:api:
     desc: Report known vulnerabilities in the Go service's dependencies

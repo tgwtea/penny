@@ -1,0 +1,17 @@
+# Traefik (the K3s default ingress) routes the API's hostname to the API.
+# Requests reach Traefik through the Cloudflare Tunnel, which terminates TLS
+# at Cloudflare's edge; nothing on the home network is exposed.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: penny-api
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      # Overlays replace the host.
+      match: Host(`api.penny.invalid`)
+      services:
+        - name: penny-api
+          port: http

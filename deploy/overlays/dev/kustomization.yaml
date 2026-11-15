@@ -1,0 +1,75 @@
+# The dev environment: namespace penny-dev, deployed automatically from main
+# by ArgoCD (deploy/argocd/penny-dev.yaml).
+#
+# Before the first sync, see deploy/README.md: the hostnames below use the
+# reserved .invalid domain until Penny's domain is chosen, and every file in
+# secrets/ must be replaced with real kubeseal output.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: penny-dev
+
+resources:
+  - namespace.yaml
+  - ../../base
+  - secrets/penny-migrator-db.yaml
+  - secrets/penny-app-db.yaml
+  - secrets/penny-backup-s3.yaml
+  - secrets/cloudflared-credentials.yaml
+
+configMapGenerator:
+  - name: cloudflared-config
+    files:
+      - config.yaml=cloudflared.yaml
+
+# release.yml replaces each entry with the digest it just built and pushed,
+# committing the change to main; ArgoCD then rolls it out.
+images:
+  - name: ghcr.io/tgwtea/penny-api
+    newTag: unreleased
+
+patches:
+  # Hostnames.
+  - target:
+      kind: IngressRoute
+      name: penny-api
+    patch: |-
+      - op: replace
+        path: /spec/routes/0/match
+        value: Host(`api.dev.penny.invalid`)
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: penny-api
+      spec:
+        # Dev needs one replica; prod runs the base's two.
+        replicas: 1
+        template:
+          spec:
+            containers:
+              - name: api
+                env:
+                  - name: PENNY_CORS_ORIGINS
+                    value: https://app.dev.penny.invalid
+
+  # Backups: a dev-only prefix in the off-site bucket.
+  - target:
+      kind: ObjectStore
+      name: penny-backups
+    patch: |-
+      - op: replace
+        path: /spec/configuration/destinationPath
+        value: s3://penny-backups/dev/
+      - op: replace
+        path: /spec/configuration/endpointURL
+        value: https://ACCOUNT_ID.r2.cloudflarestorage.com
+
+  # Dev data is small.
+  - target:
+      kind: Cluster
+      name: penny-db
+    patch: |-
+      - op: replace
+        path: /spec/storage/size
+        value: 5Gi
