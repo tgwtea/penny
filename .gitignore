@@ -1,0 +1,37 @@
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+service-account*.json
+
+# Task and mise
+.task/
+.mise.local.toml
+
+# Go
+services/api/bin/
+coverage.out
+*.test
+
+# Flutter and Dart
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+**/ios/Pods/
+**/android/.gradle/
+**/android/local.properties
+
+# Node (Firebase tooling)
+node_modules/
+firebase-debug.log*
+ui-debug.log*

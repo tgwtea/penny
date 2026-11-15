@@ -1,0 +1,53 @@
+# Penny
+
+Penny handles the admin side of tutoring for solo tutors and small studios: who teaches whom, when and where, who has paid, and who needs a reminder. It generates PayNow payment links and records payments and receipts. It never moves money.
+
+> **Status:** Phase 0 (repository foundations). No application code yet. See the [build plan](docs/architecture.md#component-by-component-build-plan).
+
+## Repository map
+
+| Path | What lives there | Phase |
+| --- | --- | --- |
+| `api/` | `openapi.yaml`, the contract between client and server, plus shared test fixtures | 1 |
+| `apps/client/` | Flutter app for web, Android and iOS | 2 |
+| `packages/penny_api/` | Dart client generated from the contract (never hand-edited) | 2 |
+| `packages/penny_ui/` | Design tokens, theme and components | 2 |
+| `services/api/` | Go module: `api`, `worker` and `migrate` binaries | 1 |
+| `deploy/` | Kustomize manifests that ArgoCD syncs to the cluster | 1 |
+| `docs/` | Architecture, decision records (ADRs), runbooks | 0 |
+| `tools/` | Local tooling: Firebase Auth emulator image, GitHub setup scripts | 0 |
+
+Only the contract in `api/` crosses between client and server: `apps/` never imports from `services/`, or the reverse.
+
+## Getting started
+
+You need [mise](https://mise.jdx.dev) and Docker. Everything else is pinned in `.mise.toml`.
+
+```sh
+mise install          # installs Go, Flutter, task and the CLI tools at pinned versions
+task                  # lists every task
+task dev              # starts Postgres (PostGIS), Mailpit and the Firebase Auth emulator
+task test             # runs every component's tests (components that do not exist yet are skipped)
+task lint             # lints workflows and every component
+task dev:down         # stops the local stack
+```
+
+Local services once `task dev` is running:
+
+| Service | Address |
+| --- | --- |
+| PostgreSQL 18 + PostGIS | `postgres://penny:penny@localhost:5432/penny` |
+| Mailpit (catches all outgoing email) | UI at http://localhost:8025, SMTP on `localhost:1025` |
+| Firebase Auth emulator | `localhost:9099`, emulator UI at http://localhost:4000 |
+
+## Documentation
+
+- [Architecture and build plan](docs/architecture.md)
+- [Architecture decision records](docs/adr/)
+- [Contributing: branches, commits, pull requests](CONTRIBUTING.md)
+- [Rules for coding agents](AGENTS.md)
+- [Design principles](DESIGN.md)
+
+## Licence
+
+Not yet chosen. Until a licence is added, all rights are reserved by the author.
