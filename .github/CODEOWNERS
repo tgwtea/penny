@@ -1,0 +1,9 @@
+# Default owner for everything. Add per-path owners as collaborators join.
+*                @tgwtea
+
+/api/            @tgwtea
+/apps/           @tgwtea
+/packages/       @tgwtea
+/services/       @tgwtea
+/deploy/         @tgwtea
+/.github/        @tgwtea

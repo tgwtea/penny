@@ -1,0 +1,145 @@
+# Continuous integration for every pull request and every push to main.
+#
+# Path filters decide which component jobs run. Branch protection requires
+# only the `ci-ok` job, which always runs and fails if any job that ran failed.
+# A required check that never runs stays "pending" forever on GitHub, which is
+# why protection must not point at the path-filtered jobs directly.
+#
+# Third-party actions are pinned by commit SHA; Renovate keeps the pins current.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      client: ${{ steps.filter.outputs.client }}
+      contract: ${{ steps.filter.outputs.contract }}
+      deploy: ${{ steps.filter.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - '.mise.toml'
+              - 'Taskfile.yml'
+              - '.github/workflows/ci.yml'
+            api:
+              - *shared
+              - 'services/api/**'
+              - 'api/**'
+            client:
+              - *shared
+              - 'apps/client/**'
+              - 'packages/**'
+              - 'api/**'
+            contract:
+              - *shared
+              - 'api/**'
+            deploy:
+              - *shared
+              - 'deploy/**'
+
+  repo:
+    name: repo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: task actionlint
+      - run: task lint:repo
+
+  api:
+    name: api
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: task go golangci-lint sqlc github:pressly/goose
+      - run: task lint:api test:api
+
+  client:
+    name: client
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: task flutter
+      - run: task lint:client test:client
+
+  contract:
+    name: contract
+    needs: changes
+    if: needs.changes.outputs.contract == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: task go
+      - run: task gen:check
+
+  deploy:
+    name: deploy
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: task kustomize kubeconform
+      - run: task lint:deploy
+
+  ci-ok:
+    name: ci-ok
+    if: always()
+    needs: [changes, repo, api, client, contract, deploy]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Fail if any job that ran did not succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "job results: ${RESULTS}"
+          test "${FAILED}" = "false"
