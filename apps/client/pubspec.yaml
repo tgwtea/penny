@@ -1,0 +1,59 @@
+name: penny
+description: "Penny: lessons, timetable and payments for tutors and small studios."
+publish_to: none
+
+# Overridden per build with --build-name and --build-number.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # State and dependency injection; provider overrides swap the backend
+  # (ADR 011, ADR 012).
+  flutter_riverpod: ^3.5.0
+  go_router: ^18.1.4
+  # HTTP transport shared by the generated client and the web runtime
+  # config loader.
+  http: ^1.6.0
+  # Generated from api/openapi.yaml. Only features/*/data/ may import it.
+  penny_api:
+    path: ../../packages/penny_api
+  penny_ui:
+    path: ../../packages/penny_ui
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/
+
+# Platform icons from the pixel-art master (assets/brand/README.md).
+# Regenerate with `task gen:icons`.
+flutter_launcher_icons:
+  image_path: assets/brand/app-icon-1024.png
+  android: true
+  adaptive_icon_background: "#1C2B3A"
+  adaptive_icon_foreground: assets/brand/app-icon-foreground-432.png
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/brand/app-icon-1024.png
+    background_color: "#1C2B3A"
+    theme_color: "#1C2B3A"
+  windows:
+    generate: true
+    image_path: assets/brand/app-icon-1024.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/brand/app-icon-1024.png

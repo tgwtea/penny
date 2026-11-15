@@ -1,0 +1,205 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:penny/app/app.dart';
+import 'package:penny/app/backend_overrides.dart';
+import 'package:penny/app/router.dart';
+import 'package:penny/core/env.dart';
+import 'package:penny/demo/demo_personas.dart';
+import 'package:penny/demo/demo_repositories.dart';
+import 'package:penny/features/auth/application/session_controller.dart';
+import 'package:penny/features/system/application/server_info_provider.dart';
+import 'package:penny_ui/penny_ui.dart';
+
+const _phone = Size(390, 844);
+const _laptop = Size(1440, 900);
+
+/// Starts the app as [persona] at [size] and returns its provider container.
+Future<ProviderContainer> pumpApp(
+  WidgetTester tester, {
+  DemoPersona persona = DemoPersona.owner,
+  Size size = _phone,
+}) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+
+  final container = ProviderContainer(
+    overrides: [
+      sessionRepositoryProvider.overrideWithValue(
+        DemoSessionRepository(persona: persona),
+      ),
+      serverInfoRepositoryProvider.overrideWithValue(
+        DemoServerInfoRepository(),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(container: container, child: const PennyApp()),
+  );
+  await tester.pumpAndSettle();
+  return container;
+}
+
+List<String> navLabels(WidgetTester tester) => [
+  for (final nav in tester.widgetList<PennyBottomNav>(
+    find.byType(PennyBottomNav),
+  ))
+    for (final d in nav.destinations) d.label,
+  for (final bar in tester.widgetList<PennySidebar>(find.byType(PennySidebar)))
+    for (final d in bar.destinations) d.label,
+];
+
+void main() {
+  group('navigation follows capabilities', () {
+    testWidgets('an owner of a studio sees Team', (tester) async {
+      await pumpApp(tester);
+      expect(navLabels(tester), [
+        'Today',
+        'Calendar',
+        'Students',
+        'Payments',
+        'Team',
+      ]);
+    });
+
+    testWidgets('a teacher does not', (tester) async {
+      await pumpApp(tester, persona: DemoPersona.teacher);
+      expect(navLabels(tester), ['Today', 'Calendar', 'Students', 'Payments']);
+    });
+
+    testWidgets('a solo tutor, a team of one, does not', (tester) async {
+      await pumpApp(tester, persona: DemoPersona.solo);
+      expect(navLabels(tester), ['Today', 'Calendar', 'Students', 'Payments']);
+    });
+  });
+
+  group('layout follows width', () {
+    testWidgets('phone: bottom navigation and a top bar', (tester) async {
+      await pumpApp(tester);
+      expect(find.byType(PennyBottomNav), findsOneWidget);
+      expect(find.byType(PennyTopBar), findsOneWidget);
+      expect(find.byType(PennySidebar), findsNothing);
+    });
+
+    testWidgets('laptop: a sidebar with the team and the person', (
+      tester,
+    ) async {
+      await pumpApp(tester, size: _laptop);
+      expect(find.byType(PennySidebar), findsOneWidget);
+      expect(find.byType(PennyBottomNav), findsNothing);
+      expect(find.text('Koh Guitar Studio'), findsOneWidget);
+      expect(find.text('Daniel Koh'), findsOneWidget);
+    });
+
+    testWidgets('tapping a destination opens it', (tester) async {
+      await pumpApp(tester);
+      await tester.tap(find.text('Students'));
+      await tester.pumpAndSettle();
+      expect(find.text('No students yet'), findsOneWidget);
+    });
+  });
+
+  group('typing an owner URL', () {
+    testWidgets('as a teacher shows the no-permission state', (tester) async {
+      final container = await pumpApp(tester, persona: DemoPersona.teacher);
+      container.read(routerProvider).go('/team');
+      await tester.pumpAndSettle();
+      expect(find.text('Only the team owner can see this.'), findsOneWidget);
+
+      await tester.tap(find.text('Go to Today'));
+      await tester.pumpAndSettle();
+      expect(find.text('No lessons today'), findsOneWidget);
+    });
+
+    testWidgets('as the owner shows the page', (tester) async {
+      final container = await pumpApp(tester);
+      container.read(routerProvider).go('/team');
+      await tester.pumpAndSettle();
+      expect(find.text('Only the team owner can see this.'), findsNothing);
+      expect(find.text('No teachers listed yet'), findsOneWidget);
+    });
+  });
+
+  testWidgets('switching persona moves the app at once', (tester) async {
+    final container = await pumpApp(tester);
+    container.read(routerProvider).go('/team');
+    await tester.pumpAndSettle();
+
+    final repo =
+        container.read(sessionRepositoryProvider) as DemoSessionRepository;
+    repo.usePersona(DemoPersona.teacher);
+    await tester.pumpAndSettle();
+    expect(find.text('Only the team owner can see this.'), findsOneWidget);
+    expect(navLabels(tester), isNot(contains('Team')));
+  });
+
+  testWidgets('an unknown path shows not found', (tester) async {
+    final container = await pumpApp(tester);
+    container.read(routerProvider).go('/nowhere');
+    await tester.pumpAndSettle();
+    expect(find.text('This page does not exist.'), findsOneWidget);
+  });
+
+  group('HTTP mode', () {
+    Future<void> pumpHttpApp(WidgetTester tester, http.Client client) async {
+      tester.view.physicalSize = _phone;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final config = AppConfig(
+        backend: BackendKind.http,
+        apiBaseUrl: Uri.parse('https://api.example.com'),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: backendOverrides(config, httpClient: client),
+          child: const PennyApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('signs out to the sign-in screen and shows the API version', (
+      tester,
+    ) async {
+      await pumpHttpApp(
+        tester,
+        MockClient(
+          (request) async => request.url.path == '/v1/version'
+              ? http.Response(
+                  jsonEncode({'version': '0.1.0', 'commit': '3f2c1a9'}),
+                  200,
+                )
+              : http.Response('', 404),
+        ),
+      );
+      expect(find.text('Sign-in is not available yet.'), findsOneWidget);
+      expect(
+        find.text('Connected to Penny API 0.1.0 (3f2c1a9)'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('says when the API cannot be reached, and retries', (
+      tester,
+    ) async {
+      var calls = 0;
+      await pumpHttpApp(
+        tester,
+        MockClient((_) async {
+          calls++;
+          throw http.ClientException('connection refused');
+        }),
+      );
+      expect(find.text('Couldn\'t reach the Penny API.'), findsOneWidget);
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+      expect(calls, 2);
+    });
+  });
+}
