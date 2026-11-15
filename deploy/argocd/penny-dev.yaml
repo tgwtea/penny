@@ -1,0 +1,36 @@
+# ArgoCD Application for the dev environment (ADR 013). Apply it once by
+# hand, or from an app-of-apps repository:
+#
+#   kubectl apply -n argocd -f deploy/argocd/penny-dev.yaml
+#
+# From then on ArgoCD pulls deploy/overlays/dev from main; CI never pushes to
+# the cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: penny-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/tgwtea/penny.git
+    targetRevision: main
+    path: deploy/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: penny-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # CloudNativePG's CRDs are too large for client-side apply annotations.
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
