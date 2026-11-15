@@ -1,0 +1,159 @@
+# Builds images on every push to main and rolls them out to dev (ADR 013).
+#
+# 1. Each changed component's image is built for linux/amd64 and linux/arm64,
+#    pushed to GHCR tagged with the commit SHA, with an SBOM and provenance
+#    attached, and scanned by Trivy. A HIGH or CRITICAL finding with a fix
+#    available fails the release.
+# 2. deploy-dev pins the new digests in deploy/overlays/dev and commits that
+#    to main. ArgoCD notices the commit and syncs dev. CI never talks to the
+#    cluster.
+#
+# The commit in step 2 needs a token allowed to push to protected main: a
+# GitHub App on the ruleset's bypass list, configured as the
+# PENNY_RELEASE_APP_ID variable and PENNY_RELEASE_APP_PRIVATE_KEY secret
+# (deploy/README.md, "Release automation").
+
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Releases queue rather than cancel: every commit on main gets rolled out
+# in order.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  # Must match the image names in deploy/base.
+  API_IMAGE: ghcr.io/tgwtea/penny-api
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-24.04
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'services/api/**'
+              - 'api/**'
+              - '.github/workflows/release.yml'
+
+  api-image:
+    name: api image
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # git describe needs tags and history
+
+      - name: Work out the version
+        id: version
+        # release-please tags API releases api/vX.Y.Z; until the first one,
+        # the version is the short commit.
+        run: |
+          described="$(git describe --tags --match 'api/v*' --always)"
+          echo "version=${described#api/v}" >> "${GITHUB_OUTPUT}"
+          echo "commit=$(git rev-parse --short HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
+        with:
+          context: services/api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.API_IMAGE }}:${{ github.sha }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+            COMMIT=${{ steps.version.outputs.commit }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.API_IMAGE }}@${{ steps.build.outputs.digest }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-dev:
+    name: deploy dev
+    needs: [api-image]
+    if: always() && needs.api-image.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: token
+        with:
+          app-id: ${{ vars.PENNY_RELEASE_APP_ID }}
+          private-key: ${{ secrets.PENNY_RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          token: ${{ steps.token.outputs.token }}
+
+      - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        with:
+          install_args: kustomize
+
+      - name: Pin the new digests in the dev overlay
+        env:
+          API_DIGEST: ${{ needs.api-image.outputs.digest }}
+        run: |
+          cd deploy/overlays/dev
+          kustomize edit set image "${API_IMAGE}=${API_IMAGE}@${API_DIGEST}"
+          git diff --stat
+
+      - name: Commit and push to main
+        env:
+          SHORT_SHA: ${{ github.sha }}
+        run: |
+          if git diff --quiet; then
+            echo "dev already runs these digests"
+            exit 0
+          fi
+          git config user.name "penny-release[bot]"
+          git config user.email "penny-release[bot]@users.noreply.github.com"
+          git commit --all --message "chore(deploy): roll out ${SHORT_SHA::7} to dev"
+          # Another release may have landed first; rebase and retry.
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            echo "push rejected (attempt ${attempt}); rebasing"
+            git pull --rebase origin main
+          done
+          exit 1
