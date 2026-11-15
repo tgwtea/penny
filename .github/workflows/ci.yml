@@ -55,9 +55,14 @@ jobs:
               - 'apps/client/**'
               - 'packages/**'
               - 'api/**'
+              - 'tools/checks/**'
+              - 'tools/design/**'
             contract:
               - *shared
               - 'api/**'
+              - 'docs/design/tokens.json'
+              - 'tools/codegen/**'
+              - 'tools/design/**'
             deploy:
               - *shared
               - 'deploy/**'
@@ -119,7 +124,8 @@ jobs:
       - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
         with:
           install_args: task flutter
-      - run: task lint:client test:client
+      # On Linux, test:client also compares penny_ui's golden images.
+      - run: task lint:client test:client build:web
 
   contract:
     name: contract
@@ -134,7 +140,7 @@ jobs:
           fetch-depth: 0
       - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
         with:
-          install_args: task go node
+          install_args: task go node flutter
       - run: task lint:contract gen:check
 
   deploy:

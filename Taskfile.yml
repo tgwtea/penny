@@ -1,8 +1,5 @@
 # One entry point for local work and CI. CI jobs call these tasks, so a
 # green `task lint test` locally means the same checks pass in CI.
-#
-# Component tasks skip with a message until that component exists, so the
-# same commands work in every phase without edits.
 
 version: "3"
 
@@ -12,6 +9,10 @@ silent: true
 vars:
   API_DIR: services/api
   CLIENT_DIR: apps/client
+  UI_DIR: packages/penny_ui
+  CATALOGUE_DIR: packages/penny_ui/widgetbook
+  # Dart packages formatted and analyzed with the client.
+  DART_DIRS: apps/client packages/penny_ui packages/penny_api tools/checks tools/design tools/codegen
   # Matches compose.yaml. Set PENNY_POSTGRES_PORT if 5432 is taken locally.
   POSTGRES_PORT: '{{.PENNY_POSTGRES_PORT | default "5432"}}'
   LOCAL_DATABASE_URL: postgres://penny:penny@localhost:{{.POSTGRES_PORT}}/penny?sslmode=disable
@@ -19,6 +20,9 @@ vars:
   SPECTRAL_VERSION: 6.17.1
   OASDIFF_VERSION: v1.38.0
   GOVULNCHECK_VERSION: v1.9.0
+  # The Linux Flutter image (the `sdk` stage of apps/client/Dockerfile).
+  FLUTTER_IMAGE: penny-flutter:local
+  PYTHON: '{{if eq OS "windows"}}python{{else}}python3{{end}}'
 
 tasks:
   default:
@@ -74,10 +78,28 @@ tasks:
       PENNY_DATABASE_URL: '{{.PENNY_DATABASE_URL | default .LOCAL_DATABASE_URL}}'
       PENNY_LOG_FORMAT: text
       PENNY_LOG_LEVEL: debug
-      # flutter run -d chrome --web-port 5173 (see apps/client/README.md)
+      # The web client under `task run:client:web` (port 5173).
       PENNY_CORS_ORIGINS: '{{.PENNY_CORS_ORIGINS | default "http://localhost:5173"}}'
     cmds:
       - go run ./cmd/api
+
+  run:client:
+    desc: Run the client on demo data (pass a device after --, for example -- -d windows)
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - flutter run --dart-define=PENNY_BACKEND=demo {{.CLI_ARGS}}
+
+  run:client:web:
+    desc: Run the client in Chrome against the local API (task run:api)
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - flutter run -d chrome --web-port 5173 --dart-define=PENNY_BACKEND=http --dart-define=PENNY_API_URL=http://localhost:8080
+
+  ui:catalogue:
+    desc: Open the penny_ui Widgetbook catalogue in Chrome
+    dir: "{{.CATALOGUE_DIR}}"
+    cmds:
+      - flutter run -d chrome
 
   # Lint --------------------------------------------------------------------
 
@@ -113,18 +135,18 @@ tasks:
     desc: Lint the Go service
     dir: "{{.API_DIR}}"
     cmds:
-      - |
-        if [ ! -f go.mod ]; then echo "skipped: {{.API_DIR}} has no go.mod yet"; exit 0; fi
-        golangci-lint run ./...
+      - golangci-lint run ./...
 
   lint:client:
-    desc: Format-check and analyze the Flutter client
-    dir: "{{.CLIENT_DIR}}"
+    desc: Format-check and analyze the client, penny_ui, the catalogue and the Dart tools; check layering and design tokens
+    deps: [pub:get]
     cmds:
-      - |
-        if [ ! -f pubspec.yaml ]; then echo "skipped: {{.CLIENT_DIR}} has no pubspec.yaml yet (Phase 2)"; exit 0; fi
-        dart format --output=none --set-exit-if-changed .
-        flutter analyze
+      - dart format --output=none --set-exit-if-changed {{.DART_DIRS}} {{.CATALOGUE_DIR}}
+      - for: [apps/client, packages/penny_ui, packages/penny_ui/widgetbook]
+        cmd: cd {{.ITEM}} && flutter analyze
+      - for: [tools/checks, tools/design]
+        cmd: cd {{.ITEM}} && dart analyze --fatal-infos
+      - cd tools/checks && dart run bin/check_client.dart
 
   lint:deploy:
     desc: Render every Kustomize overlay and validate it against Kubernetes and CRD schemas
@@ -137,7 +159,6 @@ tasks:
         -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{"{{"}}.Group{{"}}"}}/{{"{{"}}.ResourceKind{{"}}"}}_{{"{{"}}.ResourceAPIVersion{{"}}"}}.json'
     cmds:
       - |
-        if [ ! -f deploy/base/kustomization.yaml ]; then echo "skipped: deploy/base has no kustomization.yaml yet"; exit 0; fi
         for overlay in deploy/overlays/*/; do
           echo "validating ${overlay}"
           kustomize build "${overlay}" | {{.KUBECONFORM}}
@@ -161,24 +182,86 @@ tasks:
     desc: Run Go tests with the race detector (database tests need PENNY_TEST_DATABASE_URL)
     dir: "{{.API_DIR}}"
     cmds:
-      - |
-        if [ ! -f go.mod ]; then echo "skipped: {{.API_DIR}} has no go.mod yet"; exit 0; fi
-        go test -race ./...
+      - go test -race ./...
 
   test:client:
-    desc: Run Flutter tests
+    desc: Run the client, penny_ui and Dart tool tests (golden images only on Linux; see test:goldens)
+    deps: [pub:get]
+    cmds:
+      - for: [apps/client, packages/penny_ui]
+        cmd: cd {{.ITEM}} && flutter test
+      - for: [tools/checks, tools/design]
+        cmd: cd {{.ITEM}} && dart test
+
+  flutter:image:
+    desc: Build the Linux Flutter image used for golden images
+    internal: true
+    cmds:
+      - docker build --quiet --target sdk --tag {{.FLUTTER_IMAGE}} --file apps/client/Dockerfile apps/client
+    sources:
+      - apps/client/Dockerfile
+
+  test:goldens:
+    desc: Compare penny_ui golden images on Linux, from any machine (needs Docker)
+    deps: [flutter:image]
+    cmds:
+      - task: goldens
+        vars: { FLAGS: "" }
+
+  test:goldens:update:
+    desc: Re-render penny_ui golden images on Linux after an intended visual change (needs Docker)
+    deps: [flutter:image]
+    cmds:
+      - task: goldens
+        vars: { FLAGS: "--update-goldens" }
+
+  goldens:
+    internal: true
+    cmds:
+      # Runs on a copy inside the container, so the host's .dart_tool is left
+      # alone; only the golden images are copied back.
+      - >-
+        docker run --rm
+        {{if ne OS "windows"}}--user "$(id -u):$(id -g)" --env HOME=/tmp{{end}}
+        --volume "{{.ROOT_DIR}}/packages:/src/packages"
+        {{.FLUTTER_IMAGE}}
+        sh -c 'cp -r /src/packages /tmp/packages
+        && cd /tmp/packages/penny_ui
+        && flutter pub get
+        && flutter test --tags golden {{.FLAGS}}
+        && cp -r test/goldens/. /src/packages/penny_ui/test/goldens/'
+
+  # Build -------------------------------------------------------------------
+
+  build:web:
+    desc: Build the web client as the image does (HTTP backend, no CDN)
     dir: "{{.CLIENT_DIR}}"
     cmds:
-      - |
-        if [ ! -f pubspec.yaml ]; then echo "skipped: {{.CLIENT_DIR}} has no pubspec.yaml yet (Phase 2)"; exit 0; fi
-        flutter test
+      - flutter build web --release --no-web-resources-cdn --dart-define=PENNY_BACKEND=http
+
+  build:images:
+    desc: Build the api and web container images locally
+    cmds:
+      - docker build --tag penny-api:local {{.API_DIR}}
+      - docker build --tag penny-web:local --file {{.CLIENT_DIR}}/Dockerfile .
 
   # Code generation -----------------------------------------------------------
 
+  pub:get:
+    desc: Fetch Dart and Flutter dependencies for every package
+    internal: true
+    cmds:
+      - for: [apps/client, packages/penny_ui, packages/penny_ui/widgetbook]
+        cmd: cd {{.ITEM}} && flutter pub get
+      - for: [tools/checks, tools/design, tools/codegen]
+        cmd: cd {{.ITEM}} && dart pub get
+
   gen:
-    desc: Regenerate code from its sources (the API contract)
+    desc: Regenerate everything generated from a source in this repository
     cmds:
       - task: gen:api
+      - task: gen:dart
+      - task: gen:tokens
 
   gen:api:
     desc: Regenerate the Go server, models and test client from api/openapi.yaml
@@ -186,12 +269,33 @@ tasks:
     cmds:
       - go generate ./internal/httpapi/...
 
+  gen:dart:
+    desc: Regenerate packages/penny_api from api/openapi.yaml (space_gen, ADR 022)
+    dir: tools/codegen
+    cmds:
+      - dart pub get
+      - dart run space_gen -i ../../api/openapi.yaml -o ../../packages/penny_api
+
+  gen:tokens:
+    desc: Regenerate penny_ui's tokens.g.dart from docs/design/tokens.json
+    dir: tools/design
+    cmds:
+      - dart pub get
+      - dart run bin/generate_tokens.dart
+      - dart format ../../packages/penny_ui/lib/src/tokens.g.dart
+
+  gen:icons:
+    desc: Re-render the pixel-art app icon and every platform icon from tools/brand/penny_icon.py
+    cmds:
+      - "{{.PYTHON}} tools/brand/penny_icon.py apps/client/assets/brand"
+      - cd {{.CLIENT_DIR}} && dart run flutter_launcher_icons
+
   gen:check:
     desc: Fail if committed generated code differs from a fresh generation
     cmds:
       - task: gen
       - |
-        changes="$(git status --porcelain -- packages/penny_api services/api/internal/httpapi/gen)"
+        changes="$(git status --porcelain -- packages/penny_api services/api/internal/httpapi/gen packages/penny_ui/lib/src/tokens.g.dart)"
         if [ -n "${changes}" ]; then
           echo "Generated code is stale. Run 'task gen' and commit the result:"
           echo "${changes}"

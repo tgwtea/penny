@@ -8,3 +8,5 @@
 # Generated code: collapsed in GitHub diffs and excluded from language stats.
 packages/penny_api/** linguist-generated=true
 services/api/internal/httpapi/gen/** linguist-generated=true
+*.ttf binary
+*.otf binary
