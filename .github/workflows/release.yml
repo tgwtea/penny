@@ -1,4 +1,5 @@
-# Builds images on every push to main and rolls them out to dev (ADR 013).
+# Builds the api and web images on every push to main and rolls them out to
+# dev (ADR 013).
 #
 # 1. Each changed component's image is built for linux/amd64 and linux/arm64,
 #    pushed to GHCR tagged with the commit SHA, with an SBOM and provenance
@@ -32,6 +33,7 @@ concurrency:
 env:
   # Must match the image names in deploy/base.
   API_IMAGE: ghcr.io/tgwtea/penny-api
+  WEB_IMAGE: ghcr.io/tgwtea/penny-web
 
 jobs:
   changes:
@@ -39,6 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -49,6 +52,11 @@ jobs:
           filters: |
             api:
               - 'services/api/**'
+              - 'api/**'
+              - '.github/workflows/release.yml'
+            web:
+              - 'apps/client/**'
+              - 'packages/**'
               - 'api/**'
               - '.github/workflows/release.yml'
 
@@ -110,10 +118,70 @@ jobs:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
+  web-image:
+    name: web image
+    needs: changes
+    if: needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        run: |
+          described="$(git describe --tags --match 'client/v*' --always)"
+          echo "version=${described#client/v}" >> "${GITHUB_OUTPUT}"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Flutter build is platform-independent output, so it runs once on
+      # the builder; only the nginx stage is per platform.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
+        with:
+          context: .
+          file: apps/client/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.WEB_IMAGE }}@${{ steps.build.outputs.digest }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+
   deploy-dev:
     name: deploy dev
-    needs: [api-image]
-    if: always() && needs.api-image.result == 'success'
+    needs: [api-image, web-image]
+    # Roll out whatever was built; skip if a build failed or nothing changed.
+    if: >-
+      always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+      && (needs.api-image.result == 'success' || needs.web-image.result == 'success')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -134,9 +202,11 @@ jobs:
       - name: Pin the new digests in the dev overlay
         env:
           API_DIGEST: ${{ needs.api-image.outputs.digest }}
+          WEB_DIGEST: ${{ needs.web-image.outputs.digest }}
         run: |
           cd deploy/overlays/dev
-          kustomize edit set image "${API_IMAGE}=${API_IMAGE}@${API_DIGEST}"
+          if [ -n "${API_DIGEST}" ]; then kustomize edit set image "${API_IMAGE}=${API_IMAGE}@${API_DIGEST}"; fi
+          if [ -n "${WEB_DIGEST}" ]; then kustomize edit set image "${WEB_IMAGE}=${WEB_IMAGE}@${WEB_DIGEST}"; fi
           git diff --stat
 
       - name: Commit and push to main
