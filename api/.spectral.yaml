@@ -1,0 +1,48 @@
+# Spectral ruleset for api/openapi.yaml. Run with `task lint:contract`.
+# Starts from Spectral's OpenAPI rules and adds Penny's conventions.
+extends: ["spectral:oas"]
+
+rules:
+  # Every operation is generated into Go and Dart method names.
+  operation-operationId: error
+  operation-description: off
+  operation-tags: error
+  oas3-unused-component: error
+  # No public support contact yet.
+  info-contact: off
+
+  penny-camel-case-properties:
+    description: JSON property names are camelCase.
+    severity: error
+    given: "$.components.schemas..properties[*]~"
+    then:
+      function: casing
+      functionOptions:
+        type: camel
+
+  penny-snake-case-enums:
+    description: Enum values are snake_case.
+    severity: error
+    given: "$.components.schemas..enum[*]"
+    then:
+      function: casing
+      functionOptions:
+        type: snake
+
+  penny-versioned-paths:
+    description: Every path except the health probes starts with /v1.
+    severity: error
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(/v1/|/livez$|/readyz$)"
+
+  penny-problem-errors:
+    description: Error responses reuse the shared Problem response.
+    severity: error
+    resolved: false
+    given: "$.paths[*][*].responses[?(@property >= '400' && @property < '500' || @property == 'default')]"
+    then:
+      field: "$ref"
+      function: truthy

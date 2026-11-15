@@ -1,0 +1,280 @@
+openapi: 3.0.3
+info:
+  title: Penny API
+  version: 0.1.0
+  description: |
+    The contract between the Penny client and server. The Go server stubs and
+    the Dart client are generated from this file; change it here first, then
+    run `task gen`.
+
+    Conventions (docs/architecture.md, "API contract and code generation"):
+
+    - Every path except the health probes is versioned under `/v1`.
+    - Team-scoped resources live under `/v1/workspaces/{workspaceId}/...`.
+    - Errors are RFC 9457 `application/problem+json` with a stable `type`.
+    - Timestamps are RFC 3339 in UTC. Money is integer cents plus an ISO 4217
+      currency code.
+    - JSON property names are camelCase; enum values are snake_case.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development (`task run:api`)
+
+tags:
+  - name: health
+    description: Probes for Kubernetes and uptime checks.
+  - name: system
+    description: Facts about the running server.
+  - name: identity
+    description: The signed-in person and their teams.
+
+paths:
+  /livez:
+    get:
+      operationId: getLivez
+      tags: [health]
+      summary: Report that the process is running
+      description: |
+        Succeeds whenever the process can serve HTTP. It never checks
+        dependencies, so a database outage does not restart every pod.
+      security: []
+      responses:
+        "200":
+          description: The process is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /readyz:
+    get:
+      operationId: getReadyz
+      tags: [health]
+      summary: Report whether the server can take traffic
+      description: |
+        Succeeds when the database is reachable and its schema is at the version
+        this build expects. Kubernetes stops routing to a pod that fails it.
+      security: []
+      responses:
+        "200":
+          description: Every check passed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: At least one check failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /v1/version:
+    get:
+      operationId: getVersion
+      tags: [system]
+      summary: Report the server's build version
+      security: []
+      responses:
+        "200":
+          description: The running build.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerVersion"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/me:
+    get:
+      operationId: getMe
+      tags: [identity]
+      summary: Get the signed-in person, their teams and what they may do in each
+      responses:
+        "200":
+          description: The signed-in person.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+components:
+  securitySchemes:
+    firebaseIdToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A Firebase Auth ID token for the signed-in person.
+
+  responses:
+    Problem:
+      description: The request failed. The body says why.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    Problem:
+      type: object
+      description: |
+        An RFC 9457 problem. Clients branch on `type`, never on `title` or
+        `detail`, which are for people and may change.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          description: A stable identifier for this kind of problem.
+          example: urn:penny:problem:not-found
+        title:
+          type: string
+          description: A short summary of this kind of problem.
+          example: Not found
+        status:
+          type: integer
+          format: int32
+          description: The HTTP status code.
+          example: 404
+        detail:
+          type: string
+          description: What went wrong in this occurrence.
+        instance:
+          type: string
+          description: The request path that produced the problem.
+        requestId:
+          type: string
+          description: Quote this when reporting the problem.
+
+    Health:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          $ref: "#/components/schemas/HealthStatus"
+        checks:
+          type: array
+          description: One entry per dependency checked. Empty for liveness.
+          items:
+            $ref: "#/components/schemas/HealthCheck"
+
+    HealthStatus:
+      type: string
+      enum: [ok, failing]
+
+    HealthCheck:
+      type: object
+      required: [name, status]
+      properties:
+        name:
+          type: string
+          example: database
+        status:
+          $ref: "#/components/schemas/HealthStatus"
+        detail:
+          type: string
+          description: Why the check failed. Never contains secrets.
+
+    ServerVersion:
+      type: object
+      required: [version, commit]
+      properties:
+        version:
+          type: string
+          description: The release version, or "dev" for a local build.
+          example: 0.1.0
+        commit:
+          type: string
+          description: The git commit the server was built from, or "unknown".
+          example: 3f2c1a9
+
+    Me:
+      type: object
+      required: [user, memberships]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        memberships:
+          type: array
+          description: Every team the person belongs to. Empty before onboarding.
+          items:
+            $ref: "#/components/schemas/Membership"
+
+    User:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+
+    Membership:
+      type: object
+      required: [id, workspace, role, capabilities]
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspace:
+          $ref: "#/components/schemas/Workspace"
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        capabilities:
+          type: array
+          description: |
+            What this person may do in this team. Clients show or hide
+            controls from this list and never compare role names.
+          items:
+            $ref: "#/components/schemas/Capability"
+
+    Workspace:
+      type: object
+      description: A team. The UI says "Team"; the API says workspace.
+      required: [id, name, timezone, memberCount]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Koh Guitar Studio
+        timezone:
+          type: string
+          description: An IANA timezone name. Lessons are shown in this timezone.
+          example: Asia/Singapore
+        memberCount:
+          type: integer
+          format: int32
+          description: Active members. A team of one hides team features.
+          example: 8
+
+    MembershipRole:
+      type: string
+      description: Student and parent are reserved and carry no capabilities yet.
+      enum: [owner, teacher, student, parent]
+
+    Capability:
+      type: string
+      description: One row of the authorization matrix in docs/architecture.md.
+      enum:
+        - view_own_lessons
+        - view_team_timetable
+        - manage_team
+        - manage_lessons
+        - reassign_lessons
+        - complete_own_lessons
+        - edit_own_lesson_items
+        - manage_students
+        - view_own_students
+        - manage_payments
+
+security:
+  - firebaseIdToken: []
