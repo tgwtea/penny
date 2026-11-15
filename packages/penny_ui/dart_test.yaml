@@ -1,0 +1,3 @@
+tags:
+  # Golden-image tests. They run on Linux only (see lib/testing.dart).
+  golden:
