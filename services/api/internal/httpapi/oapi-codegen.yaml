@@ -1,0 +1,13 @@
+# oapi-codegen settings for the server stubs, models and a Go client.
+# The client is used by the API tests (docs/architecture.md, "Testing").
+# Regenerate with `task gen`; never edit gen/ by hand.
+package: gen
+output: gen/api.gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+  client: true
+compatibility:
+  # HealthStatusOk rather than Ok, so enums added later cannot collide.
+  always-prefix-enum-values: true

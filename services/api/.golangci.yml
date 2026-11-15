@@ -1,0 +1,82 @@
+# golangci-lint v2. Run with `task lint:api`.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - gocritic
+    - misspell
+    - noctx
+    - nolintlint
+    - revive
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+
+  settings:
+    depguard:
+      # Import boundaries from docs/architecture.md, "Backend (Go)".
+      rules:
+        http-layer-has-no-sql:
+          files:
+            - "**/internal/httpapi/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/db
+              desc: handlers call services; only stores and platform/schema touch the database package
+            - pkg: github.com/jackc/pgx/v5
+              desc: handlers never run SQL; call a service
+        authz-is-pure:
+          files:
+            - "**/internal/authz/**"
+          deny:
+            - pkg: net/http
+              desc: authorization decisions are pure functions of actor, action and resource
+            - pkg: github.com/jackc/pgx/v5
+              desc: authorization decisions are pure functions of actor, action and resource
+        no-global-logger:
+          files:
+            - "$all"
+            - "!$test"
+          deny:
+            - pkg: log$
+              desc: use log/slog through the injected logger
+
+    revive:
+      rules:
+        - name: exported
+          arguments: [disableStutteringCheck]
+        - name: package-comments
+        - name: var-naming
+        - name: indent-error-flow
+        - name: error-strings
+        - name: receiver-naming
+
+    errorlint:
+      # http.ErrAbortHandler and io.EOF comparisons are idiomatic.
+      comparison: false
+
+  exclusions:
+    generated: strict
+    presets:
+      - std-error-handling
+    paths:
+      - internal/httpapi/gen
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/tgwtea/penny
+  exclusions:
+    generated: strict
+    paths:
+      - internal/httpapi/gen

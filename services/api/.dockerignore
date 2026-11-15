@@ -1,0 +1,8 @@
+# Only what the Go build needs reaches the build context.
+bin/
+*.test
+coverage.out
+Dockerfile
+.dockerignore
+.golangci.yml
+README.md
