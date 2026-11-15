@@ -12,7 +12,8 @@ services:
       POSTGRES_PASSWORD: penny
       POSTGRES_DB: penny
     ports:
-      - "127.0.0.1:5432:5432"
+      # Set PENNY_POSTGRES_PORT if another Postgres already uses 5432.
+      - "127.0.0.1:${PENNY_POSTGRES_PORT:-5432}:5432"
     volumes:
       # Postgres 18 images keep data under /var/lib/postgresql/<major>/, so the
       # volume mounts the parent directory.
