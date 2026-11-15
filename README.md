@@ -2,20 +2,20 @@
 
 Penny handles the admin side of tutoring for solo tutors and small studios: who teaches whom, when and where, who has paid, and who needs a reminder. It generates PayNow payment links and records payments and receipts. It never moves money.
 
-> **Status:** Phase 1 (backend walking skeleton): the API serves health, version and a stubbed `/v1/me`; manifests for dev are ready to sync. See the [build plan](docs/architecture.md#component-by-component-build-plan).
+> **Status:** Phases 1 and 2 (walking skeletons): the API serves health, version and a stubbed `/v1/me`; the client runs on demo data or against the API, on Penny's own design system; manifests for dev are ready to sync. See the [build plan](docs/architecture.md#component-by-component-build-plan).
 
 ## Repository map
 
 | Path | What lives there | Phase |
 | --- | --- | --- |
 | `api/` | `openapi.yaml`, the contract between client and server, plus shared test fixtures | 1 |
-| `apps/client/` | Flutter app for web, Android and iOS | 2 |
+| `apps/client/` | Flutter app for web, Android, iOS, Windows, macOS and Linux | 2 |
 | `packages/penny_api/` | Dart client generated from the contract (never hand-edited) | 2 |
 | `packages/penny_ui/` | Design tokens, theme and components | 2 |
 | `services/api/` | Go module: `api`, `worker` and `migrate` binaries | 1 |
 | `deploy/` | Kustomize manifests that ArgoCD syncs to the cluster | 1 |
 | `docs/` | Architecture, decision records (ADRs), runbooks | 0 |
-| `tools/` | Local tooling: Firebase Auth emulator image, GitHub setup scripts | 0 |
+| `tools/` | Code generators (design tokens, Dart client, app icon), client boundary checks, Firebase Auth emulator image, GitHub setup scripts | 0 to 2 |
 
 Only the contract in `api/` crosses between client and server: `apps/` never imports from `services/`, or the reverse.
 
@@ -31,6 +31,8 @@ task test             # runs every component's tests (components that do not exi
 task lint             # lints workflows and every component
 task dev:down         # stops the local stack
 task run:api          # migrates the local database and serves the API on :8080
+task run:client       # the app on demo data; task run:client:web runs it against the local API
+task ui:catalogue     # the design system's Widgetbook catalogue
 ```
 
 If another PostgreSQL already listens on 5432, pick another port for Penny's: `export PENNY_POSTGRES_PORT=55432` before `task dev` and every other task.

@@ -1,6 +1,6 @@
 # Design principles
 
-Penny should look simple, feel obvious, and never look generated. These principles turn that goal into rules that can be checked in review. The design system (tokens and components) will live in `packages/penny_ui`; until it exists, these rules are the reference.
+Penny should look simple, feel obvious, and never look generated. These principles turn that goal into rules that can be checked in review. The design system (tokens and components) lives in [`packages/penny_ui`](packages/penny_ui/README.md); `tools/checks` fails the build when app code uses a raw colour or a literal size instead.
 
 > **Status:** first version of the design system and key screens is done. Build from [`docs/design/`](docs/design/README.md): tokens, the full brand book, component guidelines and the screen inventory. This page is the short version.
 

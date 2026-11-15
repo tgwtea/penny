@@ -4,7 +4,7 @@ Nov 15, 2026 · @leifsen
 
 ## Summary
 
-Penny is a modular monolith: one Go codebase building an `api` and a `worker` binary, one PostgreSQL database run by CloudNativePG on the homelab K3s cluster, and one Flutter client for web, Android and iOS. A single OpenAPI contract sits between client and server. The client reaches data only through domain repository interfaces, so the in-memory demo backend from the team-timetable PRD and the real Go server swap at one composition root.
+Penny is a modular monolith: one Go codebase building an `api` and a `worker` binary, one PostgreSQL database run by CloudNativePG on the homelab K3s cluster, and one Flutter client for web, Android, iOS and desktop (Windows, macOS, Linux). A single OpenAPI contract sits between client and server. The client reaches data only through domain repository interfaces, so the in-memory demo backend from the team-timetable PRD and the real Go server swap at one composition root.
 
 Build order: monorepo and CI skeleton, a design system and key screen designs, a deployed walking skeleton, authentication (email/password and Google), teams and roles (owner, teacher, solo), then lessons and the timetable. Email reminders, PayNow payment links and receipts follow. Student and parent roles and encrypted messaging are reserved in the model, not built.
 
@@ -175,6 +175,7 @@ apps/client/lib/
 ├── main.dart              reads PENNY_BACKEND, builds the ProviderScope overrides
 ├── app/                   router, shell, theme, composition root (backend_overrides.dart)
 ├── core/                  env, failures, formatting, clock, capability model
+├── data/                  HTTP plumbing shared by the features' data/ folders
 ├── features/
 │   ├── auth/              presentation / application / domain / data
 │   ├── onboarding/
@@ -566,15 +567,17 @@ Code and manifests done on 15 Nov 2026, with `GET /v1/version` added so the clie
 
 ### Phase 2: Client skeleton and demo backend
 
-- [ ] Feature-first structure, four layers, `app/backend_overrides.dart`, `PENNY_BACKEND` define
-- [ ] `packages/penny_ui` from the design system: tokens, `ThemeData`, `ThemeExtension`s, core components, Widgetbook, golden tests, lint against raw colours and paddings
-- [ ] go\_router with a guard hook; app shell responsive at phone and laptop widths
-- [ ] Pixel-art penny-flip icon in `assets/brand/`, platform icons generated
-- [ ] `packages/penny_api` generated; contract job in CI; Dart generator spike decided
-- [ ] Boundary-check script; repository contract-test harness
-- [ ] `web` image and Deployment in dev
+- [x] Feature-first structure, four layers, `app/backend_overrides.dart`, `PENNY_BACKEND` define
+- [x] `packages/penny_ui` from the design system: tokens, `ThemeData`, `ThemeExtension`s, core components, Widgetbook, golden tests, lint against raw colours and paddings
+- [x] go\_router with a guard hook; app shell responsive at phone and laptop widths
+- [x] Pixel-art penny-flip icon in `assets/brand/`, platform icons generated
+- [x] `packages/penny_api` generated; contract job in CI; Dart generator spike decided (ADR 022)
+- [x] Boundary-check script; repository contract-test harness
+- [x] `web` image and Deployment in dev
 
 Done when: the client runs in demo and HTTP modes, the HTTP mode shows the API version from dev, and the boundary check fails a deliberately bad import.
+
+Code done on 15 Nov 2026. The client targets web, Android, iOS, Windows, macOS and Linux. HTTP mode was checked against a local API (the dev environment waits on Phase 1's deployment steps). The Phosphor icons are bundled as fonts because `phosphor_flutter` no longer compiles (ADR 021). Shared HTTP plumbing for the features' `data/` folders lives in `lib/data/`.
 
 ### Phase 3: Authentication
 
