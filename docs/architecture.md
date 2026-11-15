@@ -552,15 +552,17 @@ Done when: every key screen exists in all five states at both widths, and the to
 
 ### Phase 1: Backend walking skeleton, deployed
 
-- [ ] `api/openapi.yaml` with `GET /livez`, `GET /readyz`, `GET /v1/me` (stubbed), problem schema
-- [ ] `internal/platform`: config, slog, pgx pool, HTTP server with graceful shutdown, Prometheus metrics, OTel setup
-- [ ] `cmd/migrate` running goose and River migrations; first migration creates extensions and `users`
-- [ ] Generated strict server wired; handler for health endpoints; error mapper
-- [ ] Dockerfiles (distroless), `release.yml` pushing to GHCR
-- [ ] `deploy/base` and `overlays/dev`: CNPG Cluster with off-site backups, api Deployment, migrate PreSync Job, Service, IngressRoute, Cloudflare Tunnel route, sealed secrets
-- [ ] ArgoCD Application for `penny-dev`; ServiceMonitor and a first Grafana dashboard
+- [x] `api/openapi.yaml` with `GET /livez`, `GET /readyz`, `GET /v1/me` (stubbed), problem schema
+- [x] `internal/platform`: config, slog, pgx pool, HTTP server with graceful shutdown, Prometheus metrics, OTel setup
+- [x] `cmd/migrate` running goose and River migrations; first migration creates extensions and `users`
+- [x] Generated strict server wired; handler for health endpoints; error mapper
+- [x] Dockerfiles (distroless), `release.yml` pushing to GHCR
+- [x] `deploy/base` and `overlays/dev`: CNPG Cluster with off-site backups, api Deployment, migrate Job (a Sync hook after the database, see `deploy/README.md`), Service, IngressRoute, Cloudflare Tunnel route, sealed secrets (placeholders)
+- [x] ArgoCD Application for `penny-dev`; ServiceMonitor and a first Grafana dashboard
 
 Done when: merging to `main` puts a new API version live in dev with no manual step, `/readyz` is green through the tunnel, and a restore from backup into a scratch namespace works once.
+
+Code and manifests done on 15 Nov 2026, with `GET /v1/version` added so the client can show which build it talks to. The first deployment waits on the open questions it depends on (domain, tunnel, backup bucket, sealed secrets, release app); `deploy/README.md` lists each step, and the restore drill follows `docs/runbooks/restore-database.md`.
 
 ### Phase 2: Client skeleton and demo backend
 
