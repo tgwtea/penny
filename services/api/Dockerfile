@@ -4,8 +4,11 @@
 #   docker build --build-arg VERSION=0.1.0 --build-arg COMMIT=$(git rev-parse --short HEAD) .
 #
 # The Go version matches .mise.toml; Renovate keeps both current.
+#
+# The build stage runs on the builder's own platform and cross-compiles, so
+# multi-platform images (linux/amd64 and linux/arm64) need no emulation.
 
-FROM golang:1.27.4-trixie AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.4-trixie AS build
 WORKDIR /src
 
 # Download modules first so source edits do not invalidate this layer.
@@ -15,10 +18,12 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 ARG VERSION=dev
 ARG COMMIT=unknown
+ARG TARGETOS
+ARG TARGETARCH
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
       -ldflags "-s -w \
         -X github.com/tgwtea/penny/services/api/internal/platform/buildinfo.version=${VERSION} \
         -X github.com/tgwtea/penny/services/api/internal/platform/buildinfo.commit=${COMMIT}" \
