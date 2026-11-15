@@ -11,4 +11,6 @@ ingress:
   # Cloudflare terminates TLS; Traefik routes by hostname inside the cluster.
   - hostname: api.dev.penny.invalid
     service: http://traefik.kube-system.svc.cluster.local:80
+  - hostname: app.dev.penny.invalid
+    service: http://traefik.kube-system.svc.cluster.local:80
   - service: http_status:404

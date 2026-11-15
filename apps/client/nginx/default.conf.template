@@ -1,0 +1,36 @@
+# Serves the Flutter web build. The nginx image substitutes ${PENNY_API_URL}
+# from the environment at container start; nginx's own $variables are left
+# alone because they are not set in the environment.
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # Runtime configuration for this environment (apps/client/lib/app/config.dart).
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        return 200 '{"apiUrl":"${PENNY_API_URL}"}';
+    }
+
+    # Probes for Kubernetes.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 'ok';
+    }
+
+    # Flutter's file names are not content-hashed, so browsers revalidate
+    # every file; unchanged files cost a 304.
+    location / {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

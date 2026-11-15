@@ -27,6 +27,8 @@ configMapGenerator:
 images:
   - name: ghcr.io/tgwtea/penny-api
     newTag: unreleased
+  - name: ghcr.io/tgwtea/penny-web
+    newTag: unreleased
 
 patches:
   # Hostnames.
@@ -37,6 +39,27 @@ patches:
       - op: replace
         path: /spec/routes/0/match
         value: Host(`api.dev.penny.invalid`)
+  - target:
+      kind: IngressRoute
+      name: penny-web
+    patch: |-
+      - op: replace
+        path: /spec/routes/0/match
+        value: Host(`app.dev.penny.invalid`)
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: penny-web
+      spec:
+        replicas: 1
+        template:
+          spec:
+            containers:
+              - name: web
+                env:
+                  - name: PENNY_API_URL
+                    value: https://api.dev.penny.invalid
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment

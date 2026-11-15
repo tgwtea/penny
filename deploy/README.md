@@ -8,6 +8,7 @@ base/                     everything Penny runs, environment-neutral
   api/                    API Deployment, Service, PDB, migrate Job
   database/               CloudNativePG Cluster, off-site ObjectStore, daily backup
   ingress/                Traefik IngressRoute for the API host
+  web/                    the web client: nginx Deployment, Service, IngressRoute
   tunnel/                 cloudflared, the outbound-only path from Cloudflare
   network/                default-deny ingress plus one allow per real path
   monitoring/             ServiceMonitor, PodMonitor, Grafana dashboard
@@ -24,6 +25,7 @@ overlays/dev/             namespace penny-dev: hostnames, backup path, secrets, 
    - wave -1: the database `Cluster` and its `ObjectStore`
    - wave 0: the `penny-migrate` Job (a Sync hook; a failure stops the sync)
    - wave 1: the API Deployment, rolled one pod at a time behind `/readyz`
+   - the web client has no wave: it is static files and depends only on the API being reachable
 
 The migrate Job is a Sync hook rather than the PreSync hook the architecture describes: PreSync runs before anything is created, so on the very first sync the database would not exist yet. Waves give the same guarantee: new API pods start only after migrations succeed.
 
@@ -47,7 +49,7 @@ The network policies in `base/network/policies.yaml` name these namespaces. If t
 
 These depend on open questions in `docs/architecture.md` and cannot be committed yet:
 
-1. **Domain.** The overlay uses the reserved `penny.invalid` domain. Replace it in `overlays/dev/kustomization.yaml` (IngressRoute host, CORS origin) and `overlays/dev/cloudflared.yaml`.
+1. **Domain.** The overlay uses the reserved `penny.invalid` domain. Replace it in `overlays/dev/kustomization.yaml` (both IngressRoute hosts, the API's CORS origin, the web client's `PENNY_API_URL`) and `overlays/dev/cloudflared.yaml`.
 2. **Tunnel.** `cloudflared tunnel create penny-dev`, put the tunnel ID in `overlays/dev/cloudflared.yaml`, seal the credentials file (below) and add a DNS CNAME for each hostname to `<tunnel-id>.cfargotunnel.com`.
 3. **Backup bucket.** Create the bucket and an access key limited to it. Set the endpoint and path in the overlay's `ObjectStore` patch.
 4. **Secrets.** Replace every placeholder in `overlays/dev/secrets/`.

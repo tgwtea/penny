@@ -1,0 +1,15 @@
+# Build context is the repository root; only the client and its packages go in.
+*
+!apps/client/
+!packages/penny_ui/
+!packages/penny_api/
+**/.dart_tool/
+**/build/
+apps/client/android/
+apps/client/ios/
+apps/client/linux/
+apps/client/macos/
+apps/client/windows/
+apps/client/test/
+packages/penny_ui/widgetbook/
+packages/penny_ui/test/
