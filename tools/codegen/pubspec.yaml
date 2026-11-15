@@ -1,0 +1,11 @@
+name: penny_codegen
+description: Pins the Dart client generator. `task gen:dart` runs it from here.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  # Pure-Dart OpenAPI generator, chosen in ADR 022. Exact version: a new
+  # release changes generated code and deserves its own reviewed commit.
+  space_gen: 1.6.0

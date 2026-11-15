@@ -23,4 +23,6 @@ One file per decision. Copy `000-template.md` to propose a new one in the same P
 | [017](017-lessons-have-any-number-of-tutors-and-students.md) | Lessons have any number of tutors and students | Accepted |
 | [018](018-co-taught-billing-by-lead-tutor.md) | Co-taught lessons are billed by the lead tutor; splits happen outside Penny | Accepted |
 | [019](019-clashes-warn-never-block.md) | Clashes warn, never block | Accepted |
-| [020](020-ink-and-copper-plex-phosphor.md) | Ink and copper, IBM Plex Sans, Phosphor icons | Accepted |
+| [020](020-ink-and-copper-plex-phosphor.md) | Ink and copper, IBM Plex Sans, Phosphor icons | Accepted; icon package superseded by 021 |
+| [021](021-bundle-phosphor-icon-fonts.md) | Bundle the Phosphor icon fonts in penny_ui (supersedes ADR 020's package choice) | Accepted |
+| [022](022-space-gen-for-the-dart-client.md) | Generate the Dart client with space_gen | Accepted |
