@@ -23,3 +23,4 @@ One file per decision. Copy `000-template.md` to propose a new one in the same P
 | [017](017-lessons-have-any-number-of-tutors-and-students.md) | Lessons have any number of tutors and students | Accepted |
 | [018](018-co-taught-billing-by-lead-tutor.md) | Co-taught lessons are billed by the lead tutor; splits happen outside Penny | Accepted |
 | [019](019-clashes-warn-never-block.md) | Clashes warn, never block | Accepted |
+| [020](020-ink-and-copper-plex-phosphor.md) | Ink and copper, IBM Plex Sans, Phosphor icons | Accepted |

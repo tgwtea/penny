@@ -18,6 +18,7 @@ Build order: monorepo and CI skeleton, a design system and key screen designs, a
 | D4 | Lesson size | Any number of students and any number of tutors per lesson, no hard limit |
 | D5 | Existing frontend | Not reused. The client is a fresh build on a new design system, designed before it is coded |
 | D6 | Email | Transactional provider over HTTPS; never SMTP from the homelab |
+| D7 | Co-taught lesson billing | The lead tutor (who created the lesson) bills it and decides the split off-app; Penny records one payee and states that the split is arranged outside the app |
 
 ## Goals and scope
 
@@ -214,7 +215,7 @@ The client is designed before it is coded: a design system first, then the scree
 
 | Tell | Penny's rule |
 | --- | --- |
-| Stock Material colours, purple gradients, glowing accents | One accent colour (a muted copper, from the penny) on warm neutrals. Colour carries meaning (status, selection, the current time), never decoration |
+| Stock Material colours, purple gradients, glowing accents; cream backgrounds with a clay accent | Ink and copper: cool white surfaces, deep ink for text and primary actions, copper only for now and today (the current-time line, today's date). Other colour only means a status, always with a word and an icon |
 | Every element in its own card with a shadow | Flat surfaces separated by spacing and hairline dividers. Elevation only for things that float: menus, sheets, dialogs |
 | Inconsistent spacing and sizes | A 4 px grid, a fixed spacing scale and one radius scale, all from tokens. No literal numbers in feature code |
 | Many fonts, weights and sizes | One typeface family, a six-step type scale, two weights, tabular numerals for times and money |
@@ -400,7 +401,7 @@ Penny generates a PayNow QR that pays the teacher directly and records what the 
 **Flow**
 
 1. **Payee setup.** A teacher registers a PayNow proxy (mobile number or UEN) and a display name. Penny shows a test QR they scan in their own banking app: the app shows the registered recipient name, which confirms the proxy is right before any parent sees it.
-2. **Payment request.** Created by hand or from completed lessons in a period. It gets lines (one per lesson or item), an amount, a due date and a short reference such as `PNY-7K3Q9X` (Crockford base32, no ambiguous characters). Each request has exactly one payee: for a lesson with several tutors, the lead tutor bills it by default, and how fees split between tutors is an open question.
+2. **Payment request.** Created by hand or from completed lessons in a period. It gets lines (one per lesson or item), an amount, a due date and a short reference such as `PNY-7K3Q9X` (Crockford base32, no ambiguous characters). Each request has exactly one payee. For a lesson with several tutors, the lead tutor (whoever created the lesson, unless the owner reassigns it) bills the whole fee and decides how it is shared under the tutors' own agreement. Penny does not split or track the shares; the lesson and the payment request state that the split is arranged outside the app.
 3. **Unique link.** `https://<domain>/pay/<token>`, where the token is 128 random bits and only its SHA-256 hash is stored. Links expire and can be revoked. The page shows the payee name, amount, what it covers, the reference and the QR. It is rate-limited and shows no more about the student than a first name.
 4. **Payer pays** in their banking app; money moves bank to bank, outside Penny. The payer may tap "I've paid", which only notifies the payee.
 5. **Payee confirms** the money arrived (matching amount and reference in their bank notification). This creates a `payment_record`.
@@ -539,11 +540,13 @@ Done when: a fresh clone runs `task dev` and `task test` with only mise and Dock
 
 Runs alongside Phases 0 and 1 (no code dependency) and must finish before Phase 2 builds any screen.
 
-- [ ] Design principles written into `DESIGN.md` (the rules table in Design and UX)
-- [ ] Design system: colour, type, spacing, radius, elevation and motion tokens, light and dark; core components in all states
+- [x] Design principles written into `DESIGN.md` (the rules table in Design and UX)
+- [x] Design system: colour, type, spacing, radius, elevation and motion tokens, light and dark; core components in all states
 - [ ] Key screens at phone and laptop widths: sign-in, onboarding, Home, week, team timetable, lesson detail (with several tutors and students), students, team list, payment request, public payment page
 - [ ] Density check with the studio scenario (8 tutors, busy Saturday, group lessons)
 - [ ] Short review pass: someone who has not seen the designs finds a free Thursday 5pm slot and marks a lesson done, unaided
+
+First pass done on 15 Nov 2026: the [Penny design system](https://claude.ai/artifact/LPdfpG6SV6cDd2UJkdpSV7) (tokens, brand book, 15 components) and [Penny key screens](https://claude.ai/artifact/V1uvDiMuTjJ9YCapXr2vZZ) (11 phone, 4 laptop). Remaining screens and states are listed in `docs/design/screens.md`.
 
 Done when: every key screen exists in all five states at both widths, and the tokens are final enough to code.
 
@@ -647,9 +650,8 @@ The PRD's prototype becomes the client running with `PENNY_BACKEND=demo`. Nothin
 
 **For you (blocks Phase 0 or 3)**
 
-- [ ] When several tutors teach one lesson, who bills it and how is the fee split?
 - [ ] When is the customer walkthrough? It decides whether to take the demo fast path
-- [ ] GitHub owner and repo name; domain name for `app.` and `api.` and for sending email
+- [ ] Domain name for `app.` and `api.` and for sending email
 - [ ] Is Vault actually running on the cluster, or should secrets use Sealed Secrets?
 - [ ] Budget for managed pieces (email provider, off-site backup storage), even if small
 
