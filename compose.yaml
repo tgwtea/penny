@@ -1,0 +1,50 @@
+# Local development services. Start with `task dev`, stop with `task dev:down`.
+# Every port binds to 127.0.0.1 only; credentials here are for local use only.
+
+name: penny
+
+services:
+  postgres:
+    # Same major versions as production (CloudNativePG, Postgres 18 + PostGIS).
+    image: postgis/postgis:18-3.7
+    environment:
+      POSTGRES_USER: penny
+      POSTGRES_PASSWORD: penny
+      POSTGRES_DB: penny
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      # Postgres 18 images keep data under /var/lib/postgresql/<major>/, so the
+      # volume mounts the parent directory.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=penny --dbname=penny"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    # Catches every email the API or worker sends; nothing leaves the machine.
+    image: axllent/mailpit:v1.33.1
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:8025:8025" # web UI
+      - "127.0.0.1:1025:1025" # SMTP
+
+  firebase-auth:
+    # Firebase Auth emulator under a demo- project ID, which never touches a
+    # real Firebase project.
+    build: tools/firebase-emulator
+    ports:
+      - "127.0.0.1:9099:9099" # Auth emulator
+      - "127.0.0.1:4000:4000" # Emulator UI
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --spider http://127.0.0.1:9099/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
