@@ -1,0 +1,125 @@
+# One entry point for local work and CI. CI jobs call these tasks, so a
+# green `task lint test` locally means the same checks pass in CI.
+#
+# Component tasks skip with a message until that component exists, so the
+# same commands work from Phase 0 onwards without edits.
+
+version: "3"
+
+output: prefixed
+silent: true
+
+vars:
+  API_DIR: services/api
+  CLIENT_DIR: apps/client
+
+tasks:
+  default:
+    desc: List available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install the pinned toolchain from .mise.toml
+    cmds:
+      - mise install
+
+  # Local services ----------------------------------------------------------
+
+  dev:
+    desc: Start Postgres (PostGIS), Mailpit and the Firebase Auth emulator
+    cmds:
+      - docker compose up --detach --build --wait
+
+  dev:down:
+    desc: Stop local services (data is kept)
+    cmds:
+      - docker compose down
+
+  dev:reset:
+    desc: Stop local services and delete their data
+    prompt: This deletes the local database. Continue?
+    cmds:
+      - docker compose down --volumes
+
+  dev:logs:
+    desc: Follow logs from local services
+    cmds:
+      - docker compose logs --follow
+
+  # Lint --------------------------------------------------------------------
+
+  lint:
+    desc: Lint everything
+    deps: [lint:repo, lint:api, lint:client, lint:deploy]
+
+  lint:repo:
+    desc: Lint GitHub Actions workflows
+    cmds:
+      - actionlint
+
+  lint:api:
+    desc: Lint the Go service
+    dir: "{{.API_DIR}}"
+    cmds:
+      - |
+        if [ ! -f go.mod ]; then echo "skipped: {{.API_DIR}} has no go.mod yet (Phase 1)"; exit 0; fi
+        golangci-lint run ./...
+
+  lint:client:
+    desc: Format-check and analyze the Flutter client
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - |
+        if [ ! -f pubspec.yaml ]; then echo "skipped: {{.CLIENT_DIR}} has no pubspec.yaml yet (Phase 2)"; exit 0; fi
+        dart format --output=none --set-exit-if-changed .
+        flutter analyze
+
+  lint:deploy:
+    desc: Render every Kustomize overlay and validate it against Kubernetes schemas
+    cmds:
+      - |
+        if [ ! -f deploy/base/kustomization.yaml ]; then echo "skipped: deploy/base has no kustomization.yaml yet (Phase 1)"; exit 0; fi
+        for overlay in deploy/overlays/*/; do
+          echo "validating ${overlay}"
+          kustomize build "${overlay}" | kubeconform -strict -summary -ignore-missing-schemas
+        done
+
+  # Test --------------------------------------------------------------------
+
+  test:
+    desc: Run every component's tests
+    deps: [test:api, test:client]
+
+  test:api:
+    desc: Run Go tests with the race detector
+    dir: "{{.API_DIR}}"
+    cmds:
+      - |
+        if [ ! -f go.mod ]; then echo "skipped: {{.API_DIR}} has no go.mod yet (Phase 1)"; exit 0; fi
+        go test -race ./...
+
+  test:client:
+    desc: Run Flutter tests
+    dir: "{{.CLIENT_DIR}}"
+    cmds:
+      - |
+        if [ ! -f pubspec.yaml ]; then echo "skipped: {{.CLIENT_DIR}} has no pubspec.yaml yet (Phase 2)"; exit 0; fi
+        flutter test
+
+  # Code generation -----------------------------------------------------------
+
+  gen:
+    desc: Regenerate Go server code and the Dart client from api/openapi.yaml
+    cmds:
+      - |
+        if [ ! -f api/openapi.yaml ]; then echo "skipped: api/openapi.yaml does not exist yet (Phase 1)"; exit 0; fi
+        echo "code generation is wired up in Phase 1" >&2
+        exit 1
+
+  gen:check:
+    desc: Fail if committed generated code differs from a fresh generation
+    cmds:
+      - task: gen
+      - git diff --exit-code -- packages/penny_api services/api
