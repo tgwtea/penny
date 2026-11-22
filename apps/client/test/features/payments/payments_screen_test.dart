@@ -157,7 +157,7 @@ void main() {
       expect(find.widgetWithText(PennyButton, 'Retry'), findsOneWidget);
     });
 
-    testWidgets('is closed to a parent, and not in their navigation', (
+    testWidgets('is closed to a parent, whose Payments are their own', (
       tester,
     ) async {
       final c = await pumpWith(tester, [
@@ -165,7 +165,8 @@ void main() {
       ]);
       await openPayments(c, tester);
       expect(find.text('Only the team owner can see this.'), findsOneWidget);
-      expect(navLabels(tester), isNot(contains('Payments')));
+      // Their navigation's Payments is the family page (ADR 025).
+      expect(navLabels(tester), ['Lessons', 'Payments']);
     });
   });
 

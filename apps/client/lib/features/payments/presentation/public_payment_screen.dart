@@ -10,6 +10,7 @@ import '../../shared/presentation/public_page.dart';
 import '../application/payment_providers.dart';
 import '../domain/payment.dart';
 import 'payment_views.dart';
+import 'paynow_panel.dart';
 
 /// The payer's page (docs/design/screens.md, "Public payment page"), from
 /// the link in a payment request's email, without signing in: the amount,
@@ -146,55 +147,12 @@ class _PublicPaymentScreenState extends ConsumerState<PublicPaymentScreen>
           ],
           _ => [
             if (payload != null)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(PennyRadius.lg),
-                  border: Border.all(color: c.hairline),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(PennySpace.s4),
-                  child: Column(
-                    children: [
-                      PennyQrCode(
-                        data: payload,
-                        semanticLabel:
-                            'PayNow code for $amount to ${p.payeeName}',
-                      ),
-                      const SizedBox(height: PennySpace.s2),
-                      Text.rich(
-                        TextSpan(
-                          text: 'Reference ',
-                          children: [
-                            TextSpan(
-                              text: p.reference,
-                              style: PennyText.bodyStrong.copyWith(
-                                color: c.text,
-                              ),
-                            ),
-                          ],
-                        ),
-                        style: PennyText.body.copyWith(color: c.text),
-                      ),
-                    ],
-                  ),
-                ),
+              PayNowPanel(
+                payload: payload,
+                amount: amount,
+                payeeName: p.payeeName,
+                reference: p.reference,
               ),
-            const PennySectionHeader(title: 'How to pay'),
-            for (final (i, step) in [
-              'Open your banking app and choose PayNow, Scan QR.',
-              'Scan the code. The amount and reference fill in for you.',
-              'Check the name shows as ${p.payeeName}, then pay.',
-            ].indexed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: PennySpace.s2),
-                child: Text('${i + 1}. $step', style: body),
-              ),
-            Text(
-              'On this phone? Take a screenshot of the code, then choose it '
-              'from your banking app\'s scanner.',
-              style: PennyText.small.copyWith(color: c.textSecondary),
-            ),
           ],
         },
         const PennySectionHeader(title: 'What it covers'),

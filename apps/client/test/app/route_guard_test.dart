@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:penny/app/routes.dart';
 import 'package:penny/core/failure.dart';
 import 'package:penny/demo/demo_personas.dart';
+import 'package:penny/demo/demo_store.dart';
 import 'package:penny/features/auth/domain/session.dart';
 
 void main() {
@@ -102,6 +103,22 @@ void main() {
       expect(guard(signedIn, '/today'), isNull);
       expect(guard(signedIn, '/account'), isNull);
       expect(guard(signedIn, '/'), '/today');
+    });
+  });
+
+  group('a family account', () {
+    final parent = sessionFor(DemoPersona.parent, store: DemoStore());
+
+    test('lands on its lessons, not the staff\'s Today', () {
+      expect(guard(parent, '/'), '/family/lessons');
+      expect(guard(parent, '/today'), '/family/lessons');
+      expect(guard(parent, '/sign-in'), '/family/lessons');
+      expect(guard(parent, '/family/payments'), isNull);
+    });
+
+    test('staff still land on Today', () {
+      expect(guard(signedIn, '/'), '/today');
+      expect(guard(signedIn, '/today'), isNull);
     });
   });
 }

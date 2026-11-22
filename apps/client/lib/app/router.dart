@@ -11,6 +11,8 @@ import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/starting_screen.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
+import '../features/family/presentation/family_lessons_screen.dart';
+import '../features/family/presentation/family_payments_screen.dart';
 import '../features/lessons/presentation/lesson_details_screen.dart';
 import '../features/lessons/presentation/places_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
@@ -62,9 +64,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),
         routes: [
-          _page(Routes.today, (_) => const TodayScreen()),
-          _page(Routes.calendar, (_) => const CalendarScreen()),
-          _page(Routes.students, (_) => const StudentsScreen()),
+          _page(Routes.today, (_) => const _Staff('Today', TodayScreen())),
+          _page(
+            Routes.calendar,
+            (_) => const _Staff('Calendar', CalendarScreen()),
+          ),
+          _page(
+            Routes.students,
+            (_) => const CapabilityGate(
+              capability: Capability.viewOwnStudents,
+              title: 'Students',
+              refusal: 'Only the team\'s tutors can see this.',
+              child: StudentsScreen(),
+            ),
+          ),
+          _page(
+            Routes.familyLessons,
+            (_) => const CapabilityGate(
+              capability: Capability.viewLinkedLessons,
+              title: 'Lessons',
+              refusal: 'This page is for students and their parents.',
+              child: FamilyLessonsScreen(),
+            ),
+          ),
+          _page(
+            Routes.familyPayments,
+            (_) => const CapabilityGate(
+              capability: Capability.viewLinkedPayments,
+              title: 'Payments',
+              refusal: 'This page is for parents.',
+              child: FamilyPaymentsScreen(),
+            ),
+          ),
           _page(
             Routes.payments,
             (_) => const CapabilityGate(
@@ -100,11 +131,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           _page(Routes.account, (_) => const AccountScreen()),
           _detail(
             Routes.lesson,
-            (id) => LessonDetailsScreen(key: ValueKey(id), lessonId: id),
+            (id) => _Staff(
+              'Lesson',
+              LessonDetailsScreen(key: ValueKey(id), lessonId: id),
+            ),
           ),
           _detail(
             Routes.student,
-            (id) => StudentDetailsScreen(key: ValueKey(id), studentId: id),
+            (id) => CapabilityGate(
+              capability: Capability.viewOwnStudents,
+              title: 'Student',
+              refusal: 'Only the team\'s tutors can see this.',
+              child: StudentDetailsScreen(key: ValueKey(id), studentId: id),
+            ),
           ),
           _page(
             Routes.places,
@@ -133,6 +172,22 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// A page for the team's staff, refused to family accounts (ADR 025).
+class _Staff extends StatelessWidget {
+  const _Staff(this.title, this.child);
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => CapabilityGate(
+    capability: Capability.viewOwnLessons,
+    title: title,
+    refusal: 'Only the team\'s tutors can see this.',
+    child: child,
+  );
+}
 
 /// A page anyone may open from a link, built from the `:token` in its
 /// path. It sits outside the shell: there is nothing to navigate to.
