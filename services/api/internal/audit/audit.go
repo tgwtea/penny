@@ -10,11 +10,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/tgwtea/penny/services/api/internal/audit/auditsql"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
+	"github.com/tgwtea/penny/services/api/internal/platform/database"
 )
 
 // Event is one change. Action is "entity.verb", such as "member.added".
@@ -43,7 +45,7 @@ func NewRecorder(c clock.Clock) *Recorder {
 
 // Record writes e through db, which must be the transaction making the
 // change.
-func (r *Recorder) Record(ctx context.Context, db auditsql.DBTX, e Event) error {
+func (r *Recorder) Record(ctx context.Context, db database.DBTX, e Event) error {
 	before, err := marshal(e.Before)
 	if err != nil {
 		return fmt.Errorf("audit %s before: %w", e.Action, err)
@@ -72,19 +74,20 @@ func (r *Recorder) Record(ctx context.Context, db auditsql.DBTX, e Event) error 
 type Entry struct {
 	Action string
 	Actor  *uuid.UUID
+	At     time.Time
 	Before json.RawMessage
 	After  json.RawMessage
 }
 
 // History returns every event about one entity, oldest first.
-func (r *Recorder) History(ctx context.Context, db auditsql.DBTX, entityType string, id uuid.UUID) ([]Entry, error) {
+func (r *Recorder) History(ctx context.Context, db database.DBTX, entityType string, id uuid.UUID) ([]Entry, error) {
 	rows, err := auditsql.New(db).ListEventsForEntity(ctx, auditsql.ListEventsForEntityParams{EntityType: entityType, EntityID: id})
 	if err != nil {
 		return nil, fmt.Errorf("read audit history: %w", err)
 	}
 	out := make([]Entry, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Entry{Action: row.Action, Actor: row.ActorUserID, Before: row.Before, After: row.After})
+		out = append(out, Entry{Action: row.Action, Actor: row.ActorUserID, At: row.At, Before: row.Before, After: row.After})
 	}
 	return out, nil
 }

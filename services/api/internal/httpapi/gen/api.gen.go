@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,6 +24,45 @@ import (
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
+
+// Defines values for Attendance.
+const (
+	AttendanceAbsent  Attendance = "absent"
+	AttendanceLate    Attendance = "late"
+	AttendancePresent Attendance = "present"
+)
+
+// Valid indicates whether the value is a known member of the Attendance enum.
+func (e Attendance) Valid() bool {
+	switch e {
+	case AttendanceAbsent:
+		return true
+	case AttendanceLate:
+		return true
+	case AttendancePresent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CancellationParty.
+const (
+	CancellationPartyStudent CancellationParty = "student"
+	CancellationPartyTutor   CancellationParty = "tutor"
+)
+
+// Valid indicates whether the value is a known member of the CancellationParty enum.
+func (e CancellationParty) Valid() bool {
+	switch e {
+	case CancellationPartyStudent:
+		return true
+	case CancellationPartyTutor:
+		return true
+	default:
+		return false
+	}
+}
 
 // Defines values for Capability.
 const (
@@ -66,6 +106,51 @@ func (e Capability) Valid() bool {
 	}
 }
 
+// Defines values for ContactRelationship.
+const (
+	ContactRelationshipGuardian ContactRelationship = "guardian"
+	ContactRelationshipOther    ContactRelationship = "other"
+	ContactRelationshipParent   ContactRelationship = "parent"
+	ContactRelationshipSelf     ContactRelationship = "self"
+)
+
+// Valid indicates whether the value is a known member of the ContactRelationship enum.
+func (e ContactRelationship) Valid() bool {
+	switch e {
+	case ContactRelationshipGuardian:
+		return true
+	case ContactRelationshipOther:
+		return true
+	case ContactRelationshipParent:
+		return true
+	case ContactRelationshipSelf:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GoalStatus.
+const (
+	GoalStatusAchieved GoalStatus = "achieved"
+	GoalStatusActive   GoalStatus = "active"
+	GoalStatusDropped  GoalStatus = "dropped"
+)
+
+// Valid indicates whether the value is a known member of the GoalStatus enum.
+func (e GoalStatus) Valid() bool {
+	switch e {
+	case GoalStatusAchieved:
+		return true
+	case GoalStatusActive:
+		return true
+	case GoalStatusDropped:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	HealthStatusFailing HealthStatus = "failing"
@@ -78,6 +163,111 @@ func (e HealthStatus) Valid() bool {
 	case HealthStatusFailing:
 		return true
 	case HealthStatusOk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ItemKind.
+const (
+	ItemKindGoal ItemKind = "goal"
+	ItemKindNote ItemKind = "note"
+	ItemKindTask ItemKind = "task"
+)
+
+// Valid indicates whether the value is a known member of the ItemKind enum.
+func (e ItemKind) Valid() bool {
+	switch e {
+	case ItemKindGoal:
+		return true
+	case ItemKindNote:
+		return true
+	case ItemKindTask:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ItemVisibility.
+const (
+	ItemVisibilityContacts ItemVisibility = "contacts"
+	ItemVisibilityStaff    ItemVisibility = "staff"
+	ItemVisibilityStudent  ItemVisibility = "student"
+)
+
+// Valid indicates whether the value is a known member of the ItemVisibility enum.
+func (e ItemVisibility) Valid() bool {
+	switch e {
+	case ItemVisibilityContacts:
+		return true
+	case ItemVisibilityStaff:
+		return true
+	case ItemVisibilityStudent:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LessonKind.
+const (
+	LessonKindMakeup  LessonKind = "makeup"
+	LessonKindRegular LessonKind = "regular"
+	LessonKindTrial   LessonKind = "trial"
+)
+
+// Valid indicates whether the value is a known member of the LessonKind enum.
+func (e LessonKind) Valid() bool {
+	switch e {
+	case LessonKindMakeup:
+		return true
+	case LessonKindRegular:
+		return true
+	case LessonKindTrial:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LessonStatus.
+const (
+	LessonStatusCancelled LessonStatus = "cancelled"
+	LessonStatusCompleted LessonStatus = "completed"
+	LessonStatusNoShow    LessonStatus = "no_show"
+	LessonStatusScheduled LessonStatus = "scheduled"
+)
+
+// Valid indicates whether the value is a known member of the LessonStatus enum.
+func (e LessonStatus) Valid() bool {
+	switch e {
+	case LessonStatusCancelled:
+		return true
+	case LessonStatusCompleted:
+		return true
+	case LessonStatusNoShow:
+		return true
+	case LessonStatusScheduled:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LocationKind.
+const (
+	LocationKindInPerson LocationKind = "in_person"
+	LocationKindOnline   LocationKind = "online"
+)
+
+// Valid indicates whether the value is a known member of the LocationKind enum.
+func (e LocationKind) Valid() bool {
+	switch e {
+	case LocationKindInPerson:
+		return true
+	case LocationKindOnline:
 		return true
 	default:
 		return false
@@ -126,6 +316,24 @@ func (e MembershipRole) Valid() bool {
 	}
 }
 
+// Defines values for TutorRole.
+const (
+	TutorRoleAssisting TutorRole = "assisting"
+	TutorRoleLead      TutorRole = "lead"
+)
+
+// Valid indicates whether the value is a known member of the TutorRole enum.
+func (e TutorRole) Valid() bool {
+	switch e {
+	case TutorRoleAssisting:
+		return true
+	case TutorRoleLead:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddMemberRequest defines model for AddMemberRequest.
 type AddMemberRequest struct {
 	// DisplayName Their name as the team will see it until they sign in.
@@ -136,8 +344,116 @@ type AddMemberRequest struct {
 	Role *MembershipRole `json:"role,omitempty"`
 }
 
+// Attendance defines model for Attendance.
+type Attendance string
+
+// CancelLessonRequest defines model for CancelLessonRequest.
+type CancelLessonRequest struct {
+	Makeup *MakeupTime `json:"makeup,omitempty"`
+
+	// Party Who called the lesson off.
+	Party  CancellationParty `json:"party"`
+	Reason *string           `json:"reason,omitempty"`
+}
+
+// Cancellation defines model for Cancellation.
+type Cancellation struct {
+	At time.Time `json:"at"`
+
+	// Late Cancelled by the student's side with less notice than the lead tutor's policy asks for.
+	Late bool `json:"late"`
+
+	// Party Who called the lesson off.
+	Party  CancellationParty `json:"party"`
+	Reason *string           `json:"reason,omitempty"`
+}
+
+// CancellationParty Who called the lesson off.
+type CancellationParty string
+
+// CancellationPolicy defines model for CancellationPolicy.
+type CancellationPolicy struct {
+	// IsDefault The tutor has not set a policy, so Penny's default applies.
+	IsDefault                bool               `json:"isDefault"`
+	LateCancellationBillable bool               `json:"lateCancellationBillable"`
+	MembershipId             openapi_types.UUID `json:"membershipId"`
+	NoShowBillable           bool               `json:"noShowBillable"`
+
+	// NoticeHours Cancelling with less notice than this is late.
+	NoticeHours int32 `json:"noticeHours"`
+
+	// Summary The policy in the tutor's words, shown to parents.
+	Summary string `json:"summary"`
+}
+
+// CancellationPolicyInput defines model for CancellationPolicyInput.
+type CancellationPolicyInput struct {
+	LateCancellationBillable bool    `json:"lateCancellationBillable"`
+	NoShowBillable           bool    `json:"noShowBillable"`
+	NoticeHours              int32   `json:"noticeHours"`
+	Summary                  *string `json:"summary,omitempty"`
+}
+
+// CancellationPolicySummary The lead tutor's policy, as parents see it.
+type CancellationPolicySummary struct {
+	LateCancellationBillable bool   `json:"lateCancellationBillable"`
+	NoShowBillable           bool   `json:"noShowBillable"`
+	NoticeHours              int32  `json:"noticeHours"`
+	Summary                  string `json:"summary"`
+}
+
 // Capability One row of the authorization matrix in docs/architecture.md.
 type Capability string
+
+// Clash Another non-cancelled lesson overlapping this one for the same tutor or student.
+type Clash struct {
+	EndsAt   time.Time          `json:"endsAt"`
+	LessonId openapi_types.UUID `json:"lessonId"`
+
+	// MembershipId The tutor booked twice, if it is a tutor.
+	MembershipId *openapi_types.UUID `json:"membershipId,omitempty"`
+	StartsAt     time.Time           `json:"startsAt"`
+
+	// StudentId The student booked twice, if it is a student.
+	StudentId *openapi_types.UUID `json:"studentId,omitempty"`
+
+	// Who Their name, for "This lesson overlaps Ravi's 16:00 lesson."
+	Who string `json:"who"`
+}
+
+// CompleteLessonRequest defines model for CompleteLessonRequest.
+type CompleteLessonRequest struct {
+	// Attendance Per student. Students left out are recorded as present.
+	Attendance *[]StudentAttendance `json:"attendance,omitempty"`
+}
+
+// Contact Someone who gets a student's reminders or receipts.
+type Contact struct {
+	Email *openapi_types.Email `json:"email,omitempty"`
+	Id    openapi_types.UUID   `json:"id"`
+
+	// Name Example: Priya Nair
+	Name string `json:"name"`
+
+	// Phone Example: +65 9123 4567
+	Phone             *string             `json:"phone,omitempty"`
+	ReceivesBilling   bool                `json:"receivesBilling"`
+	ReceivesReminders bool                `json:"receivesReminders"`
+	Relationship      ContactRelationship `json:"relationship"`
+}
+
+// ContactInput defines model for ContactInput.
+type ContactInput struct {
+	Email             *openapi_types.Email `json:"email,omitempty"`
+	Name              string               `json:"name"`
+	Phone             *string              `json:"phone,omitempty"`
+	ReceivesBilling   *bool                `json:"receivesBilling,omitempty"`
+	ReceivesReminders *bool                `json:"receivesReminders,omitempty"`
+	Relationship      ContactRelationship  `json:"relationship"`
+}
+
+// ContactRelationship defines model for ContactRelationship.
+type ContactRelationship string
 
 // CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
 type CreateWorkspaceRequest struct {
@@ -151,6 +467,31 @@ type CreateWorkspaceRequest struct {
 	// Example: Asia/Singapore
 	Timezone *string `json:"timezone,omitempty"`
 }
+
+// Goal Something a student works towards over several lessons.
+type Goal struct {
+	AchievedAt *time.Time         `json:"achievedAt,omitempty"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Id         openapi_types.UUID `json:"id"`
+	Status     GoalStatus         `json:"status"`
+
+	// Title Example: Play Malaguena at 120 bpm
+	Title string `json:"title"`
+}
+
+// GoalChanges defines model for GoalChanges.
+type GoalChanges struct {
+	Status *GoalStatus `json:"status,omitempty"`
+	Title  *string     `json:"title,omitempty"`
+}
+
+// GoalInput defines model for GoalInput.
+type GoalInput struct {
+	Title string `json:"title"`
+}
+
+// GoalStatus defines model for GoalStatus.
+type GoalStatus string
 
 // Health defines model for Health.
 type Health struct {
@@ -171,6 +512,230 @@ type HealthCheck struct {
 
 // HealthStatus defines model for HealthStatus.
 type HealthStatus string
+
+// HistoryEntry defines model for HistoryEntry.
+type HistoryEntry struct {
+	// Action Example: lesson.completed
+	Action string `json:"action"`
+
+	// ActorName Absent for changes Penny made itself.
+	ActorName *string                 `json:"actorName,omitempty"`
+	After     *map[string]interface{} `json:"after,omitempty"`
+	At        time.Time               `json:"at"`
+	Before    *map[string]interface{} `json:"before,omitempty"`
+}
+
+// HistoryList defines model for HistoryList.
+type HistoryList struct {
+	Items      []HistoryEntry `json:"items"`
+	NextCursor *string        `json:"nextCursor,omitempty"`
+}
+
+// ItemKind defines model for ItemKind.
+type ItemKind string
+
+// ItemVisibility Who may see the item. `student` and `contacts` take effect when those
+// roles can sign in (build plan, Phase 10); today only staff sign in.
+type ItemVisibility string
+
+// Lesson defines model for Lesson.
+type Lesson struct {
+	// Billable Done, or a no-show or late cancellation the lead tutor's policy bills.
+	Billable     bool          `json:"billable"`
+	Cancellation *Cancellation `json:"cancellation,omitempty"`
+
+	// CancellationPolicy The lead tutor's policy, as parents see it.
+	CancellationPolicy *CancellationPolicySummary `json:"cancellationPolicy,omitempty"`
+	Clashes            []Clash                    `json:"clashes"`
+	CompletedAt        *time.Time                 `json:"completedAt,omitempty"`
+
+	// Currency ISO 4217.
+	//
+	// Example: SGD
+	Currency string    `json:"currency"`
+	EndsAt   time.Time `json:"endsAt"`
+
+	// FeeCents The whole lesson's fee, billed by the lead tutor.
+	FeeCents int64              `json:"feeCents"`
+	Id       openapi_types.UUID `json:"id"`
+
+	// Items Tasks, goals and notes. Only when the lesson is fetched on its own.
+	Items *[]LessonItem `json:"items,omitempty"`
+	Kind  LessonKind    `json:"kind"`
+
+	// Location Where the lesson is, as it was when booked.
+	Location          *LessonLocation     `json:"location,omitempty"`
+	MakeupForLessonId *openapi_types.UUID `json:"makeupForLessonId,omitempty"`
+
+	// MakeupLessonId The make-up booked when this lesson was cancelled.
+	MakeupLessonId *openapi_types.UUID `json:"makeupLessonId,omitempty"`
+	StartsAt       time.Time           `json:"startsAt"`
+	Status         LessonStatus        `json:"status"`
+	Students       []LessonStudent     `json:"students"`
+
+	// Title Example: Guitar, Grade 5
+	Title *string `json:"title,omitempty"`
+
+	// Tutors The lead first.
+	Tutors []LessonTutor `json:"tutors"`
+
+	// Version Send in `If-Match` when changing the lesson.
+	Version int32 `json:"version"`
+}
+
+// LessonChanges defines model for LessonChanges.
+type LessonChanges struct {
+	EndsAt     *time.Time            `json:"endsAt,omitempty"`
+	FeeCents   *int64                `json:"feeCents,omitempty"`
+	LocationId *openapi_types.UUID   `json:"locationId,omitempty"`
+	StartsAt   *time.Time            `json:"startsAt,omitempty"`
+	StudentIds *[]openapi_types.UUID `json:"studentIds,omitempty"`
+	Title      *string               `json:"title,omitempty"`
+	Tutors     *[]TutorInput         `json:"tutors,omitempty"`
+}
+
+// LessonInput defines model for LessonInput.
+type LessonInput struct {
+	EndsAt            time.Time            `json:"endsAt"`
+	FeeCents          *int64               `json:"feeCents,omitempty"`
+	Kind              *LessonKind          `json:"kind,omitempty"`
+	LocationId        *openapi_types.UUID  `json:"locationId,omitempty"`
+	MakeupForLessonId *openapi_types.UUID  `json:"makeupForLessonId,omitempty"`
+	StartsAt          time.Time            `json:"startsAt"`
+	StudentIds        []openapi_types.UUID `json:"studentIds"`
+	Title             *string              `json:"title,omitempty"`
+
+	// Tutors Exactly one `lead`.
+	Tutors []TutorInput `json:"tutors"`
+}
+
+// LessonItem defines model for LessonItem.
+type LessonItem struct {
+	// Author A team member, as other records mention them.
+	Author    MemberRef `json:"author"`
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Done Ticked off. Tasks only.
+	Done   bool       `json:"done"`
+	DoneAt *time.Time `json:"doneAt,omitempty"`
+
+	// GoalId The student goal this item works towards.
+	GoalId *openapi_types.UUID `json:"goalId,omitempty"`
+	Id     openapi_types.UUID  `json:"id"`
+	Kind   ItemKind            `json:"kind"`
+
+	// Visibility Who may see the item. `student` and `contacts` take effect when those
+	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	Visibility ItemVisibility `json:"visibility"`
+}
+
+// LessonItemChanges defines model for LessonItemChanges.
+type LessonItemChanges struct {
+	Body *string `json:"body,omitempty"`
+	Done *bool   `json:"done,omitempty"`
+
+	// Visibility Who may see the item. `student` and `contacts` take effect when those
+	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	Visibility *ItemVisibility `json:"visibility,omitempty"`
+}
+
+// LessonItemInput defines model for LessonItemInput.
+type LessonItemInput struct {
+	Body   string              `json:"body"`
+	GoalId *openapi_types.UUID `json:"goalId,omitempty"`
+	Kind   ItemKind            `json:"kind"`
+
+	// Visibility Who may see the item. `student` and `contacts` take effect when those
+	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	Visibility *ItemVisibility `json:"visibility,omitempty"`
+}
+
+// LessonKind defines model for LessonKind.
+type LessonKind string
+
+// LessonList defines model for LessonList.
+type LessonList struct {
+	Items      []Lesson `json:"items"`
+	NextCursor *string  `json:"nextCursor,omitempty"`
+}
+
+// LessonLocation Where the lesson is, as it was when booked.
+type LessonLocation struct {
+	// Address The address on one line, with the postal code.
+	Address    *string             `json:"address,omitempty"`
+	Kind       LocationKind        `json:"kind"`
+	LocationId *openapi_types.UUID `json:"locationId,omitempty"`
+	MeetingUrl *string             `json:"meetingUrl,omitempty"`
+	Name       string              `json:"name"`
+}
+
+// LessonStatus defines model for LessonStatus.
+type LessonStatus string
+
+// LessonStudent defines model for LessonStudent.
+type LessonStudent struct {
+	Attendance *Attendance        `json:"attendance,omitempty"`
+	Name       string             `json:"name"`
+	StudentId  openapi_types.UUID `json:"studentId"`
+}
+
+// LessonTutor defines model for LessonTutor.
+type LessonTutor struct {
+	DisplayName  string             `json:"displayName"`
+	MembershipId openapi_types.UUID `json:"membershipId"`
+
+	// Role The lead tutor bills the lesson (ADR 018).
+	Role TutorRole `json:"role"`
+}
+
+// Location defines model for Location.
+type Location struct {
+	AddressLine1 *string            `json:"addressLine1,omitempty"`
+	AddressLine2 *string            `json:"addressLine2,omitempty"`
+	Id           openapi_types.UUID `json:"id"`
+	Kind         LocationKind       `json:"kind"`
+	Latitude     *float64           `json:"latitude,omitempty"`
+	Longitude    *float64           `json:"longitude,omitempty"`
+
+	// MeetingUrl For online lessons.
+	MeetingUrl *string `json:"meetingUrl,omitempty"`
+
+	// Name Example: Studio room 2
+	Name string `json:"name"`
+
+	// PostalCode A six-digit Singapore postal code.
+	//
+	// Example: 238859
+	PostalCode *string `json:"postalCode,omitempty"`
+}
+
+// LocationInput defines model for LocationInput.
+type LocationInput struct {
+	AddressLine1 *string      `json:"addressLine1,omitempty"`
+	AddressLine2 *string      `json:"addressLine2,omitempty"`
+	Kind         LocationKind `json:"kind"`
+	Latitude     *float64     `json:"latitude,omitempty"`
+	Longitude    *float64     `json:"longitude,omitempty"`
+	MeetingUrl   *string      `json:"meetingUrl,omitempty"`
+	Name         string       `json:"name"`
+	PostalCode   *string      `json:"postalCode,omitempty"`
+}
+
+// LocationKind defines model for LocationKind.
+type LocationKind string
+
+// LocationList defines model for LocationList.
+type LocationList struct {
+	Items      []Location `json:"items"`
+	NextCursor *string    `json:"nextCursor,omitempty"`
+}
+
+// MakeupTime defines model for MakeupTime.
+type MakeupTime struct {
+	EndsAt   time.Time `json:"endsAt"`
+	StartsAt time.Time `json:"startsAt"`
+}
 
 // Me defines model for Me.
 type Me struct {
@@ -205,6 +770,12 @@ type MemberList struct {
 
 	// NextCursor Pass as `cursor` for the next page. Absent on the last page.
 	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// MemberRef A team member, as other records mention them.
+type MemberRef struct {
+	DisplayName  string             `json:"displayName"`
+	MembershipId openapi_types.UUID `json:"membershipId"`
 }
 
 // MemberStatus `invited` until someone signs in with the member's email address.
@@ -269,6 +840,74 @@ type ServerVersion struct {
 	Version string `json:"version"`
 }
 
+// Student defines model for Student.
+type Student struct {
+	Archived bool               `json:"archived"`
+	Contacts []Contact          `json:"contacts"`
+	Goals    []Goal             `json:"goals"`
+	Id       openapi_types.UUID `json:"id"`
+	Name     string             `json:"name"`
+
+	// Notes Private to the team's staff.
+	Notes *string `json:"notes,omitempty"`
+
+	// PrimaryTeacher A team member, as other records mention them.
+	PrimaryTeacher *MemberRef `json:"primaryTeacher,omitempty"`
+}
+
+// StudentAttendance defines model for StudentAttendance.
+type StudentAttendance struct {
+	Attendance Attendance         `json:"attendance"`
+	StudentId  openapi_types.UUID `json:"studentId"`
+}
+
+// StudentChanges defines model for StudentChanges.
+type StudentChanges struct {
+	Archived         *bool               `json:"archived,omitempty"`
+	Name             *string             `json:"name,omitempty"`
+	Notes            *string             `json:"notes,omitempty"`
+	PrimaryTeacherId *openapi_types.UUID `json:"primaryTeacherId,omitempty"`
+}
+
+// StudentInput defines model for StudentInput.
+type StudentInput struct {
+	Contacts *[]ContactInput `json:"contacts,omitempty"`
+	Name     string          `json:"name"`
+	Notes    *string         `json:"notes,omitempty"`
+
+	// PrimaryTeacherId The membership that usually teaches them.
+	PrimaryTeacherId *openapi_types.UUID `json:"primaryTeacherId,omitempty"`
+}
+
+// StudentList defines model for StudentList.
+type StudentList struct {
+	Items      []StudentSummary `json:"items"`
+	NextCursor *string          `json:"nextCursor,omitempty"`
+}
+
+// StudentSummary defines model for StudentSummary.
+type StudentSummary struct {
+	Archived bool               `json:"archived"`
+	Id       openapi_types.UUID `json:"id"`
+
+	// Name Example: Arjun Nair
+	Name string `json:"name"`
+
+	// PrimaryTeacher A team member, as other records mention them.
+	PrimaryTeacher *MemberRef `json:"primaryTeacher,omitempty"`
+}
+
+// TutorInput defines model for TutorInput.
+type TutorInput struct {
+	MembershipId openapi_types.UUID `json:"membershipId"`
+
+	// Role The lead tutor bills the lesson (ADR 018).
+	Role TutorRole `json:"role"`
+}
+
+// TutorRole The lead tutor bills the lesson (ADR 018).
+type TutorRole string
+
 // UpdateMeRequest defines model for UpdateMeRequest.
 type UpdateMeRequest struct {
 	// DisplayName The name shown to the person's teams.
@@ -316,11 +955,117 @@ type Workspace struct {
 	Timezone string `json:"timezone"`
 }
 
+// ContactId defines model for ContactId.
+type ContactId = openapi_types.UUID
+
+// Cursor defines model for Cursor.
+type Cursor = string
+
+// GoalId defines model for GoalId.
+type GoalId = openapi_types.UUID
+
+// IfMatch defines model for IfMatch.
+type IfMatch = string
+
+// ItemId defines model for ItemId.
+type ItemId = openapi_types.UUID
+
+// LessonId defines model for LessonId.
+type LessonId = openapi_types.UUID
+
+// Limit defines model for Limit.
+type Limit = int32
+
+// LocationId defines model for LocationId.
+type LocationId = openapi_types.UUID
+
 // MemberId defines model for MemberId.
 type MemberId = openapi_types.UUID
 
+// StudentId defines model for StudentId.
+type StudentId = openapi_types.UUID
+
 // WorkspaceId defines model for WorkspaceId.
 type WorkspaceId = openapi_types.UUID
+
+// ListLessonsParams defines parameters for ListLessons.
+type ListLessonsParams struct {
+	// From Lessons ending after this instant.
+	From time.Time `form:"from" json:"from"`
+
+	// To Lessons starting before this instant. At most 62 days after `from`.
+	To time.Time `form:"to" json:"to"`
+
+	// TeacherId Only lessons this membership tutors.
+	TeacherId *openapi_types.UUID `form:"teacherId,omitempty" json:"teacherId,omitempty"`
+
+	// StudentId Only lessons this student is in.
+	StudentId *openapi_types.UUID `form:"studentId,omitempty" json:"studentId,omitempty"`
+
+	// Cursor The `nextCursor` of the previous page.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit The most items to return.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// UpdateLessonParams defines parameters for UpdateLesson.
+type UpdateLessonParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// CancelLessonParams defines parameters for CancelLesson.
+type CancelLessonParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// CompleteLessonParams defines parameters for CompleteLesson.
+type CompleteLessonParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// MarkNoShowParams defines parameters for MarkNoShow.
+type MarkNoShowParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// ReopenLessonParams defines parameters for ReopenLesson.
+type ReopenLessonParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// ListStudentsParams defines parameters for ListStudents.
+type ListStudentsParams struct {
+	// Search Matches the start of any word of the name, ignoring case.
+	Search *string `form:"search,omitempty" json:"search,omitempty"`
+
+	// TeacherId Only students whose primary teacher is this membership.
+	TeacherId *openapi_types.UUID `form:"teacherId,omitempty" json:"teacherId,omitempty"`
+
+	// Archived List archived students instead of current ones.
+	Archived *bool `form:"archived,omitempty" json:"archived,omitempty"`
+
+	// Cursor The `nextCursor` of the previous page.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit The most items to return.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
 type UpdateMeJSONRequestBody = UpdateMeRequest
@@ -331,11 +1076,56 @@ type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
 // UpdateWorkspaceJSONRequestBody defines body for UpdateWorkspace for application/json ContentType.
 type UpdateWorkspaceJSONRequestBody = UpdateWorkspaceRequest
 
+// CreateLessonJSONRequestBody defines body for CreateLesson for application/json ContentType.
+type CreateLessonJSONRequestBody = LessonInput
+
+// UpdateLessonJSONRequestBody defines body for UpdateLesson for application/json ContentType.
+type UpdateLessonJSONRequestBody = LessonChanges
+
+// CancelLessonJSONRequestBody defines body for CancelLesson for application/json ContentType.
+type CancelLessonJSONRequestBody = CancelLessonRequest
+
+// CompleteLessonJSONRequestBody defines body for CompleteLesson for application/json ContentType.
+type CompleteLessonJSONRequestBody = CompleteLessonRequest
+
+// AddLessonItemJSONRequestBody defines body for AddLessonItem for application/json ContentType.
+type AddLessonItemJSONRequestBody = LessonItemInput
+
+// UpdateLessonItemJSONRequestBody defines body for UpdateLessonItem for application/json ContentType.
+type UpdateLessonItemJSONRequestBody = LessonItemChanges
+
+// CreateLocationJSONRequestBody defines body for CreateLocation for application/json ContentType.
+type CreateLocationJSONRequestBody = LocationInput
+
+// UpdateLocationJSONRequestBody defines body for UpdateLocation for application/json ContentType.
+type UpdateLocationJSONRequestBody = LocationInput
+
 // AddMemberJSONRequestBody defines body for AddMember for application/json ContentType.
 type AddMemberJSONRequestBody = AddMemberRequest
 
 // UpdateMemberJSONRequestBody defines body for UpdateMember for application/json ContentType.
 type UpdateMemberJSONRequestBody = UpdateMemberRequest
+
+// SetCancellationPolicyJSONRequestBody defines body for SetCancellationPolicy for application/json ContentType.
+type SetCancellationPolicyJSONRequestBody = CancellationPolicyInput
+
+// CreateStudentJSONRequestBody defines body for CreateStudent for application/json ContentType.
+type CreateStudentJSONRequestBody = StudentInput
+
+// UpdateStudentJSONRequestBody defines body for UpdateStudent for application/json ContentType.
+type UpdateStudentJSONRequestBody = StudentChanges
+
+// AddContactJSONRequestBody defines body for AddContact for application/json ContentType.
+type AddContactJSONRequestBody = ContactInput
+
+// UpdateContactJSONRequestBody defines body for UpdateContact for application/json ContentType.
+type UpdateContactJSONRequestBody = ContactInput
+
+// AddGoalJSONRequestBody defines body for AddGoal for application/json ContentType.
+type AddGoalJSONRequestBody = GoalInput
+
+// UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
+type UpdateGoalJSONRequestBody = GoalChanges
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -512,6 +1302,225 @@ type ClientInterface interface {
 	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
 	UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListLessons List lessons in a time range
+	//
+	// Owners (`view_team_timetable`) see every lesson and may filter by
+	// tutor; teachers see only lessons they tutor, whatever `teacherId`
+	// says. Each lesson carries its clashes.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons (the `ListLessons` operationId).
+	ListLessons(ctx context.Context, workspaceId WorkspaceId, params *ListLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLessonWithBody Add a lesson
+	//
+	// Needs `manage_lessons`. A clash with another lesson of a tutor or
+	// student is reported in `clashes` and never blocks saving (ADR 019).
+	// The first tutor listed with role `lead` bills the lesson (ADR 018).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+	CreateLessonWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLesson Add a lesson
+	//
+	// Needs `manage_lessons`. A clash with another lesson of a tutor or
+	// student is reported in `clashes` and never blocks saving (ADR 019).
+	// The first tutor listed with role `lead` bills the lesson (ADR 018).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+	CreateLesson(ctx context.Context, workspaceId WorkspaceId, body CreateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLesson Get a lesson with its tasks, goals and notes
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `GetLesson` operationId).
+	GetLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLessonWithBody Move, reassign or otherwise change a scheduled lesson
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+	// lesson changed since gets 412.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+	UpdateLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLesson Move, reassign or otherwise change a scheduled lesson
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+	// lesson changed since gets 412.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+	UpdateLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, body UpdateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelLessonWithBody Cancel a lesson, optionally booking a make-up
+	//
+	// Needs `manage_lessons`. A cancellation by the student's side with
+	// less notice than the lead tutor's policy asks for is late, and
+	// billable only if that policy says so. Pending reminders stop.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+	CancelLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelLesson Cancel a lesson, optionally booking a make-up
+	//
+	// Needs `manage_lessons`. A cancellation by the student's side with
+	// less notice than the lead tutor's policy asks for is late, and
+	// billable only if that policy says so. Pending reminders stop.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+	CancelLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, body CancelLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteLessonWithBody Mark a lesson done
+	//
+	// For owners, and for tutors on the lesson (`complete_own_lessons`).
+	// The lesson becomes billable.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+	CompleteLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CompleteLesson Mark a lesson done
+	//
+	// For owners, and for tutors on the lesson (`complete_own_lessons`).
+	// The lesson becomes billable.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+	CompleteLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, body CompleteLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetLessonHistory Every change to a lesson, oldest first
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history (the `GetLessonHistory` operationId).
+	GetLessonHistory(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddLessonItemWithBody Add a task, goal or note to a lesson
+	//
+	// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+	AddLessonItemWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddLessonItem Add a task, goal or note to a lesson
+	//
+	// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+	AddLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, body AddLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteLessonItem Remove an item
+	//
+	// For owners, and for the item's author.
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `DeleteLessonItem` operationId).
+	DeleteLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLessonItemWithBody Edit an item, or tick or untick a task
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+	UpdateLessonItemWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLessonItem Edit an item, or tick or untick a task
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+	UpdateLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, body UpdateLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MarkNoShow Record that the student did not come
+	//
+	// For owners, and for tutors on the lesson. Billable when the lead
+	// tutor's cancellation policy says no-shows are.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show (the `MarkNoShow` operationId).
+	MarkNoShow(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *MarkNoShowParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReopenLesson Put a done, no-show or cancelled lesson back to scheduled
+	//
+	// Owners may reopen any lesson; the tutor who marked a lesson done or
+	// no-show may reopen it, which is how Undo works. Refused with 409
+	// once a receipt covers the lesson.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
+	ReopenLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListLocations List the team's saved places
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/locations (the `ListLocations` operationId).
+	ListLocations(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLocationWithBody Save a place lessons happen
+	//
+	// Needs `manage_lessons`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+	CreateLocationWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateLocation Save a place lessons happen
+	//
+	// Needs `manage_lessons`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+	CreateLocation(ctx context.Context, workspaceId WorkspaceId, body CreateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ArchiveLocation Stop offering a saved place
+	//
+	// Needs `manage_lessons`. Past and booked lessons keep it.
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/locations/{locationId} (the `ArchiveLocation` operationId).
+	ArchiveLocation(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLocationWithBody Change a saved place
+	//
+	// Needs `manage_lessons`. Lessons keep the address they were booked
+	// with; only lessons added later use the change.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+	UpdateLocationWithBody(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateLocation Change a saved place
+	//
+	// Needs `manage_lessons`. Lessons keep the address they were booked
+	// with; only lessons added later use the change.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+	UpdateLocation(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, body UpdateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListMembers List the team's members and pending invitations
 	//
 	// Needs `manage_team`. A team has tens of members at most, so the
@@ -569,6 +1578,164 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
 	UpdateMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCancellationPolicy Get a tutor's cancellation policy
+	//
+	// Any member may read it; it is shown to parents too. Tutors who have
+	// not set one have Penny's default: 24 hours' notice, late
+	// cancellations not billable, no-shows billable.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `GetCancellationPolicy` operationId).
+	GetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetCancellationPolicyWithBody Set a tutor's cancellation policy
+	//
+	// The tutor themselves, or the team owner (`manage_team`).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+	SetCancellationPolicyWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetCancellationPolicy Set a tutor's cancellation policy
+	//
+	// The tutor themselves, or the team owner (`manage_team`).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+	SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStudents List students
+	//
+	// Owners (`manage_students`) see every student; teachers
+	// (`view_own_students`) see students they are the primary teacher of
+	// or teach in a lesson.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/students (the `ListStudents` operationId).
+	ListStudents(ctx context.Context, workspaceId WorkspaceId, params *ListStudentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateStudentWithBody Add a student
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+	CreateStudentWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateStudent Add a student
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+	CreateStudent(ctx context.Context, workspaceId WorkspaceId, body CreateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStudent Get a student with their contacts and goals
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/students/{studentId} (the `GetStudent` operationId).
+	GetStudent(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateStudentWithBody Change a student, or archive or restore them
+	//
+	// Needs `manage_students`. Archived students keep their lessons and
+	// receipts but are not offered for new lessons.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+	UpdateStudentWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateStudent Change a student, or archive or restore them
+	//
+	// Needs `manage_students`. Archived students keep their lessons and
+	// receipts but are not offered for new lessons.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+	UpdateStudent(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body UpdateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddContactWithBody Add someone who gets a student's reminders or receipts
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+	AddContactWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddContact Add someone who gets a student's reminders or receipts
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+	AddContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddContactJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveContact Remove a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `RemoveContact` operationId).
+	RemoveContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateContactWithBody Change a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+	UpdateContactWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateContact Change a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+	UpdateContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddGoalWithBody Set a goal that spans lessons
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+	AddGoalWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddGoal Set a goal that spans lessons
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+	AddGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGoalWithBody Rename a goal, or mark it achieved or dropped
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+	UpdateGoalWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateGoal Rename a goal, or mark it achieved or dropped
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+	UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetLivez Report that the process is running
@@ -792,6 +1959,465 @@ func (c *Client) UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, b
 	return c.Client.Do(req)
 }
 
+// ListLessons List lessons in a time range
+//
+// Owners (`view_team_timetable`) see every lesson and may filter by
+// tutor; teachers see only lessons they tutor, whatever `teacherId`
+// says. Each lesson carries its clashes.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons (the `ListLessons` operationId).
+func (c *Client) ListLessons(ctx context.Context, workspaceId WorkspaceId, params *ListLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLessonsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLessonWithBody Add a lesson
+//
+// Needs `manage_lessons`. A clash with another lesson of a tutor or
+// student is reported in `clashes` and never blocks saving (ADR 019).
+// The first tutor listed with role `lead` bills the lesson (ADR 018).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+func (c *Client) CreateLessonWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLessonRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLesson Add a lesson
+//
+// Needs `manage_lessons`. A clash with another lesson of a tutor or
+// student is reported in `clashes` and never blocks saving (ADR 019).
+// The first tutor listed with role `lead` bills the lesson (ADR 018).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+func (c *Client) CreateLesson(ctx context.Context, workspaceId WorkspaceId, body CreateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLessonRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLesson Get a lesson with its tasks, goals and notes
+//
+// For owners, and for tutors on the lesson.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `GetLesson` operationId).
+func (c *Client) GetLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLessonRequest(c.Server, workspaceId, lessonId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLessonWithBody Move, reassign or otherwise change a scheduled lesson
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+// lesson changed since gets 412.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+func (c *Client) UpdateLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLessonRequestWithBody(c.Server, workspaceId, lessonId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLesson Move, reassign or otherwise change a scheduled lesson
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+// lesson changed since gets 412.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+func (c *Client) UpdateLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, body UpdateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLessonRequest(c.Server, workspaceId, lessonId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelLessonWithBody Cancel a lesson, optionally booking a make-up
+//
+// Needs `manage_lessons`. A cancellation by the student's side with
+// less notice than the lead tutor's policy asks for is late, and
+// billable only if that policy says so. Pending reminders stop.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+func (c *Client) CancelLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelLessonRequestWithBody(c.Server, workspaceId, lessonId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelLesson Cancel a lesson, optionally booking a make-up
+//
+// Needs `manage_lessons`. A cancellation by the student's side with
+// less notice than the lead tutor's policy asks for is late, and
+// billable only if that policy says so. Pending reminders stop.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+func (c *Client) CancelLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, body CancelLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelLessonRequest(c.Server, workspaceId, lessonId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteLessonWithBody Mark a lesson done
+//
+// For owners, and for tutors on the lesson (`complete_own_lessons`).
+// The lesson becomes billable.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+func (c *Client) CompleteLessonWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteLessonRequestWithBody(c.Server, workspaceId, lessonId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CompleteLesson Mark a lesson done
+//
+// For owners, and for tutors on the lesson (`complete_own_lessons`).
+// The lesson becomes billable.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+func (c *Client) CompleteLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, body CompleteLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCompleteLessonRequest(c.Server, workspaceId, lessonId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetLessonHistory Every change to a lesson, oldest first
+//
+// For owners, and for tutors on the lesson.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history (the `GetLessonHistory` operationId).
+func (c *Client) GetLessonHistory(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetLessonHistoryRequest(c.Server, workspaceId, lessonId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddLessonItemWithBody Add a task, goal or note to a lesson
+//
+// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+func (c *Client) AddLessonItemWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddLessonItemRequestWithBody(c.Server, workspaceId, lessonId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddLessonItem Add a task, goal or note to a lesson
+//
+// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+func (c *Client) AddLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, body AddLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddLessonItemRequest(c.Server, workspaceId, lessonId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteLessonItem Remove an item
+//
+// For owners, and for the item's author.
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `DeleteLessonItem` operationId).
+func (c *Client) DeleteLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteLessonItemRequest(c.Server, workspaceId, lessonId, itemId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLessonItemWithBody Edit an item, or tick or untick a task
+//
+// For owners, and for tutors on the lesson.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+func (c *Client) UpdateLessonItemWithBody(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLessonItemRequestWithBody(c.Server, workspaceId, lessonId, itemId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLessonItem Edit an item, or tick or untick a task
+//
+// For owners, and for tutors on the lesson.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+func (c *Client) UpdateLessonItem(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, body UpdateLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLessonItemRequest(c.Server, workspaceId, lessonId, itemId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// MarkNoShow Record that the student did not come
+//
+// For owners, and for tutors on the lesson. Billable when the lead
+// tutor's cancellation policy says no-shows are.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show (the `MarkNoShow` operationId).
+func (c *Client) MarkNoShow(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *MarkNoShowParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMarkNoShowRequest(c.Server, workspaceId, lessonId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ReopenLesson Put a done, no-show or cancelled lesson back to scheduled
+//
+// Owners may reopen any lesson; the tutor who marked a lesson done or
+// no-show may reopen it, which is how Undo works. Refused with 409
+// once a receipt covers the lesson.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
+func (c *Client) ReopenLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReopenLessonRequest(c.Server, workspaceId, lessonId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListLocations List the team's saved places
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/locations (the `ListLocations` operationId).
+func (c *Client) ListLocations(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListLocationsRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLocationWithBody Save a place lessons happen
+//
+// Needs `manage_lessons`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+func (c *Client) CreateLocationWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLocationRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateLocation Save a place lessons happen
+//
+// Needs `manage_lessons`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+func (c *Client) CreateLocation(ctx context.Context, workspaceId WorkspaceId, body CreateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateLocationRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ArchiveLocation Stop offering a saved place
+//
+// Needs `manage_lessons`. Past and booked lessons keep it.
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/locations/{locationId} (the `ArchiveLocation` operationId).
+func (c *Client) ArchiveLocation(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewArchiveLocationRequest(c.Server, workspaceId, locationId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLocationWithBody Change a saved place
+//
+// Needs `manage_lessons`. Lessons keep the address they were booked
+// with; only lessons added later use the change.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+func (c *Client) UpdateLocationWithBody(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLocationRequestWithBody(c.Server, workspaceId, locationId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateLocation Change a saved place
+//
+// Needs `manage_lessons`. Lessons keep the address they were booked
+// with; only lessons added later use the change.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+func (c *Client) UpdateLocation(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, body UpdateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateLocationRequest(c.Server, workspaceId, locationId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListMembers List the team's members and pending invitations
 //
 // Needs `manage_team`. A team has tens of members at most, so the
@@ -900,6 +2526,344 @@ func (c *Client) UpdateMemberWithBody(ctx context.Context, workspaceId Workspace
 // Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
 func (c *Client) UpdateMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateMemberRequest(c.Server, workspaceId, memberId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCancellationPolicy Get a tutor's cancellation policy
+//
+// Any member may read it; it is shown to parents too. Tutors who have
+// not set one have Penny's default: 24 hours' notice, late
+// cancellations not billable, no-shows billable.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `GetCancellationPolicy` operationId).
+func (c *Client) GetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCancellationPolicyRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetCancellationPolicyWithBody Set a tutor's cancellation policy
+//
+// The tutor themselves, or the team owner (`manage_team`).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+func (c *Client) SetCancellationPolicyWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetCancellationPolicyRequestWithBody(c.Server, workspaceId, memberId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetCancellationPolicy Set a tutor's cancellation policy
+//
+// The tutor themselves, or the team owner (`manage_team`).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+func (c *Client) SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetCancellationPolicyRequest(c.Server, workspaceId, memberId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListStudents List students
+//
+// Owners (`manage_students`) see every student; teachers
+// (`view_own_students`) see students they are the primary teacher of
+// or teach in a lesson.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/students (the `ListStudents` operationId).
+func (c *Client) ListStudents(ctx context.Context, workspaceId WorkspaceId, params *ListStudentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStudentsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateStudentWithBody Add a student
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+func (c *Client) CreateStudentWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateStudentRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateStudent Add a student
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+func (c *Client) CreateStudent(ctx context.Context, workspaceId WorkspaceId, body CreateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateStudentRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetStudent Get a student with their contacts and goals
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/students/{studentId} (the `GetStudent` operationId).
+func (c *Client) GetStudent(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStudentRequest(c.Server, workspaceId, studentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateStudentWithBody Change a student, or archive or restore them
+//
+// Needs `manage_students`. Archived students keep their lessons and
+// receipts but are not offered for new lessons.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+func (c *Client) UpdateStudentWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateStudentRequestWithBody(c.Server, workspaceId, studentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateStudent Change a student, or archive or restore them
+//
+// Needs `manage_students`. Archived students keep their lessons and
+// receipts but are not offered for new lessons.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+func (c *Client) UpdateStudent(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body UpdateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateStudentRequest(c.Server, workspaceId, studentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddContactWithBody Add someone who gets a student's reminders or receipts
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+func (c *Client) AddContactWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddContactRequestWithBody(c.Server, workspaceId, studentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddContact Add someone who gets a student's reminders or receipts
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+func (c *Client) AddContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddContactJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddContactRequest(c.Server, workspaceId, studentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveContact Remove a contact
+//
+// Needs `manage_students`.
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `RemoveContact` operationId).
+func (c *Client) RemoveContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveContactRequest(c.Server, workspaceId, studentId, contactId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateContactWithBody Change a contact
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+func (c *Client) UpdateContactWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateContactRequestWithBody(c.Server, workspaceId, studentId, contactId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateContact Change a contact
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+func (c *Client) UpdateContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateContactRequest(c.Server, workspaceId, studentId, contactId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddGoalWithBody Set a goal that spans lessons
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+func (c *Client) AddGoalWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddGoalRequestWithBody(c.Server, workspaceId, studentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddGoal Set a goal that spans lessons
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+func (c *Client) AddGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddGoalRequest(c.Server, workspaceId, studentId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGoalWithBody Rename a goal, or mark it achieved or dropped
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+func (c *Client) UpdateGoalWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGoalRequestWithBody(c.Server, workspaceId, studentId, goalId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateGoal Rename a goal, or mark it achieved or dropped
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+func (c *Client) UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateGoalRequest(c.Server, workspaceId, studentId, goalId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1206,6 +3170,896 @@ func NewUpdateWorkspaceRequestWithBody(server string, workspaceId WorkspaceId, c
 	return req, nil
 }
 
+// NewListLessonsRequest constructs an http.Request for the ListLessons method
+func NewListLessonsRequest(server string, workspaceId WorkspaceId, params *ListLessonsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.TeacherId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "teacherId", *params.TeacherId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.StudentId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "studentId", *params.StudentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLessonRequest calls the generic CreateLesson builder with application/json body
+func NewCreateLessonRequest(server string, workspaceId WorkspaceId, body CreateLessonJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLessonRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewCreateLessonRequestWithBody constructs an http.Request for the CreateLesson method, with any body, and a specified content type
+func NewCreateLessonRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetLessonRequest constructs an http.Request for the GetLesson method
+func NewGetLessonRequest(server string, workspaceId WorkspaceId, lessonId LessonId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLessonRequest calls the generic UpdateLesson builder with application/json body
+func NewUpdateLessonRequest(server string, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, body UpdateLessonJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLessonRequestWithBody(server, workspaceId, lessonId, params, "application/json", bodyReader)
+}
+
+// NewUpdateLessonRequestWithBody constructs an http.Request for the UpdateLesson method, with any body, and a specified content type
+func NewUpdateLessonRequestWithBody(server string, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewCancelLessonRequest calls the generic CancelLesson builder with application/json body
+func NewCancelLessonRequest(server string, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, body CancelLessonJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCancelLessonRequestWithBody(server, workspaceId, lessonId, params, "application/json", bodyReader)
+}
+
+// NewCancelLessonRequestWithBody constructs an http.Request for the CancelLesson method, with any body, and a specified content type
+func NewCancelLessonRequestWithBody(server string, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/cancel", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewCompleteLessonRequest calls the generic CompleteLesson builder with application/json body
+func NewCompleteLessonRequest(server string, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, body CompleteLessonJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCompleteLessonRequestWithBody(server, workspaceId, lessonId, params, "application/json", bodyReader)
+}
+
+// NewCompleteLessonRequestWithBody constructs an http.Request for the CompleteLesson method, with any body, and a specified content type
+func NewCompleteLessonRequestWithBody(server string, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/complete", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetLessonHistoryRequest constructs an http.Request for the GetLessonHistory method
+func NewGetLessonHistoryRequest(server string, workspaceId WorkspaceId, lessonId LessonId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/history", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddLessonItemRequest calls the generic AddLessonItem builder with application/json body
+func NewAddLessonItemRequest(server string, workspaceId WorkspaceId, lessonId LessonId, body AddLessonItemJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddLessonItemRequestWithBody(server, workspaceId, lessonId, "application/json", bodyReader)
+}
+
+// NewAddLessonItemRequestWithBody constructs an http.Request for the AddLessonItem method, with any body, and a specified content type
+func NewAddLessonItemRequestWithBody(server string, workspaceId WorkspaceId, lessonId LessonId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/items", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteLessonItemRequest constructs an http.Request for the DeleteLessonItem method
+func NewDeleteLessonItemRequest(server string, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "itemId", itemId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/items/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLessonItemRequest calls the generic UpdateLessonItem builder with application/json body
+func NewUpdateLessonItemRequest(server string, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, body UpdateLessonItemJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLessonItemRequestWithBody(server, workspaceId, lessonId, itemId, "application/json", bodyReader)
+}
+
+// NewUpdateLessonItemRequestWithBody constructs an http.Request for the UpdateLessonItem method, with any body, and a specified content type
+func NewUpdateLessonItemRequestWithBody(server string, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "itemId", itemId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/items/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewMarkNoShowRequest constructs an http.Request for the MarkNoShow method
+func NewMarkNoShowRequest(server string, workspaceId WorkspaceId, lessonId LessonId, params *MarkNoShowParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/no-show", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewReopenLessonRequest constructs an http.Request for the ReopenLesson method
+func NewReopenLessonRequest(server string, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "lessonId", lessonId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/lessons/%s/reopen", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewListLocationsRequest constructs an http.Request for the ListLocations method
+func NewListLocationsRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/locations", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateLocationRequest calls the generic CreateLocation builder with application/json body
+func NewCreateLocationRequest(server string, workspaceId WorkspaceId, body CreateLocationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateLocationRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewCreateLocationRequestWithBody constructs an http.Request for the CreateLocation method, with any body, and a specified content type
+func NewCreateLocationRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/locations", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewArchiveLocationRequest constructs an http.Request for the ArchiveLocation method
+func NewArchiveLocationRequest(server string, workspaceId WorkspaceId, locationId LocationId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "locationId", locationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/locations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateLocationRequest calls the generic UpdateLocation builder with application/json body
+func NewUpdateLocationRequest(server string, workspaceId WorkspaceId, locationId LocationId, body UpdateLocationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateLocationRequestWithBody(server, workspaceId, locationId, "application/json", bodyReader)
+}
+
+// NewUpdateLocationRequestWithBody constructs an http.Request for the UpdateLocation method, with any body, and a specified content type
+func NewUpdateLocationRequestWithBody(server string, workspaceId WorkspaceId, locationId LocationId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "locationId", locationId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/locations/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListMembersRequest constructs an http.Request for the ListMembers method
 func NewListMembersRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
 	var err error
@@ -1382,6 +4236,630 @@ func NewUpdateMemberRequestWithBody(server string, workspaceId WorkspaceId, memb
 	return req, nil
 }
 
+// NewGetCancellationPolicyRequest constructs an http.Request for the GetCancellationPolicy method
+func NewGetCancellationPolicyRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/cancellation-policy", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetCancellationPolicyRequest calls the generic SetCancellationPolicy builder with application/json body
+func NewSetCancellationPolicyRequest(server string, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetCancellationPolicyRequestWithBody(server, workspaceId, memberId, "application/json", bodyReader)
+}
+
+// NewSetCancellationPolicyRequestWithBody constructs an http.Request for the SetCancellationPolicy method, with any body, and a specified content type
+func NewSetCancellationPolicyRequestWithBody(server string, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/cancellation-policy", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListStudentsRequest constructs an http.Request for the ListStudents method
+func NewListStudentsRequest(server string, workspaceId WorkspaceId, params *ListStudentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Search != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search", *params.Search, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.TeacherId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "teacherId", *params.TeacherId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Archived != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "archived", *params.Archived, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateStudentRequest calls the generic CreateStudent builder with application/json body
+func NewCreateStudentRequest(server string, workspaceId WorkspaceId, body CreateStudentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateStudentRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewCreateStudentRequestWithBody constructs an http.Request for the CreateStudent method, with any body, and a specified content type
+func NewCreateStudentRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetStudentRequest constructs an http.Request for the GetStudent method
+func NewGetStudentRequest(server string, workspaceId WorkspaceId, studentId StudentId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateStudentRequest calls the generic UpdateStudent builder with application/json body
+func NewUpdateStudentRequest(server string, workspaceId WorkspaceId, studentId StudentId, body UpdateStudentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateStudentRequestWithBody(server, workspaceId, studentId, "application/json", bodyReader)
+}
+
+// NewUpdateStudentRequestWithBody constructs an http.Request for the UpdateStudent method, with any body, and a specified content type
+func NewUpdateStudentRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddContactRequest calls the generic AddContact builder with application/json body
+func NewAddContactRequest(server string, workspaceId WorkspaceId, studentId StudentId, body AddContactJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddContactRequestWithBody(server, workspaceId, studentId, "application/json", bodyReader)
+}
+
+// NewAddContactRequestWithBody constructs an http.Request for the AddContact method, with any body, and a specified content type
+func NewAddContactRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/contacts", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveContactRequest constructs an http.Request for the RemoveContact method
+func NewRemoveContactRequest(server string, workspaceId WorkspaceId, studentId StudentId, contactId ContactId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "contactId", contactId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/contacts/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateContactRequest calls the generic UpdateContact builder with application/json body
+func NewUpdateContactRequest(server string, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateContactRequestWithBody(server, workspaceId, studentId, contactId, "application/json", bodyReader)
+}
+
+// NewUpdateContactRequestWithBody constructs an http.Request for the UpdateContact method, with any body, and a specified content type
+func NewUpdateContactRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "contactId", contactId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/contacts/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewAddGoalRequest calls the generic AddGoal builder with application/json body
+func NewAddGoalRequest(server string, workspaceId WorkspaceId, studentId StudentId, body AddGoalJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddGoalRequestWithBody(server, workspaceId, studentId, "application/json", bodyReader)
+}
+
+// NewAddGoalRequestWithBody constructs an http.Request for the AddGoal method, with any body, and a specified content type
+func NewAddGoalRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/goals", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewUpdateGoalRequest calls the generic UpdateGoal builder with application/json body
+func NewUpdateGoalRequest(server string, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateGoalRequestWithBody(server, workspaceId, studentId, goalId, "application/json", bodyReader)
+}
+
+// NewUpdateGoalRequestWithBody constructs an http.Request for the UpdateGoal method, with any body, and a specified content type
+func NewUpdateGoalRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "goalId", goalId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/goals/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1539,6 +5017,241 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
 	UpdateWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
 
+	// ListLessonsWithResponse List lessons in a time range
+	//
+	// Owners (`view_team_timetable`) see every lesson and may filter by
+	// tutor; teachers see only lessons they tutor, whatever `teacherId`
+	// says. Each lesson carries its clashes.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons (the `ListLessons` operationId).
+	ListLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListLessonsParams, reqEditors ...RequestEditorFn) (*ListLessonsResponse, error)
+
+	// CreateLessonWithBodyWithResponse Add a lesson
+	//
+	// Needs `manage_lessons`. A clash with another lesson of a tutor or
+	// student is reported in `clashes` and never blocks saving (ADR 019).
+	// The first tutor listed with role `lead` bills the lesson (ADR 018).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+	CreateLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLessonResponse, error)
+
+	// CreateLessonWithResponse Add a lesson
+	//
+	// Needs `manage_lessons`. A clash with another lesson of a tutor or
+	// student is reported in `clashes` and never blocks saving (ADR 019).
+	// The first tutor listed with role `lead` bills the lesson (ADR 018).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+	CreateLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLessonResponse, error)
+
+	// GetLessonWithResponse Get a lesson with its tasks, goals and notes
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `GetLesson` operationId).
+	GetLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*GetLessonResponse, error)
+
+	// UpdateLessonWithBodyWithResponse Move, reassign or otherwise change a scheduled lesson
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+	// lesson changed since gets 412.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+	UpdateLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLessonResponse, error)
+
+	// UpdateLessonWithResponse Move, reassign or otherwise change a scheduled lesson
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+	// lesson changed since gets 412.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+	UpdateLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, body UpdateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLessonResponse, error)
+
+	// CancelLessonWithBodyWithResponse Cancel a lesson, optionally booking a make-up
+	//
+	// Needs `manage_lessons`. A cancellation by the student's side with
+	// less notice than the lead tutor's policy asks for is late, and
+	// billable only if that policy says so. Pending reminders stop.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+	CancelLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelLessonResponse, error)
+
+	// CancelLessonWithResponse Cancel a lesson, optionally booking a make-up
+	//
+	// Needs `manage_lessons`. A cancellation by the student's side with
+	// less notice than the lead tutor's policy asks for is late, and
+	// billable only if that policy says so. Pending reminders stop.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+	CancelLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, body CancelLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelLessonResponse, error)
+
+	// CompleteLessonWithBodyWithResponse Mark a lesson done
+	//
+	// For owners, and for tutors on the lesson (`complete_own_lessons`).
+	// The lesson becomes billable.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+	CompleteLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteLessonResponse, error)
+
+	// CompleteLessonWithResponse Mark a lesson done
+	//
+	// For owners, and for tutors on the lesson (`complete_own_lessons`).
+	// The lesson becomes billable.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+	CompleteLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, body CompleteLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteLessonResponse, error)
+
+	// GetLessonHistoryWithResponse Every change to a lesson, oldest first
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history (the `GetLessonHistory` operationId).
+	GetLessonHistoryWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*GetLessonHistoryResponse, error)
+
+	// AddLessonItemWithBodyWithResponse Add a task, goal or note to a lesson
+	//
+	// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+	AddLessonItemWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddLessonItemResponse, error)
+
+	// AddLessonItemWithResponse Add a task, goal or note to a lesson
+	//
+	// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+	AddLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, body AddLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*AddLessonItemResponse, error)
+
+	// DeleteLessonItemWithResponse Remove an item
+	//
+	// For owners, and for the item's author.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `DeleteLessonItem` operationId).
+	DeleteLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, reqEditors ...RequestEditorFn) (*DeleteLessonItemResponse, error)
+
+	// UpdateLessonItemWithBodyWithResponse Edit an item, or tick or untick a task
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+	UpdateLessonItemWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLessonItemResponse, error)
+
+	// UpdateLessonItemWithResponse Edit an item, or tick or untick a task
+	//
+	// For owners, and for tutors on the lesson.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+	UpdateLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, body UpdateLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLessonItemResponse, error)
+
+	// MarkNoShowWithResponse Record that the student did not come
+	//
+	// For owners, and for tutors on the lesson. Billable when the lead
+	// tutor's cancellation policy says no-shows are.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show (the `MarkNoShow` operationId).
+	MarkNoShowWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *MarkNoShowParams, reqEditors ...RequestEditorFn) (*MarkNoShowResponse, error)
+
+	// ReopenLessonWithResponse Put a done, no-show or cancelled lesson back to scheduled
+	//
+	// Owners may reopen any lesson; the tutor who marked a lesson done or
+	// no-show may reopen it, which is how Undo works. Refused with 409
+	// once a receipt covers the lesson.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
+	ReopenLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*ReopenLessonResponse, error)
+
+	// ListLocationsWithResponse List the team's saved places
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/locations (the `ListLocations` operationId).
+	ListLocationsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListLocationsResponse, error)
+
+	// CreateLocationWithBodyWithResponse Save a place lessons happen
+	//
+	// Needs `manage_lessons`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+	CreateLocationWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLocationResponse, error)
+
+	// CreateLocationWithResponse Save a place lessons happen
+	//
+	// Needs `manage_lessons`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+	CreateLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLocationResponse, error)
+
+	// ArchiveLocationWithResponse Stop offering a saved place
+	//
+	// Needs `manage_lessons`. Past and booked lessons keep it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/locations/{locationId} (the `ArchiveLocation` operationId).
+	ArchiveLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, reqEditors ...RequestEditorFn) (*ArchiveLocationResponse, error)
+
+	// UpdateLocationWithBodyWithResponse Change a saved place
+	//
+	// Needs `manage_lessons`. Lessons keep the address they were booked
+	// with; only lessons added later use the change.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+	UpdateLocationWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLocationResponse, error)
+
+	// UpdateLocationWithResponse Change a saved place
+	//
+	// Needs `manage_lessons`. Lessons keep the address they were booked
+	// with; only lessons added later use the change.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+	UpdateLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, body UpdateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLocationResponse, error)
+
 	// ListMembersWithResponse List the team's members and pending invitations
 	//
 	// Needs `manage_team`. A team has tens of members at most, so the
@@ -1600,6 +5313,172 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
 	UpdateMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error)
+
+	// GetCancellationPolicyWithResponse Get a tutor's cancellation policy
+	//
+	// Any member may read it; it is shown to parents too. Tutors who have
+	// not set one have Penny's default: 24 hours' notice, late
+	// cancellations not billable, no-shows billable.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `GetCancellationPolicy` operationId).
+	GetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*GetCancellationPolicyResponse, error)
+
+	// SetCancellationPolicyWithBodyWithResponse Set a tutor's cancellation policy
+	//
+	// The tutor themselves, or the team owner (`manage_team`).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+	SetCancellationPolicyWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error)
+
+	// SetCancellationPolicyWithResponse Set a tutor's cancellation policy
+	//
+	// The tutor themselves, or the team owner (`manage_team`).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+	SetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error)
+
+	// ListStudentsWithResponse List students
+	//
+	// Owners (`manage_students`) see every student; teachers
+	// (`view_own_students`) see students they are the primary teacher of
+	// or teach in a lesson.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/students (the `ListStudents` operationId).
+	ListStudentsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListStudentsParams, reqEditors ...RequestEditorFn) (*ListStudentsResponse, error)
+
+	// CreateStudentWithBodyWithResponse Add a student
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+	CreateStudentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateStudentResponse, error)
+
+	// CreateStudentWithResponse Add a student
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+	CreateStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStudentResponse, error)
+
+	// GetStudentWithResponse Get a student with their contacts and goals
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/students/{studentId} (the `GetStudent` operationId).
+	GetStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*GetStudentResponse, error)
+
+	// UpdateStudentWithBodyWithResponse Change a student, or archive or restore them
+	//
+	// Needs `manage_students`. Archived students keep their lessons and
+	// receipts but are not offered for new lessons.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+	UpdateStudentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateStudentResponse, error)
+
+	// UpdateStudentWithResponse Change a student, or archive or restore them
+	//
+	// Needs `manage_students`. Archived students keep their lessons and
+	// receipts but are not offered for new lessons.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+	UpdateStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body UpdateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateStudentResponse, error)
+
+	// AddContactWithBodyWithResponse Add someone who gets a student's reminders or receipts
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+	AddContactWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddContactResponse, error)
+
+	// AddContactWithResponse Add someone who gets a student's reminders or receipts
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+	AddContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddContactJSONRequestBody, reqEditors ...RequestEditorFn) (*AddContactResponse, error)
+
+	// RemoveContactWithResponse Remove a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `RemoveContact` operationId).
+	RemoveContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, reqEditors ...RequestEditorFn) (*RemoveContactResponse, error)
+
+	// UpdateContactWithBodyWithResponse Change a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+	UpdateContactWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateContactResponse, error)
+
+	// UpdateContactWithResponse Change a contact
+	//
+	// Needs `manage_students`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+	UpdateContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateContactResponse, error)
+
+	// AddGoalWithBodyWithResponse Set a goal that spans lessons
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+	AddGoalWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddGoalResponse, error)
+
+	// AddGoalWithResponse Set a goal that spans lessons
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+	AddGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*AddGoalResponse, error)
+
+	// UpdateGoalWithBodyWithResponse Rename a goal, or mark it achieved or dropped
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+	UpdateGoalWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error)
+
+	// UpdateGoalWithResponse Rename a goal, or mark it achieved or dropped
+	//
+	// Needs `manage_students`, or to teach the student.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+	UpdateGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error)
 }
 
 type GetLivezResponse struct {
@@ -2118,6 +5997,1208 @@ func (r UpdateWorkspaceResponse) ContentType() string {
 	return ""
 }
 
+type ListLessonsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LessonList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLessonsResponse) GetJSON200() *LessonList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListLessonsResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListLessonsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListLessonsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListLessonsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListLessonsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLessonsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLessonsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLessonsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLessonsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Lesson
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateLessonResponse) GetJSON201() *Lesson {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateLessonResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateLessonResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreateLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLessonResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLessonResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CancelLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CancelLessonResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CancelLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CompleteLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CompleteLessonResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CompleteLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CompleteLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CompleteLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CompleteLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetLessonHistoryResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *HistoryList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetLessonHistoryResponse) GetJSON200() *HistoryList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetLessonHistoryResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetLessonHistoryResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetLessonHistoryResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetLessonHistoryResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetLessonHistoryResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetLessonHistoryResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetLessonHistoryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddLessonItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *LessonItem
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddLessonItemResponse) GetJSON201() *LessonItem {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AddLessonItemResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AddLessonItemResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AddLessonItemResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AddLessonItemResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AddLessonItemResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AddLessonItemResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddLessonItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddLessonItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddLessonItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteLessonItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r DeleteLessonItemResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r DeleteLessonItemResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r DeleteLessonItemResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r DeleteLessonItemResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteLessonItemResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteLessonItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteLessonItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLessonItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLessonItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LessonItem
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLessonItemResponse) GetJSON200() *LessonItem {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateLessonItemResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateLessonItemResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateLessonItemResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateLessonItemResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateLessonItemResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLessonItemResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLessonItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLessonItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLessonItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MarkNoShowResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r MarkNoShowResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r MarkNoShowResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r MarkNoShowResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r MarkNoShowResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MarkNoShowResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkNoShowResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReopenLessonResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Lesson
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ReopenLessonResponse) GetJSON200() *Lesson {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ReopenLessonResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ReopenLessonResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ReopenLessonResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReopenLessonResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReopenLessonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListLocationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *LocationList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListLocationsResponse) GetJSON200() *LocationList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListLocationsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListLocationsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListLocationsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListLocationsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListLocationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListLocationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLocationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateLocationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Location
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateLocationResponse) GetJSON201() *Location {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateLocationResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateLocationResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateLocationResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreateLocationResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateLocationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateLocationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateLocationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateLocationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLocationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ArchiveLocationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ArchiveLocationResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ArchiveLocationResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ArchiveLocationResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ArchiveLocationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ArchiveLocationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ArchiveLocationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ArchiveLocationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ArchiveLocationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateLocationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Location
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateLocationResponse) GetJSON200() *Location {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateLocationResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateLocationResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateLocationResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateLocationResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateLocationResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateLocationResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateLocationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateLocationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLocationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListMembersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2422,6 +7503,800 @@ func (r UpdateMemberResponse) ContentType() string {
 	return ""
 }
 
+type GetCancellationPolicyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CancellationPolicy
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetCancellationPolicyResponse) GetJSON200() *CancellationPolicy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetCancellationPolicyResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetCancellationPolicyResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetCancellationPolicyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCancellationPolicyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCancellationPolicyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCancellationPolicyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCancellationPolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetCancellationPolicyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *CancellationPolicy
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetCancellationPolicyResponse) GetJSON200() *CancellationPolicy {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetCancellationPolicyResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetCancellationPolicyResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SetCancellationPolicyResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SetCancellationPolicyResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SetCancellationPolicyResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetCancellationPolicyResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetCancellationPolicyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetCancellationPolicyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetCancellationPolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListStudentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *StudentList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListStudentsResponse) GetJSON200() *StudentList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListStudentsResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListStudentsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListStudentsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListStudentsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListStudentsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListStudentsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStudentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStudentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListStudentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateStudentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Student
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateStudentResponse) GetJSON201() *Student {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateStudentResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateStudentResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateStudentResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreateStudentResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateStudentResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateStudentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateStudentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateStudentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateStudentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetStudentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Student
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetStudentResponse) GetJSON200() *Student {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetStudentResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetStudentResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetStudentResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetStudentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStudentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStudentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetStudentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateStudentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Student
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateStudentResponse) GetJSON200() *Student {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateStudentResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateStudentResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateStudentResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateStudentResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateStudentResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateStudentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateStudentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateStudentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateStudentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddContactResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Contact
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddContactResponse) GetJSON201() *Contact {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AddContactResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AddContactResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AddContactResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AddContactResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AddContactResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AddContactResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddContactResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddContactResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddContactResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveContactResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RemoveContactResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RemoveContactResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RemoveContactResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RemoveContactResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveContactResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveContactResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveContactResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveContactResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateContactResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Contact
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateContactResponse) GetJSON200() *Contact {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateContactResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateContactResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateContactResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateContactResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateContactResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateContactResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateContactResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateContactResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateContactResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddGoalResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Goal
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddGoalResponse) GetJSON201() *Goal {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AddGoalResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AddGoalResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AddGoalResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AddGoalResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AddGoalResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AddGoalResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddGoalResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddGoalResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddGoalResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateGoalResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Goal
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateGoalResponse) GetJSON200() *Goal {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateGoalResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateGoalResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateGoalResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateGoalResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateGoalResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateGoalResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateGoalResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateGoalResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGoalResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetLivezWithResponse Report that the process is running
 //
 // Succeeds whenever the process can serve HTTP. It never checks
@@ -2607,6 +8482,385 @@ func (c *ClientWithResponses) UpdateWorkspaceWithResponse(ctx context.Context, w
 	return ParseUpdateWorkspaceResponse(rsp)
 }
 
+// ListLessonsWithResponse List lessons in a time range
+//
+// Owners (`view_team_timetable`) see every lesson and may filter by
+// tutor; teachers see only lessons they tutor, whatever `teacherId`
+// says. Each lesson carries its clashes.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons (the `ListLessons` operationId).
+func (c *ClientWithResponses) ListLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListLessonsParams, reqEditors ...RequestEditorFn) (*ListLessonsResponse, error) {
+	rsp, err := c.ListLessons(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLessonsResponse(rsp)
+}
+
+// CreateLessonWithBodyWithResponse Add a lesson
+//
+// Needs `manage_lessons`. A clash with another lesson of a tutor or
+// student is reported in `clashes` and never blocks saving (ADR 019).
+// The first tutor listed with role `lead` bills the lesson (ADR 018).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+func (c *ClientWithResponses) CreateLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLessonResponse, error) {
+	rsp, err := c.CreateLessonWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLessonResponse(rsp)
+}
+
+// CreateLessonWithResponse Add a lesson
+//
+// Needs `manage_lessons`. A clash with another lesson of a tutor or
+// student is reported in `clashes` and never blocks saving (ADR 019).
+// The first tutor listed with role `lead` bills the lesson (ADR 018).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons (the `CreateLesson` operationId).
+func (c *ClientWithResponses) CreateLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLessonResponse, error) {
+	rsp, err := c.CreateLesson(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLessonResponse(rsp)
+}
+
+// GetLessonWithResponse Get a lesson with its tasks, goals and notes
+//
+// For owners, and for tutors on the lesson.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `GetLesson` operationId).
+func (c *ClientWithResponses) GetLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*GetLessonResponse, error) {
+	rsp, err := c.GetLesson(ctx, workspaceId, lessonId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLessonResponse(rsp)
+}
+
+// UpdateLessonWithBodyWithResponse Move, reassign or otherwise change a scheduled lesson
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+// lesson changed since gets 412.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+func (c *ClientWithResponses) UpdateLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLessonResponse, error) {
+	rsp, err := c.UpdateLessonWithBody(ctx, workspaceId, lessonId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLessonResponse(rsp)
+}
+
+// UpdateLessonWithResponse Move, reassign or otherwise change a scheduled lesson
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+// lesson changed since gets 412.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId} (the `UpdateLesson` operationId).
+func (c *ClientWithResponses) UpdateLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *UpdateLessonParams, body UpdateLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLessonResponse, error) {
+	rsp, err := c.UpdateLesson(ctx, workspaceId, lessonId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLessonResponse(rsp)
+}
+
+// CancelLessonWithBodyWithResponse Cancel a lesson, optionally booking a make-up
+//
+// Needs `manage_lessons`. A cancellation by the student's side with
+// less notice than the lead tutor's policy asks for is late, and
+// billable only if that policy says so. Pending reminders stop.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+func (c *ClientWithResponses) CancelLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CancelLessonResponse, error) {
+	rsp, err := c.CancelLessonWithBody(ctx, workspaceId, lessonId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelLessonResponse(rsp)
+}
+
+// CancelLessonWithResponse Cancel a lesson, optionally booking a make-up
+//
+// Needs `manage_lessons`. A cancellation by the student's side with
+// less notice than the lead tutor's policy asks for is late, and
+// billable only if that policy says so. Pending reminders stop.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel (the `CancelLesson` operationId).
+func (c *ClientWithResponses) CancelLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CancelLessonParams, body CancelLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CancelLessonResponse, error) {
+	rsp, err := c.CancelLesson(ctx, workspaceId, lessonId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelLessonResponse(rsp)
+}
+
+// CompleteLessonWithBodyWithResponse Mark a lesson done
+//
+// For owners, and for tutors on the lesson (`complete_own_lessons`).
+// The lesson becomes billable.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+func (c *ClientWithResponses) CompleteLessonWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CompleteLessonResponse, error) {
+	rsp, err := c.CompleteLessonWithBody(ctx, workspaceId, lessonId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteLessonResponse(rsp)
+}
+
+// CompleteLessonWithResponse Mark a lesson done
+//
+// For owners, and for tutors on the lesson (`complete_own_lessons`).
+// The lesson becomes billable.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete (the `CompleteLesson` operationId).
+func (c *ClientWithResponses) CompleteLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *CompleteLessonParams, body CompleteLessonJSONRequestBody, reqEditors ...RequestEditorFn) (*CompleteLessonResponse, error) {
+	rsp, err := c.CompleteLesson(ctx, workspaceId, lessonId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCompleteLessonResponse(rsp)
+}
+
+// GetLessonHistoryWithResponse Every change to a lesson, oldest first
+//
+// For owners, and for tutors on the lesson.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history (the `GetLessonHistory` operationId).
+func (c *ClientWithResponses) GetLessonHistoryWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, reqEditors ...RequestEditorFn) (*GetLessonHistoryResponse, error) {
+	rsp, err := c.GetLessonHistory(ctx, workspaceId, lessonId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetLessonHistoryResponse(rsp)
+}
+
+// AddLessonItemWithBodyWithResponse Add a task, goal or note to a lesson
+//
+// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+func (c *ClientWithResponses) AddLessonItemWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddLessonItemResponse, error) {
+	rsp, err := c.AddLessonItemWithBody(ctx, workspaceId, lessonId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddLessonItemResponse(rsp)
+}
+
+// AddLessonItemWithResponse Add a task, goal or note to a lesson
+//
+// For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items (the `AddLessonItem` operationId).
+func (c *ClientWithResponses) AddLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, body AddLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*AddLessonItemResponse, error) {
+	rsp, err := c.AddLessonItem(ctx, workspaceId, lessonId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddLessonItemResponse(rsp)
+}
+
+// DeleteLessonItemWithResponse Remove an item
+//
+// For owners, and for the item's author.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `DeleteLessonItem` operationId).
+func (c *ClientWithResponses) DeleteLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, reqEditors ...RequestEditorFn) (*DeleteLessonItemResponse, error) {
+	rsp, err := c.DeleteLessonItem(ctx, workspaceId, lessonId, itemId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteLessonItemResponse(rsp)
+}
+
+// UpdateLessonItemWithBodyWithResponse Edit an item, or tick or untick a task
+//
+// For owners, and for tutors on the lesson.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+func (c *ClientWithResponses) UpdateLessonItemWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLessonItemResponse, error) {
+	rsp, err := c.UpdateLessonItemWithBody(ctx, workspaceId, lessonId, itemId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLessonItemResponse(rsp)
+}
+
+// UpdateLessonItemWithResponse Edit an item, or tick or untick a task
+//
+// For owners, and for tutors on the lesson.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId} (the `UpdateLessonItem` operationId).
+func (c *ClientWithResponses) UpdateLessonItemWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId, body UpdateLessonItemJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLessonItemResponse, error) {
+	rsp, err := c.UpdateLessonItem(ctx, workspaceId, lessonId, itemId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLessonItemResponse(rsp)
+}
+
+// MarkNoShowWithResponse Record that the student did not come
+//
+// For owners, and for tutors on the lesson. Billable when the lead
+// tutor's cancellation policy says no-shows are.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show (the `MarkNoShow` operationId).
+func (c *ClientWithResponses) MarkNoShowWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *MarkNoShowParams, reqEditors ...RequestEditorFn) (*MarkNoShowResponse, error) {
+	rsp, err := c.MarkNoShow(ctx, workspaceId, lessonId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMarkNoShowResponse(rsp)
+}
+
+// ReopenLessonWithResponse Put a done, no-show or cancelled lesson back to scheduled
+//
+// Owners may reopen any lesson; the tutor who marked a lesson done or
+// no-show may reopen it, which is how Undo works. Refused with 409
+// once a receipt covers the lesson.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
+func (c *ClientWithResponses) ReopenLessonWithResponse(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*ReopenLessonResponse, error) {
+	rsp, err := c.ReopenLesson(ctx, workspaceId, lessonId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReopenLessonResponse(rsp)
+}
+
+// ListLocationsWithResponse List the team's saved places
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/locations (the `ListLocations` operationId).
+func (c *ClientWithResponses) ListLocationsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListLocationsResponse, error) {
+	rsp, err := c.ListLocations(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListLocationsResponse(rsp)
+}
+
+// CreateLocationWithBodyWithResponse Save a place lessons happen
+//
+// Needs `manage_lessons`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+func (c *ClientWithResponses) CreateLocationWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateLocationResponse, error) {
+	rsp, err := c.CreateLocationWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLocationResponse(rsp)
+}
+
+// CreateLocationWithResponse Save a place lessons happen
+//
+// Needs `manage_lessons`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/locations (the `CreateLocation` operationId).
+func (c *ClientWithResponses) CreateLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateLocationResponse, error) {
+	rsp, err := c.CreateLocation(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateLocationResponse(rsp)
+}
+
+// ArchiveLocationWithResponse Stop offering a saved place
+//
+// Needs `manage_lessons`. Past and booked lessons keep it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/locations/{locationId} (the `ArchiveLocation` operationId).
+func (c *ClientWithResponses) ArchiveLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, reqEditors ...RequestEditorFn) (*ArchiveLocationResponse, error) {
+	rsp, err := c.ArchiveLocation(ctx, workspaceId, locationId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseArchiveLocationResponse(rsp)
+}
+
+// UpdateLocationWithBodyWithResponse Change a saved place
+//
+// Needs `manage_lessons`. Lessons keep the address they were booked
+// with; only lessons added later use the change.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+func (c *ClientWithResponses) UpdateLocationWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateLocationResponse, error) {
+	rsp, err := c.UpdateLocationWithBody(ctx, workspaceId, locationId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLocationResponse(rsp)
+}
+
+// UpdateLocationWithResponse Change a saved place
+//
+// Needs `manage_lessons`. Lessons keep the address they were booked
+// with; only lessons added later use the change.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/locations/{locationId} (the `UpdateLocation` operationId).
+func (c *ClientWithResponses) UpdateLocationWithResponse(ctx context.Context, workspaceId WorkspaceId, locationId LocationId, body UpdateLocationJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateLocationResponse, error) {
+	rsp, err := c.UpdateLocation(ctx, workspaceId, locationId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateLocationResponse(rsp)
+}
+
 // ListMembersWithResponse List the team's members and pending invitations
 //
 // Needs `manage_team`. A team has tens of members at most, so the
@@ -2703,6 +8957,280 @@ func (c *ClientWithResponses) UpdateMemberWithResponse(ctx context.Context, work
 		return nil, err
 	}
 	return ParseUpdateMemberResponse(rsp)
+}
+
+// GetCancellationPolicyWithResponse Get a tutor's cancellation policy
+//
+// Any member may read it; it is shown to parents too. Tutors who have
+// not set one have Penny's default: 24 hours' notice, late
+// cancellations not billable, no-shows billable.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `GetCancellationPolicy` operationId).
+func (c *ClientWithResponses) GetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*GetCancellationPolicyResponse, error) {
+	rsp, err := c.GetCancellationPolicy(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCancellationPolicyResponse(rsp)
+}
+
+// SetCancellationPolicyWithBodyWithResponse Set a tutor's cancellation policy
+//
+// The tutor themselves, or the team owner (`manage_team`).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+func (c *ClientWithResponses) SetCancellationPolicyWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error) {
+	rsp, err := c.SetCancellationPolicyWithBody(ctx, workspaceId, memberId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetCancellationPolicyResponse(rsp)
+}
+
+// SetCancellationPolicyWithResponse Set a tutor's cancellation policy
+//
+// The tutor themselves, or the team owner (`manage_team`).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
+func (c *ClientWithResponses) SetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error) {
+	rsp, err := c.SetCancellationPolicy(ctx, workspaceId, memberId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetCancellationPolicyResponse(rsp)
+}
+
+// ListStudentsWithResponse List students
+//
+// Owners (`manage_students`) see every student; teachers
+// (`view_own_students`) see students they are the primary teacher of
+// or teach in a lesson.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/students (the `ListStudents` operationId).
+func (c *ClientWithResponses) ListStudentsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListStudentsParams, reqEditors ...RequestEditorFn) (*ListStudentsResponse, error) {
+	rsp, err := c.ListStudents(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStudentsResponse(rsp)
+}
+
+// CreateStudentWithBodyWithResponse Add a student
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+func (c *ClientWithResponses) CreateStudentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateStudentResponse, error) {
+	rsp, err := c.CreateStudentWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateStudentResponse(rsp)
+}
+
+// CreateStudentWithResponse Add a student
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students (the `CreateStudent` operationId).
+func (c *ClientWithResponses) CreateStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStudentResponse, error) {
+	rsp, err := c.CreateStudent(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateStudentResponse(rsp)
+}
+
+// GetStudentWithResponse Get a student with their contacts and goals
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/students/{studentId} (the `GetStudent` operationId).
+func (c *ClientWithResponses) GetStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*GetStudentResponse, error) {
+	rsp, err := c.GetStudent(ctx, workspaceId, studentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStudentResponse(rsp)
+}
+
+// UpdateStudentWithBodyWithResponse Change a student, or archive or restore them
+//
+// Needs `manage_students`. Archived students keep their lessons and
+// receipts but are not offered for new lessons.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+func (c *ClientWithResponses) UpdateStudentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateStudentResponse, error) {
+	rsp, err := c.UpdateStudentWithBody(ctx, workspaceId, studentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateStudentResponse(rsp)
+}
+
+// UpdateStudentWithResponse Change a student, or archive or restore them
+//
+// Needs `manage_students`. Archived students keep their lessons and
+// receipts but are not offered for new lessons.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId} (the `UpdateStudent` operationId).
+func (c *ClientWithResponses) UpdateStudentWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body UpdateStudentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateStudentResponse, error) {
+	rsp, err := c.UpdateStudent(ctx, workspaceId, studentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateStudentResponse(rsp)
+}
+
+// AddContactWithBodyWithResponse Add someone who gets a student's reminders or receipts
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+func (c *ClientWithResponses) AddContactWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddContactResponse, error) {
+	rsp, err := c.AddContactWithBody(ctx, workspaceId, studentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddContactResponse(rsp)
+}
+
+// AddContactWithResponse Add someone who gets a student's reminders or receipts
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts (the `AddContact` operationId).
+func (c *ClientWithResponses) AddContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddContactJSONRequestBody, reqEditors ...RequestEditorFn) (*AddContactResponse, error) {
+	rsp, err := c.AddContact(ctx, workspaceId, studentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddContactResponse(rsp)
+}
+
+// RemoveContactWithResponse Remove a contact
+//
+// Needs `manage_students`.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `RemoveContact` operationId).
+func (c *ClientWithResponses) RemoveContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, reqEditors ...RequestEditorFn) (*RemoveContactResponse, error) {
+	rsp, err := c.RemoveContact(ctx, workspaceId, studentId, contactId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveContactResponse(rsp)
+}
+
+// UpdateContactWithBodyWithResponse Change a contact
+//
+// Needs `manage_students`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+func (c *ClientWithResponses) UpdateContactWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateContactResponse, error) {
+	rsp, err := c.UpdateContactWithBody(ctx, workspaceId, studentId, contactId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateContactResponse(rsp)
+}
+
+// UpdateContactWithResponse Change a contact
+//
+// Needs `manage_students`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
+func (c *ClientWithResponses) UpdateContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateContactResponse, error) {
+	rsp, err := c.UpdateContact(ctx, workspaceId, studentId, contactId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateContactResponse(rsp)
+}
+
+// AddGoalWithBodyWithResponse Set a goal that spans lessons
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+func (c *ClientWithResponses) AddGoalWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddGoalResponse, error) {
+	rsp, err := c.AddGoalWithBody(ctx, workspaceId, studentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddGoalResponse(rsp)
+}
+
+// AddGoalWithResponse Set a goal that spans lessons
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/students/{studentId}/goals (the `AddGoal` operationId).
+func (c *ClientWithResponses) AddGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body AddGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*AddGoalResponse, error) {
+	rsp, err := c.AddGoal(ctx, workspaceId, studentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddGoalResponse(rsp)
+}
+
+// UpdateGoalWithBodyWithResponse Rename a goal, or mark it achieved or dropped
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+func (c *ClientWithResponses) UpdateGoalWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error) {
+	rsp, err := c.UpdateGoalWithBody(ctx, workspaceId, studentId, goalId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGoalResponse(rsp)
+}
+
+// UpdateGoalWithResponse Rename a goal, or mark it achieved or dropped
+//
+// Needs `manage_students`, or to teach the student.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
+func (c *ClientWithResponses) UpdateGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error) {
+	rsp, err := c.UpdateGoal(ctx, workspaceId, studentId, goalId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateGoalResponse(rsp)
 }
 
 // ParseGetLivezResponse parses an HTTP response from a GetLivezWithResponse call
@@ -3089,6 +9617,974 @@ func ParseUpdateWorkspaceResponse(rsp *http.Response) (*UpdateWorkspaceResponse,
 	return response, nil
 }
 
+// ParseListLessonsResponse parses an HTTP response from a ListLessonsWithResponse call
+func ParseListLessonsResponse(rsp *http.Response) (*ListLessonsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLessonsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LessonList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLessonResponse parses an HTTP response from a CreateLessonWithResponse call
+func ParseCreateLessonResponse(rsp *http.Response) (*CreateLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetLessonResponse parses an HTTP response from a GetLessonWithResponse call
+func ParseGetLessonResponse(rsp *http.Response) (*GetLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLessonResponse parses an HTTP response from a UpdateLessonWithResponse call
+func ParseUpdateLessonResponse(rsp *http.Response) (*UpdateLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelLessonResponse parses an HTTP response from a CancelLessonWithResponse call
+func ParseCancelLessonResponse(rsp *http.Response) (*CancelLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCompleteLessonResponse parses an HTTP response from a CompleteLessonWithResponse call
+func ParseCompleteLessonResponse(rsp *http.Response) (*CompleteLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CompleteLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetLessonHistoryResponse parses an HTTP response from a GetLessonHistoryWithResponse call
+func ParseGetLessonHistoryResponse(rsp *http.Response) (*GetLessonHistoryResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetLessonHistoryResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HistoryList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddLessonItemResponse parses an HTTP response from a AddLessonItemWithResponse call
+func ParseAddLessonItemResponse(rsp *http.Response) (*AddLessonItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddLessonItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest LessonItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteLessonItemResponse parses an HTTP response from a DeleteLessonItemWithResponse call
+func ParseDeleteLessonItemResponse(rsp *http.Response) (*DeleteLessonItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteLessonItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLessonItemResponse parses an HTTP response from a UpdateLessonItemWithResponse call
+func ParseUpdateLessonItemResponse(rsp *http.Response) (*UpdateLessonItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLessonItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LessonItem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMarkNoShowResponse parses an HTTP response from a MarkNoShowWithResponse call
+func ParseMarkNoShowResponse(rsp *http.Response) (*MarkNoShowResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MarkNoShowResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReopenLessonResponse parses an HTTP response from a ReopenLessonWithResponse call
+func ParseReopenLessonResponse(rsp *http.Response) (*ReopenLessonResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReopenLessonResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Lesson
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListLocationsResponse parses an HTTP response from a ListLocationsWithResponse call
+func ParseListLocationsResponse(rsp *http.Response) (*ListLocationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListLocationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LocationList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateLocationResponse parses an HTTP response from a CreateLocationWithResponse call
+func ParseCreateLocationResponse(rsp *http.Response) (*CreateLocationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateLocationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Location
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseArchiveLocationResponse parses an HTTP response from a ArchiveLocationWithResponse call
+func ParseArchiveLocationResponse(rsp *http.Response) (*ArchiveLocationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ArchiveLocationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateLocationResponse parses an HTTP response from a UpdateLocationWithResponse call
+func ParseUpdateLocationResponse(rsp *http.Response) (*UpdateLocationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateLocationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Location
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListMembersResponse parses an HTTP response from a ListMembersWithResponse call
 func ParseListMembersResponse(rsp *http.Response) (*ListMembersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3336,6 +10832,638 @@ func ParseUpdateMemberResponse(rsp *http.Response) (*UpdateMemberResponse, error
 	return response, nil
 }
 
+// ParseGetCancellationPolicyResponse parses an HTTP response from a GetCancellationPolicyWithResponse call
+func ParseGetCancellationPolicyResponse(rsp *http.Response) (*GetCancellationPolicyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCancellationPolicyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CancellationPolicy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetCancellationPolicyResponse parses an HTTP response from a SetCancellationPolicyWithResponse call
+func ParseSetCancellationPolicyResponse(rsp *http.Response) (*SetCancellationPolicyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetCancellationPolicyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CancellationPolicy
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStudentsResponse parses an HTTP response from a ListStudentsWithResponse call
+func ParseListStudentsResponse(rsp *http.Response) (*ListStudentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStudentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StudentList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateStudentResponse parses an HTTP response from a CreateStudentWithResponse call
+func ParseCreateStudentResponse(rsp *http.Response) (*CreateStudentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateStudentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Student
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStudentResponse parses an HTTP response from a GetStudentWithResponse call
+func ParseGetStudentResponse(rsp *http.Response) (*GetStudentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStudentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Student
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateStudentResponse parses an HTTP response from a UpdateStudentWithResponse call
+func ParseUpdateStudentResponse(rsp *http.Response) (*UpdateStudentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateStudentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Student
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddContactResponse parses an HTTP response from a AddContactWithResponse call
+func ParseAddContactResponse(rsp *http.Response) (*AddContactResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddContactResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Contact
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveContactResponse parses an HTTP response from a RemoveContactWithResponse call
+func ParseRemoveContactResponse(rsp *http.Response) (*RemoveContactResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveContactResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateContactResponse parses an HTTP response from a UpdateContactWithResponse call
+func ParseUpdateContactResponse(rsp *http.Response) (*UpdateContactResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateContactResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Contact
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddGoalResponse parses an HTTP response from a AddGoalWithResponse call
+func ParseAddGoalResponse(rsp *http.Response) (*AddGoalResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddGoalResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Goal
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateGoalResponse parses an HTTP response from a UpdateGoalWithResponse call
+func ParseUpdateGoalResponse(rsp *http.Response) (*UpdateGoalResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateGoalResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Goal
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetLivez Report that the process is running
@@ -3365,6 +11493,54 @@ type ServerInterface interface {
 	// UpdateWorkspace Rename a team or change its timezone
 	// (PATCH /v1/workspaces/{workspaceId})
 	UpdateWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// ListLessons List lessons in a time range
+	// (GET /v1/workspaces/{workspaceId}/lessons)
+	ListLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListLessonsParams)
+	// CreateLesson Add a lesson
+	// (POST /v1/workspaces/{workspaceId}/lessons)
+	CreateLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// GetLesson Get a lesson with its tasks, goals and notes
+	// (GET /v1/workspaces/{workspaceId}/lessons/{lessonId})
+	GetLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId)
+	// UpdateLesson Move, reassign or otherwise change a scheduled lesson
+	// (PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId})
+	UpdateLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params UpdateLessonParams)
+	// CancelLesson Cancel a lesson, optionally booking a make-up
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel)
+	CancelLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params CancelLessonParams)
+	// CompleteLesson Mark a lesson done
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete)
+	CompleteLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params CompleteLessonParams)
+	// GetLessonHistory Every change to a lesson, oldest first
+	// (GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history)
+	GetLessonHistory(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId)
+	// AddLessonItem Add a task, goal or note to a lesson
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items)
+	AddLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId)
+	// DeleteLessonItem Remove an item
+	// (DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId})
+	DeleteLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId)
+	// UpdateLessonItem Edit an item, or tick or untick a task
+	// (PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId})
+	UpdateLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId)
+	// MarkNoShow Record that the student did not come
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show)
+	MarkNoShow(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params MarkNoShowParams)
+	// ReopenLesson Put a done, no-show or cancelled lesson back to scheduled
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen)
+	ReopenLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params ReopenLessonParams)
+	// ListLocations List the team's saved places
+	// (GET /v1/workspaces/{workspaceId}/locations)
+	ListLocations(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// CreateLocation Save a place lessons happen
+	// (POST /v1/workspaces/{workspaceId}/locations)
+	CreateLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// ArchiveLocation Stop offering a saved place
+	// (DELETE /v1/workspaces/{workspaceId}/locations/{locationId})
+	ArchiveLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, locationId LocationId)
+	// UpdateLocation Change a saved place
+	// (PUT /v1/workspaces/{workspaceId}/locations/{locationId})
+	UpdateLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, locationId LocationId)
 	// ListMembers List the team's members and pending invitations
 	// (GET /v1/workspaces/{workspaceId}/members)
 	ListMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
@@ -3377,6 +11553,39 @@ type ServerInterface interface {
 	// UpdateMember Change a member's role
 	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
 	UpdateMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// GetCancellationPolicy Get a tutor's cancellation policy
+	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
+	GetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// SetCancellationPolicy Set a tutor's cancellation policy
+	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
+	SetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// ListStudents List students
+	// (GET /v1/workspaces/{workspaceId}/students)
+	ListStudents(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListStudentsParams)
+	// CreateStudent Add a student
+	// (POST /v1/workspaces/{workspaceId}/students)
+	CreateStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// GetStudent Get a student with their contacts and goals
+	// (GET /v1/workspaces/{workspaceId}/students/{studentId})
+	GetStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
+	// UpdateStudent Change a student, or archive or restore them
+	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId})
+	UpdateStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
+	// AddContact Add someone who gets a student's reminders or receipts
+	// (POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts)
+	AddContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
+	// RemoveContact Remove a contact
+	// (DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
+	RemoveContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId)
+	// UpdateContact Change a contact
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
+	UpdateContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId)
+	// AddGoal Set a goal that spans lessons
+	// (POST /v1/workspaces/{workspaceId}/students/{studentId}/goals)
+	AddGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
+	// UpdateGoal Rename a goal, or mark it achieved or dropped
+	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
+	UpdateGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, goalId GoalId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -3538,6 +11747,769 @@ func (siw *ServerInterfaceWrapper) UpdateWorkspace(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ListLessons operation middleware
+func (siw *ServerInterfaceWrapper) ListLessons(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListLessonsParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "teacherId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "teacherId", r.URL.Query(), &params.TeacherId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "teacherId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "teacherId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "studentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "studentId", r.URL.Query(), &params.StudentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "studentId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLessons(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLesson operation middleware
+func (siw *ServerInterfaceWrapper) CreateLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLesson(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLesson operation middleware
+func (siw *ServerInterfaceWrapper) GetLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLesson(w, r, workspaceId, lessonId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLesson operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateLessonParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLesson(w, r, workspaceId, lessonId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelLesson operation middleware
+func (siw *ServerInterfaceWrapper) CancelLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CancelLessonParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelLesson(w, r, workspaceId, lessonId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CompleteLesson operation middleware
+func (siw *ServerInterfaceWrapper) CompleteLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CompleteLessonParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CompleteLesson(w, r, workspaceId, lessonId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetLessonHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetLessonHistory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetLessonHistory(w, r, workspaceId, lessonId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddLessonItem operation middleware
+func (siw *ServerInterfaceWrapper) AddLessonItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddLessonItem(w, r, workspaceId, lessonId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteLessonItem operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLessonItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId ItemId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", r.PathValue("itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLessonItem(w, r, workspaceId, lessonId, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLessonItem operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLessonItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId ItemId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", r.PathValue("itemId"), &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLessonItem(w, r, workspaceId, lessonId, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MarkNoShow operation middleware
+func (siw *ServerInterfaceWrapper) MarkNoShow(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MarkNoShowParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MarkNoShow(w, r, workspaceId, lessonId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ReopenLesson operation middleware
+func (siw *ServerInterfaceWrapper) ReopenLesson(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "lessonId" -------------
+	var lessonId LessonId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "lessonId", r.PathValue("lessonId"), &lessonId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "lessonId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ReopenLessonParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ReopenLesson(w, r, workspaceId, lessonId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLocations operation middleware
+func (siw *ServerInterfaceWrapper) ListLocations(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLocations(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLocation operation middleware
+func (siw *ServerInterfaceWrapper) CreateLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLocation(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ArchiveLocation operation middleware
+func (siw *ServerInterfaceWrapper) ArchiveLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId LocationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", r.PathValue("locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ArchiveLocation(w, r, workspaceId, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLocation operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLocation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "locationId" -------------
+	var locationId LocationId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "locationId", r.PathValue("locationId"), &locationId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "locationId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLocation(w, r, workspaceId, locationId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListMembers operation middleware
 func (siw *ServerInterfaceWrapper) ListMembers(w http.ResponseWriter, r *http.Request) {
 
@@ -3651,6 +12623,468 @@ func (siw *ServerInterfaceWrapper) UpdateMember(w http.ResponseWriter, r *http.R
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateMember(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCancellationPolicy operation middleware
+func (siw *ServerInterfaceWrapper) GetCancellationPolicy(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCancellationPolicy(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetCancellationPolicy operation middleware
+func (siw *ServerInterfaceWrapper) SetCancellationPolicy(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetCancellationPolicy(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListStudents operation middleware
+func (siw *ServerInterfaceWrapper) ListStudents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListStudentsParams
+
+	// ------------- Optional query parameter "search" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "search", r.URL.Query(), &params.Search, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "search"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "search", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "teacherId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "teacherId", r.URL.Query(), &params.TeacherId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "teacherId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "teacherId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "archived" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "archived", r.URL.Query(), &params.Archived, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "archived"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "archived", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListStudents(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateStudent operation middleware
+func (siw *ServerInterfaceWrapper) CreateStudent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStudent(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetStudent operation middleware
+func (siw *ServerInterfaceWrapper) GetStudent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStudent(w, r, workspaceId, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateStudent operation middleware
+func (siw *ServerInterfaceWrapper) UpdateStudent(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateStudent(w, r, workspaceId, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddContact operation middleware
+func (siw *ServerInterfaceWrapper) AddContact(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddContact(w, r, workspaceId, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveContact operation middleware
+func (siw *ServerInterfaceWrapper) RemoveContact(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "contactId" -------------
+	var contactId ContactId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "contactId", r.PathValue("contactId"), &contactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contactId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveContact(w, r, workspaceId, studentId, contactId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateContact operation middleware
+func (siw *ServerInterfaceWrapper) UpdateContact(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "contactId" -------------
+	var contactId ContactId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "contactId", r.PathValue("contactId"), &contactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contactId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateContact(w, r, workspaceId, studentId, contactId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddGoal operation middleware
+func (siw *ServerInterfaceWrapper) AddGoal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddGoal(w, r, workspaceId, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateGoal operation middleware
+func (siw *ServerInterfaceWrapper) UpdateGoal(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "goalId" -------------
+	var goalId GoalId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "goalId", r.PathValue("goalId"), &goalId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "goalId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateGoal(w, r, workspaceId, studentId, goalId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3793,6 +13227,33 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members", wrapper.AddMember)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}", wrapper.RemoveMember)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}", wrapper.UpdateMember)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students", wrapper.ListStudents)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students", wrapper.CreateStudent)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}", wrapper.GetStudent)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}", wrapper.UpdateStudent)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts", wrapper.AddContact)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}", wrapper.RemoveContact)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}", wrapper.UpdateContact)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/goals", wrapper.AddGoal)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId}", wrapper.UpdateGoal)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/locations", wrapper.ListLocations)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/locations", wrapper.CreateLocation)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/locations/{locationId}", wrapper.ArchiveLocation)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/locations/{locationId}", wrapper.UpdateLocation)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons", wrapper.ListLessons)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons", wrapper.CreateLesson)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}", wrapper.GetLesson)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}", wrapper.UpdateLesson)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/complete", wrapper.CompleteLesson)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show", wrapper.MarkNoShow)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel", wrapper.CancelLesson)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen", wrapper.ReopenLesson)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/items", wrapper.AddLessonItem)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId}", wrapper.DeleteLessonItem)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId}", wrapper.UpdateLessonItem)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/history", wrapper.GetLessonHistory)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy", wrapper.GetCancellationPolicy)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy", wrapper.SetCancellationPolicy)
 
 	return m
 }
@@ -4328,6 +13789,1574 @@ func (response UpdateWorkspacedefaultApplicationProblemPlusJSONResponse) VisitUp
 	return err
 }
 
+type ListLessonsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListLessonsParams
+}
+
+type ListLessonsResponseObject interface {
+	VisitListLessonsResponse(w http.ResponseWriter) error
+}
+
+type ListLessons200JSONResponse LessonList
+
+func (response ListLessons200JSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLessons400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListLessons400ApplicationProblemPlusJSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLessons401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListLessons401ApplicationProblemPlusJSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLessons403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListLessons403ApplicationProblemPlusJSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLessons404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListLessons404ApplicationProblemPlusJSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLessonsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListLessonsdefaultApplicationProblemPlusJSONResponse) VisitListLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateLessonJSONRequestBody
+}
+
+type CreateLessonResponseObject interface {
+	VisitCreateLessonResponse(w http.ResponseWriter) error
+}
+
+type CreateLesson201JSONResponse Lesson
+
+func (response CreateLesson201JSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLesson400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateLesson400ApplicationProblemPlusJSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLesson401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLesson401ApplicationProblemPlusJSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLesson403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLesson403ApplicationProblemPlusJSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLesson404ApplicationProblemPlusJSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateLessondefaultApplicationProblemPlusJSONResponse) VisitCreateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+}
+
+type GetLessonResponseObject interface {
+	VisitGetLessonResponse(w http.ResponseWriter) error
+}
+
+type GetLesson200JSONResponse Lesson
+
+func (response GetLesson200JSONResponse) VisitGetLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLesson401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetLesson401ApplicationProblemPlusJSONResponse) VisitGetLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetLesson404ApplicationProblemPlusJSONResponse) VisitGetLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetLessondefaultApplicationProblemPlusJSONResponse) VisitGetLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Params      UpdateLessonParams
+	Body        *UpdateLessonJSONRequestBody
+}
+
+type UpdateLessonResponseObject interface {
+	VisitUpdateLessonResponse(w http.ResponseWriter) error
+}
+
+type UpdateLesson200JSONResponse Lesson
+
+func (response UpdateLesson200JSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateLesson400ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLesson401ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLesson403ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLesson404ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson409ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLesson409ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLesson412ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLesson412ApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateLessondefaultApplicationProblemPlusJSONResponse) VisitUpdateLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Params      CancelLessonParams
+	Body        *CancelLessonJSONRequestBody
+}
+
+type CancelLessonResponseObject interface {
+	VisitCancelLessonResponse(w http.ResponseWriter) error
+}
+
+type CancelLesson200JSONResponse Lesson
+
+func (response CancelLesson200JSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CancelLesson400ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson401ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelLesson401ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson403ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelLesson403ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelLesson404ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson409ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelLesson409ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLesson412ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelLesson412ApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CancelLessondefaultApplicationProblemPlusJSONResponse) VisitCancelLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Params      CompleteLessonParams
+	Body        *CompleteLessonJSONRequestBody
+}
+
+type CompleteLessonResponseObject interface {
+	VisitCompleteLessonResponse(w http.ResponseWriter) error
+}
+
+type CompleteLesson200JSONResponse Lesson
+
+func (response CompleteLesson200JSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CompleteLesson400ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson401ApplicationProblemPlusJSONResponse Problem
+
+func (response CompleteLesson401ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson403ApplicationProblemPlusJSONResponse Problem
+
+func (response CompleteLesson403ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response CompleteLesson404ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson409ApplicationProblemPlusJSONResponse Problem
+
+func (response CompleteLesson409ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLesson412ApplicationProblemPlusJSONResponse Problem
+
+func (response CompleteLesson412ApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CompleteLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CompleteLessondefaultApplicationProblemPlusJSONResponse) VisitCompleteLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessonHistoryRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+}
+
+type GetLessonHistoryResponseObject interface {
+	VisitGetLessonHistoryResponse(w http.ResponseWriter) error
+}
+
+type GetLessonHistory200JSONResponse HistoryList
+
+func (response GetLessonHistory200JSONResponse) VisitGetLessonHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessonHistory401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetLessonHistory401ApplicationProblemPlusJSONResponse) VisitGetLessonHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessonHistory404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetLessonHistory404ApplicationProblemPlusJSONResponse) VisitGetLessonHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetLessonHistorydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetLessonHistorydefaultApplicationProblemPlusJSONResponse) VisitGetLessonHistoryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItemRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Body        *AddLessonItemJSONRequestBody
+}
+
+type AddLessonItemResponseObject interface {
+	VisitAddLessonItemResponse(w http.ResponseWriter) error
+}
+
+type AddLessonItem201JSONResponse LessonItem
+
+func (response AddLessonItem201JSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItem400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response AddLessonItem400ApplicationProblemPlusJSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItem401ApplicationProblemPlusJSONResponse Problem
+
+func (response AddLessonItem401ApplicationProblemPlusJSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItem403ApplicationProblemPlusJSONResponse Problem
+
+func (response AddLessonItem403ApplicationProblemPlusJSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItem404ApplicationProblemPlusJSONResponse Problem
+
+func (response AddLessonItem404ApplicationProblemPlusJSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddLessonItemdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response AddLessonItemdefaultApplicationProblemPlusJSONResponse) VisitAddLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteLessonItemRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	ItemId      ItemId      `json:"itemId"`
+}
+
+type DeleteLessonItemResponseObject interface {
+	VisitDeleteLessonItemResponse(w http.ResponseWriter) error
+}
+
+type DeleteLessonItem204Response struct {
+}
+
+func (response DeleteLessonItem204Response) VisitDeleteLessonItemResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteLessonItem401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteLessonItem401ApplicationProblemPlusJSONResponse) VisitDeleteLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteLessonItem403ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteLessonItem403ApplicationProblemPlusJSONResponse) VisitDeleteLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteLessonItem404ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteLessonItem404ApplicationProblemPlusJSONResponse) VisitDeleteLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteLessonItemdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteLessonItemdefaultApplicationProblemPlusJSONResponse) VisitDeleteLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItemRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	ItemId      ItemId      `json:"itemId"`
+	Body        *UpdateLessonItemJSONRequestBody
+}
+
+type UpdateLessonItemResponseObject interface {
+	VisitUpdateLessonItemResponse(w http.ResponseWriter) error
+}
+
+type UpdateLessonItem200JSONResponse LessonItem
+
+func (response UpdateLessonItem200JSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItem400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateLessonItem400ApplicationProblemPlusJSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItem401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLessonItem401ApplicationProblemPlusJSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItem403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLessonItem403ApplicationProblemPlusJSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItem404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLessonItem404ApplicationProblemPlusJSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLessonItemdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateLessonItemdefaultApplicationProblemPlusJSONResponse) VisitUpdateLessonItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShowRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Params      MarkNoShowParams
+}
+
+type MarkNoShowResponseObject interface {
+	VisitMarkNoShowResponse(w http.ResponseWriter) error
+}
+
+type MarkNoShow200JSONResponse Lesson
+
+func (response MarkNoShow200JSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShow401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response MarkNoShow401ApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShow403ApplicationProblemPlusJSONResponse Problem
+
+func (response MarkNoShow403ApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShow404ApplicationProblemPlusJSONResponse Problem
+
+func (response MarkNoShow404ApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShow409ApplicationProblemPlusJSONResponse Problem
+
+func (response MarkNoShow409ApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShow412ApplicationProblemPlusJSONResponse Problem
+
+func (response MarkNoShow412ApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MarkNoShowdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response MarkNoShowdefaultApplicationProblemPlusJSONResponse) VisitMarkNoShowResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLessonRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LessonId    LessonId    `json:"lessonId"`
+	Params      ReopenLessonParams
+}
+
+type ReopenLessonResponseObject interface {
+	VisitReopenLessonResponse(w http.ResponseWriter) error
+}
+
+type ReopenLesson200JSONResponse Lesson
+
+func (response ReopenLesson200JSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLesson401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ReopenLesson401ApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLesson403ApplicationProblemPlusJSONResponse Problem
+
+func (response ReopenLesson403ApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLesson404ApplicationProblemPlusJSONResponse Problem
+
+func (response ReopenLesson404ApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLesson409ApplicationProblemPlusJSONResponse Problem
+
+func (response ReopenLesson409ApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLesson412ApplicationProblemPlusJSONResponse Problem
+
+func (response ReopenLesson412ApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ReopenLessondefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ReopenLessondefaultApplicationProblemPlusJSONResponse) VisitReopenLessonResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLocationsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListLocationsResponseObject interface {
+	VisitListLocationsResponse(w http.ResponseWriter) error
+}
+
+type ListLocations200JSONResponse LocationList
+
+func (response ListLocations200JSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLocations401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListLocations401ApplicationProblemPlusJSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLocations404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListLocations404ApplicationProblemPlusJSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLocationsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListLocationsdefaultApplicationProblemPlusJSONResponse) VisitListLocationsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocationRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateLocationJSONRequestBody
+}
+
+type CreateLocationResponseObject interface {
+	VisitCreateLocationResponse(w http.ResponseWriter) error
+}
+
+type CreateLocation201JSONResponse Location
+
+func (response CreateLocation201JSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateLocation400ApplicationProblemPlusJSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLocation401ApplicationProblemPlusJSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLocation403ApplicationProblemPlusJSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocation404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateLocation404ApplicationProblemPlusJSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLocationdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateLocationdefaultApplicationProblemPlusJSONResponse) VisitCreateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocationRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LocationId  LocationId  `json:"locationId"`
+}
+
+type ArchiveLocationResponseObject interface {
+	VisitArchiveLocationResponse(w http.ResponseWriter) error
+}
+
+type ArchiveLocation204Response struct {
+}
+
+func (response ArchiveLocation204Response) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ArchiveLocation401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ArchiveLocation401ApplicationProblemPlusJSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocation403ApplicationProblemPlusJSONResponse Problem
+
+func (response ArchiveLocation403ApplicationProblemPlusJSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocation404ApplicationProblemPlusJSONResponse Problem
+
+func (response ArchiveLocation404ApplicationProblemPlusJSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ArchiveLocationdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ArchiveLocationdefaultApplicationProblemPlusJSONResponse) VisitArchiveLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocationRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	LocationId  LocationId  `json:"locationId"`
+	Body        *UpdateLocationJSONRequestBody
+}
+
+type UpdateLocationResponseObject interface {
+	VisitUpdateLocationResponse(w http.ResponseWriter) error
+}
+
+type UpdateLocation200JSONResponse Location
+
+func (response UpdateLocation200JSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateLocation400ApplicationProblemPlusJSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLocation401ApplicationProblemPlusJSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLocation403ApplicationProblemPlusJSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocation404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateLocation404ApplicationProblemPlusJSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLocationdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateLocationdefaultApplicationProblemPlusJSONResponse) VisitUpdateLocationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListMembersRequestObject struct {
 	WorkspaceId WorkspaceId `json:"workspaceId"`
 }
@@ -4728,6 +15757,1017 @@ func (response UpdateMemberdefaultApplicationProblemPlusJSONResponse) VisitUpdat
 	return err
 }
 
+type GetCancellationPolicyRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type GetCancellationPolicyResponseObject interface {
+	VisitGetCancellationPolicyResponse(w http.ResponseWriter) error
+}
+
+type GetCancellationPolicy200JSONResponse CancellationPolicy
+
+func (response GetCancellationPolicy200JSONResponse) VisitGetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCancellationPolicy401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetCancellationPolicy401ApplicationProblemPlusJSONResponse) VisitGetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCancellationPolicy404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetCancellationPolicy404ApplicationProblemPlusJSONResponse) VisitGetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCancellationPolicydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetCancellationPolicydefaultApplicationProblemPlusJSONResponse) VisitGetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicyRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+	Body        *SetCancellationPolicyJSONRequestBody
+}
+
+type SetCancellationPolicyResponseObject interface {
+	VisitSetCancellationPolicyResponse(w http.ResponseWriter) error
+}
+
+type SetCancellationPolicy200JSONResponse CancellationPolicy
+
+func (response SetCancellationPolicy200JSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicy400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SetCancellationPolicy400ApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicy401ApplicationProblemPlusJSONResponse Problem
+
+func (response SetCancellationPolicy401ApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicy403ApplicationProblemPlusJSONResponse Problem
+
+func (response SetCancellationPolicy403ApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicy404ApplicationProblemPlusJSONResponse Problem
+
+func (response SetCancellationPolicy404ApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetCancellationPolicydefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SetCancellationPolicydefaultApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudentsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListStudentsParams
+}
+
+type ListStudentsResponseObject interface {
+	VisitListStudentsResponse(w http.ResponseWriter) error
+}
+
+type ListStudents200JSONResponse StudentList
+
+func (response ListStudents200JSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudents400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListStudents400ApplicationProblemPlusJSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudents401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListStudents401ApplicationProblemPlusJSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudents403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListStudents403ApplicationProblemPlusJSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudents404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListStudents404ApplicationProblemPlusJSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStudentsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListStudentsdefaultApplicationProblemPlusJSONResponse) VisitListStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudentRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateStudentJSONRequestBody
+}
+
+type CreateStudentResponseObject interface {
+	VisitCreateStudentResponse(w http.ResponseWriter) error
+}
+
+type CreateStudent201JSONResponse Student
+
+func (response CreateStudent201JSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudent400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateStudent400ApplicationProblemPlusJSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudent401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateStudent401ApplicationProblemPlusJSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudent403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateStudent403ApplicationProblemPlusJSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudent404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateStudent404ApplicationProblemPlusJSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStudentdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateStudentdefaultApplicationProblemPlusJSONResponse) VisitCreateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStudentRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+}
+
+type GetStudentResponseObject interface {
+	VisitGetStudentResponse(w http.ResponseWriter) error
+}
+
+type GetStudent200JSONResponse Student
+
+func (response GetStudent200JSONResponse) VisitGetStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStudent401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetStudent401ApplicationProblemPlusJSONResponse) VisitGetStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStudent404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetStudent404ApplicationProblemPlusJSONResponse) VisitGetStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStudentdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetStudentdefaultApplicationProblemPlusJSONResponse) VisitGetStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudentRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	Body        *UpdateStudentJSONRequestBody
+}
+
+type UpdateStudentResponseObject interface {
+	VisitUpdateStudentResponse(w http.ResponseWriter) error
+}
+
+type UpdateStudent200JSONResponse Student
+
+func (response UpdateStudent200JSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudent400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateStudent400ApplicationProblemPlusJSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudent401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateStudent401ApplicationProblemPlusJSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudent403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateStudent403ApplicationProblemPlusJSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudent404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateStudent404ApplicationProblemPlusJSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateStudentdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateStudentdefaultApplicationProblemPlusJSONResponse) VisitUpdateStudentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContactRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	Body        *AddContactJSONRequestBody
+}
+
+type AddContactResponseObject interface {
+	VisitAddContactResponse(w http.ResponseWriter) error
+}
+
+type AddContact201JSONResponse Contact
+
+func (response AddContact201JSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContact400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response AddContact400ApplicationProblemPlusJSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContact401ApplicationProblemPlusJSONResponse Problem
+
+func (response AddContact401ApplicationProblemPlusJSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContact403ApplicationProblemPlusJSONResponse Problem
+
+func (response AddContact403ApplicationProblemPlusJSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContact404ApplicationProblemPlusJSONResponse Problem
+
+func (response AddContact404ApplicationProblemPlusJSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddContactdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response AddContactdefaultApplicationProblemPlusJSONResponse) VisitAddContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveContactRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	ContactId   ContactId   `json:"contactId"`
+}
+
+type RemoveContactResponseObject interface {
+	VisitRemoveContactResponse(w http.ResponseWriter) error
+}
+
+type RemoveContact204Response struct {
+}
+
+func (response RemoveContact204Response) VisitRemoveContactResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveContact401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveContact401ApplicationProblemPlusJSONResponse) VisitRemoveContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveContact403ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveContact403ApplicationProblemPlusJSONResponse) VisitRemoveContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveContact404ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveContact404ApplicationProblemPlusJSONResponse) VisitRemoveContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveContactdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RemoveContactdefaultApplicationProblemPlusJSONResponse) VisitRemoveContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContactRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	ContactId   ContactId   `json:"contactId"`
+	Body        *UpdateContactJSONRequestBody
+}
+
+type UpdateContactResponseObject interface {
+	VisitUpdateContactResponse(w http.ResponseWriter) error
+}
+
+type UpdateContact200JSONResponse Contact
+
+func (response UpdateContact200JSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContact400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateContact400ApplicationProblemPlusJSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContact401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateContact401ApplicationProblemPlusJSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContact403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateContact403ApplicationProblemPlusJSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContact404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateContact404ApplicationProblemPlusJSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateContactdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateContactdefaultApplicationProblemPlusJSONResponse) VisitUpdateContactResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoalRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	Body        *AddGoalJSONRequestBody
+}
+
+type AddGoalResponseObject interface {
+	VisitAddGoalResponse(w http.ResponseWriter) error
+}
+
+type AddGoal201JSONResponse Goal
+
+func (response AddGoal201JSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoal400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response AddGoal400ApplicationProblemPlusJSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoal401ApplicationProblemPlusJSONResponse Problem
+
+func (response AddGoal401ApplicationProblemPlusJSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoal403ApplicationProblemPlusJSONResponse Problem
+
+func (response AddGoal403ApplicationProblemPlusJSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoal404ApplicationProblemPlusJSONResponse Problem
+
+func (response AddGoal404ApplicationProblemPlusJSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddGoaldefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response AddGoaldefaultApplicationProblemPlusJSONResponse) VisitAddGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoalRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	GoalId      GoalId      `json:"goalId"`
+	Body        *UpdateGoalJSONRequestBody
+}
+
+type UpdateGoalResponseObject interface {
+	VisitUpdateGoalResponse(w http.ResponseWriter) error
+}
+
+type UpdateGoal200JSONResponse Goal
+
+func (response UpdateGoal200JSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoal400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateGoal400ApplicationProblemPlusJSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoal401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateGoal401ApplicationProblemPlusJSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoal403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateGoal403ApplicationProblemPlusJSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoal404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateGoal404ApplicationProblemPlusJSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateGoaldefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateGoaldefaultApplicationProblemPlusJSONResponse) VisitUpdateGoalResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetLivez Report that the process is running
@@ -4757,6 +16797,54 @@ type StrictServerInterface interface {
 	// UpdateWorkspace Rename a team or change its timezone
 	// (PATCH /v1/workspaces/{workspaceId})
 	UpdateWorkspace(ctx context.Context, request UpdateWorkspaceRequestObject) (UpdateWorkspaceResponseObject, error)
+	// ListLessons List lessons in a time range
+	// (GET /v1/workspaces/{workspaceId}/lessons)
+	ListLessons(ctx context.Context, request ListLessonsRequestObject) (ListLessonsResponseObject, error)
+	// CreateLesson Add a lesson
+	// (POST /v1/workspaces/{workspaceId}/lessons)
+	CreateLesson(ctx context.Context, request CreateLessonRequestObject) (CreateLessonResponseObject, error)
+	// GetLesson Get a lesson with its tasks, goals and notes
+	// (GET /v1/workspaces/{workspaceId}/lessons/{lessonId})
+	GetLesson(ctx context.Context, request GetLessonRequestObject) (GetLessonResponseObject, error)
+	// UpdateLesson Move, reassign or otherwise change a scheduled lesson
+	// (PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId})
+	UpdateLesson(ctx context.Context, request UpdateLessonRequestObject) (UpdateLessonResponseObject, error)
+	// CancelLesson Cancel a lesson, optionally booking a make-up
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel)
+	CancelLesson(ctx context.Context, request CancelLessonRequestObject) (CancelLessonResponseObject, error)
+	// CompleteLesson Mark a lesson done
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete)
+	CompleteLesson(ctx context.Context, request CompleteLessonRequestObject) (CompleteLessonResponseObject, error)
+	// GetLessonHistory Every change to a lesson, oldest first
+	// (GET /v1/workspaces/{workspaceId}/lessons/{lessonId}/history)
+	GetLessonHistory(ctx context.Context, request GetLessonHistoryRequestObject) (GetLessonHistoryResponseObject, error)
+	// AddLessonItem Add a task, goal or note to a lesson
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/items)
+	AddLessonItem(ctx context.Context, request AddLessonItemRequestObject) (AddLessonItemResponseObject, error)
+	// DeleteLessonItem Remove an item
+	// (DELETE /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId})
+	DeleteLessonItem(ctx context.Context, request DeleteLessonItemRequestObject) (DeleteLessonItemResponseObject, error)
+	// UpdateLessonItem Edit an item, or tick or untick a task
+	// (PATCH /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId})
+	UpdateLessonItem(ctx context.Context, request UpdateLessonItemRequestObject) (UpdateLessonItemResponseObject, error)
+	// MarkNoShow Record that the student did not come
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show)
+	MarkNoShow(ctx context.Context, request MarkNoShowRequestObject) (MarkNoShowResponseObject, error)
+	// ReopenLesson Put a done, no-show or cancelled lesson back to scheduled
+	// (POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen)
+	ReopenLesson(ctx context.Context, request ReopenLessonRequestObject) (ReopenLessonResponseObject, error)
+	// ListLocations List the team's saved places
+	// (GET /v1/workspaces/{workspaceId}/locations)
+	ListLocations(ctx context.Context, request ListLocationsRequestObject) (ListLocationsResponseObject, error)
+	// CreateLocation Save a place lessons happen
+	// (POST /v1/workspaces/{workspaceId}/locations)
+	CreateLocation(ctx context.Context, request CreateLocationRequestObject) (CreateLocationResponseObject, error)
+	// ArchiveLocation Stop offering a saved place
+	// (DELETE /v1/workspaces/{workspaceId}/locations/{locationId})
+	ArchiveLocation(ctx context.Context, request ArchiveLocationRequestObject) (ArchiveLocationResponseObject, error)
+	// UpdateLocation Change a saved place
+	// (PUT /v1/workspaces/{workspaceId}/locations/{locationId})
+	UpdateLocation(ctx context.Context, request UpdateLocationRequestObject) (UpdateLocationResponseObject, error)
 	// ListMembers List the team's members and pending invitations
 	// (GET /v1/workspaces/{workspaceId}/members)
 	ListMembers(ctx context.Context, request ListMembersRequestObject) (ListMembersResponseObject, error)
@@ -4769,6 +16857,39 @@ type StrictServerInterface interface {
 	// UpdateMember Change a member's role
 	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
 	UpdateMember(ctx context.Context, request UpdateMemberRequestObject) (UpdateMemberResponseObject, error)
+	// GetCancellationPolicy Get a tutor's cancellation policy
+	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
+	GetCancellationPolicy(ctx context.Context, request GetCancellationPolicyRequestObject) (GetCancellationPolicyResponseObject, error)
+	// SetCancellationPolicy Set a tutor's cancellation policy
+	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
+	SetCancellationPolicy(ctx context.Context, request SetCancellationPolicyRequestObject) (SetCancellationPolicyResponseObject, error)
+	// ListStudents List students
+	// (GET /v1/workspaces/{workspaceId}/students)
+	ListStudents(ctx context.Context, request ListStudentsRequestObject) (ListStudentsResponseObject, error)
+	// CreateStudent Add a student
+	// (POST /v1/workspaces/{workspaceId}/students)
+	CreateStudent(ctx context.Context, request CreateStudentRequestObject) (CreateStudentResponseObject, error)
+	// GetStudent Get a student with their contacts and goals
+	// (GET /v1/workspaces/{workspaceId}/students/{studentId})
+	GetStudent(ctx context.Context, request GetStudentRequestObject) (GetStudentResponseObject, error)
+	// UpdateStudent Change a student, or archive or restore them
+	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId})
+	UpdateStudent(ctx context.Context, request UpdateStudentRequestObject) (UpdateStudentResponseObject, error)
+	// AddContact Add someone who gets a student's reminders or receipts
+	// (POST /v1/workspaces/{workspaceId}/students/{studentId}/contacts)
+	AddContact(ctx context.Context, request AddContactRequestObject) (AddContactResponseObject, error)
+	// RemoveContact Remove a contact
+	// (DELETE /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
+	RemoveContact(ctx context.Context, request RemoveContactRequestObject) (RemoveContactResponseObject, error)
+	// UpdateContact Change a contact
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
+	UpdateContact(ctx context.Context, request UpdateContactRequestObject) (UpdateContactResponseObject, error)
+	// AddGoal Set a goal that spans lessons
+	// (POST /v1/workspaces/{workspaceId}/students/{studentId}/goals)
+	AddGoal(ctx context.Context, request AddGoalRequestObject) (AddGoalResponseObject, error)
+	// UpdateGoal Rename a goal, or mark it achieved or dropped
+	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
+	UpdateGoal(ctx context.Context, request UpdateGoalRequestObject) (UpdateGoalResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -5051,6 +17172,501 @@ func (sh *strictHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// ListLessons operation middleware
+func (sh *strictHandler) ListLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListLessonsParams) {
+	var request ListLessonsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLessons(ctx, request.(ListLessonsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLessons")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLessonsResponseObject); ok {
+		if err := validResponse.VisitListLessonsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLesson operation middleware
+func (sh *strictHandler) CreateLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request CreateLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body CreateLessonJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLesson(ctx, request.(CreateLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLessonResponseObject); ok {
+		if err := validResponse.VisitCreateLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLesson operation middleware
+func (sh *strictHandler) GetLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId) {
+	var request GetLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLesson(ctx, request.(GetLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLessonResponseObject); ok {
+		if err := validResponse.VisitGetLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLesson operation middleware
+func (sh *strictHandler) UpdateLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params UpdateLessonParams) {
+	var request UpdateLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.Params = params
+
+	var body UpdateLessonJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLesson(ctx, request.(UpdateLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLessonResponseObject); ok {
+		if err := validResponse.VisitUpdateLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CancelLesson operation middleware
+func (sh *strictHandler) CancelLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params CancelLessonParams) {
+	var request CancelLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.Params = params
+
+	var body CancelLessonJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CancelLesson(ctx, request.(CancelLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CancelLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CancelLessonResponseObject); ok {
+		if err := validResponse.VisitCancelLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CompleteLesson operation middleware
+func (sh *strictHandler) CompleteLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params CompleteLessonParams) {
+	var request CompleteLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.Params = params
+
+	var body CompleteLessonJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		if !errors.Is(err, io.EOF) {
+			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+			return
+		}
+	} else {
+		request.Body = &body
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CompleteLesson(ctx, request.(CompleteLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CompleteLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CompleteLessonResponseObject); ok {
+		if err := validResponse.VisitCompleteLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetLessonHistory operation middleware
+func (sh *strictHandler) GetLessonHistory(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId) {
+	var request GetLessonHistoryRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetLessonHistory(ctx, request.(GetLessonHistoryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetLessonHistory")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetLessonHistoryResponseObject); ok {
+		if err := validResponse.VisitGetLessonHistoryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddLessonItem operation middleware
+func (sh *strictHandler) AddLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId) {
+	var request AddLessonItemRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+
+	var body AddLessonItemJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddLessonItem(ctx, request.(AddLessonItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddLessonItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddLessonItemResponseObject); ok {
+		if err := validResponse.VisitAddLessonItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteLessonItem operation middleware
+func (sh *strictHandler) DeleteLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId) {
+	var request DeleteLessonItemRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteLessonItem(ctx, request.(DeleteLessonItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteLessonItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteLessonItemResponseObject); ok {
+		if err := validResponse.VisitDeleteLessonItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLessonItem operation middleware
+func (sh *strictHandler) UpdateLessonItem(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, itemId ItemId) {
+	var request UpdateLessonItemRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.ItemId = itemId
+
+	var body UpdateLessonItemJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLessonItem(ctx, request.(UpdateLessonItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLessonItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLessonItemResponseObject); ok {
+		if err := validResponse.VisitUpdateLessonItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MarkNoShow operation middleware
+func (sh *strictHandler) MarkNoShow(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params MarkNoShowParams) {
+	var request MarkNoShowRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MarkNoShow(ctx, request.(MarkNoShowRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MarkNoShow")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MarkNoShowResponseObject); ok {
+		if err := validResponse.VisitMarkNoShowResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ReopenLesson operation middleware
+func (sh *strictHandler) ReopenLesson(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, lessonId LessonId, params ReopenLessonParams) {
+	var request ReopenLessonRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LessonId = lessonId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ReopenLesson(ctx, request.(ReopenLessonRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ReopenLesson")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ReopenLessonResponseObject); ok {
+		if err := validResponse.VisitReopenLessonResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLocations operation middleware
+func (sh *strictHandler) ListLocations(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListLocationsRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLocations(ctx, request.(ListLocationsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLocations")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLocationsResponseObject); ok {
+		if err := validResponse.VisitListLocationsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLocation operation middleware
+func (sh *strictHandler) CreateLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request CreateLocationRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body CreateLocationJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateLocation(ctx, request.(CreateLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLocationResponseObject); ok {
+		if err := validResponse.VisitCreateLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ArchiveLocation operation middleware
+func (sh *strictHandler) ArchiveLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, locationId LocationId) {
+	var request ArchiveLocationRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LocationId = locationId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ArchiveLocation(ctx, request.(ArchiveLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ArchiveLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ArchiveLocationResponseObject); ok {
+		if err := validResponse.VisitArchiveLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLocation operation middleware
+func (sh *strictHandler) UpdateLocation(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, locationId LocationId) {
+	var request UpdateLocationRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.LocationId = locationId
+
+	var body UpdateLocationJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateLocation(ctx, request.(UpdateLocationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLocation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLocationResponseObject); ok {
+		if err := validResponse.VisitUpdateLocationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListMembers operation middleware
 func (sh *strictHandler) ListMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request ListMembersRequestObject
@@ -5171,74 +17787,502 @@ func (sh *strictHandler) UpdateMember(w http.ResponseWriter, r *http.Request, wo
 	}
 }
 
+// GetCancellationPolicy operation middleware
+func (sh *strictHandler) GetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request GetCancellationPolicyRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCancellationPolicy(ctx, request.(GetCancellationPolicyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCancellationPolicy")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCancellationPolicyResponseObject); ok {
+		if err := validResponse.VisitGetCancellationPolicyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetCancellationPolicy operation middleware
+func (sh *strictHandler) SetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request SetCancellationPolicyRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	var body SetCancellationPolicyJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetCancellationPolicy(ctx, request.(SetCancellationPolicyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetCancellationPolicy")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetCancellationPolicyResponseObject); ok {
+		if err := validResponse.VisitSetCancellationPolicyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListStudents operation middleware
+func (sh *strictHandler) ListStudents(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListStudentsParams) {
+	var request ListStudentsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListStudents(ctx, request.(ListStudentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListStudents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListStudentsResponseObject); ok {
+		if err := validResponse.VisitListStudentsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateStudent operation middleware
+func (sh *strictHandler) CreateStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request CreateStudentRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body CreateStudentJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateStudent(ctx, request.(CreateStudentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateStudent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateStudentResponseObject); ok {
+		if err := validResponse.VisitCreateStudentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetStudent operation middleware
+func (sh *strictHandler) GetStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request GetStudentRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetStudent(ctx, request.(GetStudentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStudent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStudentResponseObject); ok {
+		if err := validResponse.VisitGetStudentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateStudent operation middleware
+func (sh *strictHandler) UpdateStudent(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request UpdateStudentRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	var body UpdateStudentJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateStudent(ctx, request.(UpdateStudentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateStudent")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateStudentResponseObject); ok {
+		if err := validResponse.VisitUpdateStudentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddContact operation middleware
+func (sh *strictHandler) AddContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request AddContactRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	var body AddContactJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddContact(ctx, request.(AddContactRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddContact")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddContactResponseObject); ok {
+		if err := validResponse.VisitAddContactResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveContact operation middleware
+func (sh *strictHandler) RemoveContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId) {
+	var request RemoveContactRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+	request.ContactId = contactId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveContact(ctx, request.(RemoveContactRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveContact")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveContactResponseObject); ok {
+		if err := validResponse.VisitRemoveContactResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateContact operation middleware
+func (sh *strictHandler) UpdateContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId) {
+	var request UpdateContactRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+	request.ContactId = contactId
+
+	var body UpdateContactJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateContact(ctx, request.(UpdateContactRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateContact")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateContactResponseObject); ok {
+		if err := validResponse.VisitUpdateContactResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddGoal operation middleware
+func (sh *strictHandler) AddGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request AddGoalRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	var body AddGoalJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddGoal(ctx, request.(AddGoalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddGoal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddGoalResponseObject); ok {
+		if err := validResponse.VisitAddGoalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateGoal operation middleware
+func (sh *strictHandler) UpdateGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, goalId GoalId) {
+	var request UpdateGoalRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+	request.GoalId = goalId
+
+	var body UpdateGoalJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateGoal(ctx, request.(UpdateGoalRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateGoal")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateGoalResponseObject); ok {
+		if err := validResponse.VisitUpdateGoalResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7Fttc9s4kv4rXbyr8m4dI9mxt3aifLjyOZOsd+JMznY2HyJXBJEtEWMS4AGgFE5K//2qAfBFEmTZSeyp",
-	"3dpvEgXipfF099MPoK9RIotSChRGR6OvUckUK9Cgst8usJiiOk/pc4o6Ubw0XIpoFJ1CYX/TGS+BCzAZ",
-	"gkFWDKI44tSgZCaL4kiwAqNRVDQdxZHC/6u4wjQaGVVhHOkkw4LRCDOpCmaiUVRVnFqauqR3tVFczKPV",
-	"Ko4+SnWrS5ZgaErXzRTg5wWq2mRczKESKSrgBqaYSzHXYCSYjJm7JrvsjfI9813Ry7qUQqO15nslpzkW",
-	"9DGRwqAw9JGVZc4TRosYlq7Ff/2maUVfe2P9p8JZNIr+Y9ht19D9qodNv3bEbZvQAlAbmDGeYzoAejaV",
-	"aQ2a1RqWWT2wtvW90WCnaep2/tK9Ss9KJUtUhrulpFyXOavfWYMFNoIrIGMC0y0yYMnzHDQi7UYlDM/p",
-	"pxo0nwvggvaiYF/eopibLBodHR7GUcFF+33LvHGEBeP52ka4J4GmSua4z4wXLaAvqfVq1d/7T2tLbsa+",
-	"aYeS098wMTTUGSvZlOfc1NuW+VUgKLkEObNmYZXJpOK/282HghnFv5AzpTLRQ6aSjBtMTKVwUKRkHxRV",
-	"QVNZcFx+lkvxOUetpdBR7B6RmT8bXqBh0xytQQWbo33efeteUsg0mb/3iOySo8GN7jHlpvfoMzdY6K5L",
-	"barURpC4m1vvmW9VsrqwT24CO3SmkBlsHXwn8sQuyFmQHWiLuxh0JpeCnL1kisYEKcCP3ziEBiZSUJgg",
-	"L4229v3CaPXRKPpFZvCm4oYpuDJVyuXD0Un78LsUgcmeCjg/fXcKTQs75QG8whmrcmND1KnmbHjFxZyV",
-	"UuH63NZ/C8bJPm6twUJA/Ruy3GTbFk4yTG51GLwojKqhRAUplihSFEkN9gWKLD8XpalhJhXkfIECtbWq",
-	"w8oe53OTOaOeolU7WaYUq+m7NsxU9+zkyrXdtIPvIm7Wt9skbhbbMQ+NjzfrdvmY1dabbb9tlH2HC1RA",
-	"cZ5xoUFjotChbAspDaS7LU6ZYVOmMdT6B5hCuBjme9ptiKt2qCbyyNsojmiJNJmQG1/gtuE6phBAlc3V",
-	"LkGQEUtUWopetm5QNcWZVAhSTCVTKRfze0Ori+shZFUa1b4ePlCbTSPaF+O1xYUs6UYPESi/VC6A2fXH",
-	"a9ky59rYKGafWapyZwruwHOBHN5yAddMRN+XNfkOltWtGc5fDeCtSxNQSi4MMNP73QJ+D0+Ko98kF5ie",
-	"mpBvoXA0YYqJJRSJ4QscwOlUozCwzHiOwMWCG0zXxkqZwWcUYX8UHbiv57n3dnieXX+ISfg53emUrue3",
-	"PJQWW094gEuE3EHgF3NWKS0DkH3PtCaMThLbYGIjPQGWXoKSzbt9ka4iyJn2P+xNU27eu5fdxaL1SU38",
-	"5k88p9SyQMqpxGs0OdeSm8xOxqHyQIO1OLA0VZShxuISC7nA1DfQwBSCkMa6IKaDsehRL4c/WzfYYXcE",
-	"wTbibGfXhh5yDKzmoy1NMq6b6FCwGlLpKiyufX1zlnPLaSg8gFSQ8RTHgnKNkrmGmZKFa26DCLEc4bNR",
-	"UdLiCGqWdGi3uHthpsdrA7hxoWKvp3+b47UF2b5XW/oYdryun9bd1rZjN/ra2Wzt2JWjudbKjmta/CjU",
-	"qAhU9DxhStUgJPRHgxpNn9TLpbAJxSBLMvvJM+gojlzHQaz1isotlnn5+gxenPzlr+Dryg45U8VEkpGb",
-	"TqjHSewRYh9wk+MEpBqLieM8k5gCbZLZlZHTlyjLHO3aCKBJxsQcHZbuy5mYgaWN4EqKeYtvmSSVUigS",
-	"DDIlLrRhItlRADSFLlXzrsgvlUyrBFNHLbwRgrh0r4Zkhf+tpEE3uyVlI4WlVIa0hX2d6h0hi+b6t+vr",
-	"9+AaQCLTdYp/cnjSy2RcmOPnXf9cGJz74E07FaIWOpPKgK6KgqnaVZtcwy0XKX3pzbkdMnonDcxkJYJu",
-	"6x4ExrGFJnCCKZ9xVD4l7BusUmJUohD1yP88EtI82zH8hifbX5u135kvr8gD1T9Qae7klI1ILIuCm/D2",
-	"zLkB97vdZevLCpZMw7TiubEhNqbQO44qcSvkUoyj9SUez54nR+xFyJqLbkYhEOfINIJv5AdJcTGOrHEZ",
-	"5DJhuZ1Huj7k4eBocLjXfs3ocWOAkOk+lMSfLvCbBSAn/7RVeEftD1wS26i3XzHBMYdfZPbQQvsOleau",
-	"hd2pbv0Atch2sXsC99c5Hll1CMJle9K+SLoTA99faewXgLdSetPjvn3/2KcQm2HMsSpC7Ydzp4qOo2tk",
-	"xTh6aZF7+t4/bgnEdjl2TwLkOOaZrEQg8pxactnw0AG4mVEUpf0iluecB2bITKVw3Yl+ulfO2BYbQlrX",
-	"96tZTVHIVBMGWg7rG36XqmWt63WMdm7r5t2GAeVkTCrFTX1Fbux2bsYVkthynl7LW7RheYpMoXrdWPPv",
-	"H6+jeAs1r/17cFqZDM5fgaHX26KIChBMn3HhAx8t1wYPmpEboFtlZkzp9HsuZjIcUS2/ZwkdZZgluroY",
-	"3lMWhcTSOsvHXKpyaH4j/VfQpppavXMs6K1XTJn2JYUwR4GKGUx7tcOM5/jSUzuS7DMk8seVNjGNLMZC",
-	"VcQWmb6l9yeDsRiLMykWKGjSGv4UkrFjGEfkTu1iLD+WaTsHLsU4+vOIOnvmDnIcn8MvCZYuG2dWnLLM",
-	"AjVw3eRKTP1xz2S4OKL5PAPy4mc6kSWmoFDLSiWorTrZazps3VoPv/YOf1bDwWDg+vlZKekrw5ZUT3ad",
-	"3ExczckaeuQotpsPL1AbVpRdX8fHxy/INz5cnw3gQgqsaUneYyGxdL3MK9o9OL/6FU6eH/11LAA8Ua4d",
-	"faTO/3716zvwUal29Z0dJWEF5mdM40ugYgMWLK/8T1qwW/ycMO3Zu2eUkYPV6fvzqEdXPMFYxZEsUbCS",
-	"E80ZHA6ObYViMutNQzLu7/RpjoEQd1UlCWLquLQtOTyLTlBrSJhwiLX8eADnpqlcrWY7Fq3qzFHHoCUw",
-	"aLRSkJVhc4RUorbluyJLKwPoQCR9JU/msXtGZD96g+atnfDGWd3zw8M7zukedj7nhfYdx3PN2rkGVQlh",
-	"lc1+pIpGn27iyHP5aBRd2vrDH2IG36d9ZHNNYdK5SnRDHQ4VsrS+59bYrlvTUt9Ullo4k8dyo8Etj37z",
-	"M/FAoRDDHVFOAb+UmBg9gF+qKSqBBjVoI0sNSlauiqJNLGXqVkTasgZuduzVpVvCH7JZLhg5lb9kWpPg",
-	"uIqjvxweP8HgpwaoLjCWCaydNNwHLMsMTeZ9zWcEcjXDbhGMYrMZT3aBZnE0bCh+jiaQ/516ptcpvjv8",
-	"FWmjtdEnkWrvi50+3PKEeCya48G1YzmHisLlFBqjgFvE0mnNBB+PPSakqAuuMR0LhYlUaWwl40pT7S41",
-	"gnuqoai0ochcU4xliRnAJc4qjamL2ieHL5yqPBbdigjk9E2KvAYr1BApY82xBTOQMQ3S2tgvbkQv1GNh",
-	"h8toSa20L8n+NpO6NO0TsTOwG8hV1KZ+Viq54CmqsWBJQrQG2MygWjKV6pCPvLKdXOC2i5yEWUXTLdd+",
-	"Ag7VJ4dHu8Da9ttdPKD2Lx7UPnWHnQ94Z9XHtVtmkGcd6GZNPUg39oxuVnE4+pEt7J5AwvLcWdn2zZ08",
-	"ldjzae0I14H2cGpO8t3Q8VjcYo0pTO2JIFfb++gOTJixHpjn2qGZwqnzFC7GQhssO9m6edNhZU27dlie",
-	"2shL8suuDHeBjxkxL3BXatumwN+ErOOnRNYbNEFYxX5HrXhhQ9TSZ+C6J9JTktwFu5KZxB63r+9Po0hE",
-	"rQr5PzKtf9jubCo5q9Vq807T6g8BR2Unlq5D4/CB0Dh6SmicuVpoR9BpitHtrfdptCf7+Qi05aj/aLW5",
-	"R9uQdVF0x954ItmIjN9sun0UtmEjBw1d7MTJxo661gaLzopdrUZzKaU2oZsqzSWBA5JyXkmoZQX2YIVO",
-	"OGpZKcriVlulItYl8v8eR22UlwLHArlN6EtWj6iYk7kEUxmpYI5G+5e8ONMckDiNBts7DWPhpZqN00nM",
-	"NQIdeweT+MZdqEeKDDtuXN0rQBz9wADR3c4Ig5HypIXI9o1TgUt/kfOfIHpYczewadO7Wx0dqxMJaA8B",
-	"PfqprQ6Bf12ouCumrMPokaJK/+A1uIm9XXpo+j956vTPuutIfne660iBvYnXLk1/Co/bNRn2LzGvbnq8",
-	"YN1q72wtPuld4ZwMtiLFxmnCo3KIb4sUT4ixhlE8WUR4KDV9YixfoivDfaJSnZjbifAPjzVDH4Z36kgh",
-	"4DZHGVQmGxSa0mZ73cZAIbWxcp7JcCyWmczR3V1JZIH2Fg8lTbpI9BIm3RWlCVWtTiDUGJSM6LKUzzCP",
-	"WwK1N7NC2s3asY7Tz+j2kB1Jxy7o6762TgWkO57710MlWanVQg70mllKFKmrt1vzPEbAlfq+sO1uOxLU",
-	"9t01Gwuf1plpS/L1ir3hiQW7dUpPARN3pWxiL6JtCFHcqQu+i9wKuP1/sjA/uRD02z9xPFJS2PqTyB9C",
-	"HHflAmKG3jb/CpngieW10zR1aSOhAmhaQ3tw/225Yvi1+QPY6i4peY8LHmjS3Q3kzdFyXycmHW0sNmTh",
-	"IiDuNuezPvzYK6o2AoecyInbPT+6j6TaBQxlX08H/4aUt2QbsYiO0Jakii3pZLOL+D864Md7m7f/cnwg",
-	"G4dQvOYGlrLKUzquWWCLNJcaZGVosTvh1r+d9Mh64IMj9+ETRe6Gxf87en+nTsm6sOkvO29F73WNLnAV",
-	"5tMN+YQT6ZzrrW/YW3sXMcUF5rK0f677k7sRoioxYiWf/DmKo0rl/orLaDi0txczqc3op8OfDq3L+Wlt",
-	"/d3A3e+geN07PKagX5WGF/4Y1N6B8n/c9QeXq3izq9csMRrYlPzP9PRNf1mm68Grjds9hI4zwJ/qNacC",
-	"vX5a9TfQEzVtThP65Jc2ST/8Gpof0e3p6mb1/wMA",
+	"7H1rd9s2tuhfweI9a6VdR5HtJO00zoe7PEnbyZmkzY3T6Ycqt4LJLQtjCuAAoBVNlv/7WXsDIEEJ1MO2",
+	"7GbqT7YkEo+N/X7hc5arWaUkSGuy489ZxTWfgQVNn14qaXluXxf4QcjsOKu4nWaDTPIZZMdZ3vw+yDT8",
+	"qxYaiuzY6hoGmcmnMOP44kTpGbfZcVbXAp+0iwpfNlYLeZ5dXQ2yl7U2SuOzBZhci8oKhbN9mAIbS/hk",
+	"3QNjpibMToFVGi6Fqg2r+DkMs4Fb279q0ItocW7QeCUz/ukNyHM7zY6fHB6mVvKj4mXvds/djzfb6+vJ",
+	"W27zaXqzJRij5CPDxpegjVByzLhhJTeWaeDFgJk6n+JX41H2dJSNh+zEv8PyKZfnUIykETIHJgzTMKkN",
+	"FGwu7JQ9O3oyYEYxqc5UsWDqEvRcCwuGcf8qQnbBpvwSRlIqywyAHI5kgO4UeAG6BcbryWO3kXXgSGzf",
+	"wqwXwML9eDMAvyF49M5Rhp9vOIuYCZs+xJkyluFWDLOKabC1ln1IWtIw8dQFTHhd2uz4CDG0WYiQ9umT",
+	"bIAoLGb1LDv+Bn+eCek+HTVrFNLCOWi3SJVzK9YBo33gZuB4C7Mz0K+LVYicsBn9ZqaiYkIS/VrgswYi",
+	"3RXNwkA3W8+prQuQ/ZzLNL/fbJ5flb4wFc/hdZFGBtoq+/4S9MJOhTxntSxAM2HZGZRKnhOO2Cm364Ay",
+	"j2a5yXqv8GVTKWmA+Ps7rc5KmOG/yMpBEkbzqiqFw4uDyj3x3/80uKPP0Vz/pWGSHWf/56AVIAfuV3MQ",
+	"xqUZV2GCGwBj2YSLEoohw++IKxm+MGw+XQwJtn40nOykKByGvXev4neVVhVoK9xWCmGqki9+IoAlDkJo",
+	"hsBE3hkwkM1FWTIDgKdRSytKxwKNOJdMEMlGAuPI01vzeQW8gwxmXJSdg3DfJB7VqoRNYHzbEM57fPrq",
+	"Kj773zpbDnN/bKZSZ/+E3OJUJ9aCLLjMaUKQyC9+yyoNBqTNBhk/8/+U3EL2MbHYl/hy6Rhr7wnM+AXU",
+	"1cY90VMfxAxw4Ipru9j0ipu9JIR8Ry8QILhHyeiMvkkL9RhobsYUmOJpVnfHbedcC27hsRUE+RVwERxX",
+	"kNCPDwU7WxAOeh70yDAjCnBiGqUTk8qKHOUxd+yyBF4wW1ulHxlWqVLkC8bNhWETpYftAs6UKoHL24Lr",
+	"ejhym4VpVhAnDdN3YU1dsPw6VSznBBfbaEBMTSa4s4CstPlsENj2GiT1cxGQVk9RmFdBvCaZNU7DppyO",
+	"gBmwjHt4k+70DqRcPDLMi2hGjBJM+ggQJvGS/irKkp85ol99upWRr4sOoqU5+SCT6nSq5usHdXj0N1Vr",
+	"s7pfvzYUSX2YJwyqkbgR3OKKKrKscAwyU89mXC/SwPWIG1QAj85zpQszYGaq5hJFYcU1SGuGq3teQsAO",
+	"xLp7XQP8FcC1ix5E2LERl2kvr2VVJxjhbid/jYPsVwqfPv02UgoPN5zRbpzzuhDeDpan61AnwQAHKMk9",
+	"sngZjjhz3yexFt77gW87RRrSFT8TpUix3p8lMK3mwarmtZ0qLf5N87EZt1p8QnItVG4OuM6nwkJuaw3D",
+	"WREz50sB89/VXP7ueDeunr6ywGe/o4y0fp0zLvk50Pftp/YlDdyg7hV9hVKrBAtLw0MhbPTV72RstUN6",
+	"KdEsBJ+MvvNPVXwxo2+SwqTkJmGjn0hlp6CZVPJx3sjzILMuQZe8qpClEvNUElBEO2GPyqeTL0oH0b+K",
+	"sSALc7KLqhEZuxtlxrKQ6ROAZ0pdoDieixwGTExQPxboKKCfO7KgbypjubY77cTEFtvqyvzP/WuLQLpx",
+	"dfOpWmckDOjURtkHPMTu4Rr2nl+KR4YdfXt8eOh/HI6yjeIqcjs0sBmE43YrSpKvJ4ANujfvqPjdfb2D",
+	"Ft+Yt4txWxPLVG0Z18A05EoXUBBPdXYBWaJEVhu0SD9iZGRcNfvgWvNFdtV+EW+MXIeryz1VM0DCmU8V",
+	"OwcbHe0jwzTMhCxAGyQiDTmIyukKS1S0vR0mtlS3vF0JnzgeCIJViwVnP3GhU89XUyWXXvjvb79hz4+e",
+	"PGXPvvn2L6l3aD+XYJCz41dJARQeeh8g0feYExtI7BvtAHcU7+NXltGXoCKdpdkZO7Wi1a187MeAHiVq",
+	"hyMMZ7Ojsd4cUfTe08PtzqVx0jkPzJbHtMVbt3tqqQNbcxTvl6ZvXAWkZmWD7LzmuhBcZoPMQDnJBhmJ",
+	"w7QE1cAtNP6xXtYl+zw25KN5ZDxHXjYQmJLMS/DgTzKMy6LDFVri+7uash9rYbkmFijU7s4dFFz/VjKx",
+	"2BPJXp/8dMLCE7TkIfPGBHn4TozgB6dCnvNKaeiurfvbRklCAEudIsYu0vzUeR4bRsrIn8ismnNdGBJt",
+	"zMAlaF56iZbgqTyfCriEYheZnhMO7PTKlvzYWG7rjbIJIXLqnqQDtOUyEy/5gr3lJT+vQXLGLTt6csjO",
+	"qtnGU3DLohGb1cQb7juglxRrMat0cKMdLQe21qLyVc/SejjxtSeJweUG6QPKabP3wHJ4bsUlZIMG7bJB",
+	"VmhVVVAkuc3fgJd2urr4fAr5hUmbPiCtXrAKNCugAlmAzBeMXkCn9Pezyi5IESzFJUgwZmuVyC3mJY60",
+	"qgxti7tukHDWS+BsEc7tLwXYeBWr7nKwXr4ue+Ocb5LGbRz0PyFzYBTtFdIwA7mGpI8mpSgV3PIzbuD6",
+	"ZLwWFF7G+ZH6AbGKY+oCbQUuljSUCKmEsUovvkc8SejcefAUt3v19kAwW5Osi+dW6XSc4oQ88YR0LiZr",
+	"nM+RzXgBTFgUukmo84kFip/zohA4GC/fRYvt6BstYHbxaZ/BRGnYcYpln7GDGE2cPCgH7zcipSc0lLcd",
+	"CcZHl6DBNqlgs2PGTZhaMAaz/y5kEWOV5QbxCnMFnFsyHVLBV/8hjOjzzaBbfMYX5NpCgsRFDNnYS/Ax",
+	"qTpjn39hxszyC2AwmUBu2XwK6GNVBkZSqxIMy7kMUS321VktyoJVJZcD9m7KDbCjw69fMKsKvmBKlgtm",
+	"LJ9MmjAYpQCE3dFPkSN+EHJA0m4UZ7auHuZZ5GTr7vuVkjBA644zqR6j1ocfSm6B5ZE7rDcugiP3eOTz",
+	"pQDPtrGR5Xfb4MLW0ZWOixOHQ/cSbI/Ozh2VwOOG0+ykltVao7Bbhf7r05/ZsydHf+kqqKc/vkoNs6uv",
+	"agLwMuQZrWr786kqowSYCcCADrONl7XHvRyO+PZZtsntvaVe2ZzG0gIx3DZgSNTOykC6NkP2M5KLp7ew",
+	"eHRHTcDmUyjQSBFoq8zl1sqDT1+xMEud94XnNptHIL50NWhSPLZ7K2SM4JsuoPuD0m92cjLSW/Erq2eN",
+	"zzyuq+DM8wBsnW1zbljjXt2bv3Eb1cPto9W4GzfytpQbBqDXUieasEqcoTpgP2oU+9+kVk9kYNZESyZC",
+	"G7sj0n3AQVNr9MloCeMSZIFCZRyywcbuMEl7cX7wQBZbhRBTRlbKXdrov0QPDTii84nYTcTwBq3kaZlw",
+	"u7+UjHeg6TXbbsIEd2RhZSeba58u+C56b5ypF6WXPSxr0HgrNCUEdWbqFUHrtXvraBuPs2dJPe7GuzvG",
+	"67PwnTjwrnz7y0KXLhv6/hPPbbmggNsY2d94a863C0otWeArXGmZCyFk+lkKTpSwKikIu11m2HuYkGmm",
+	"ilR4+VrutyLp4Pwg0CdCSTmMVCGyE9JaNo6wy4znTcZ1f9APn/H5KBZmXfflVurBltrfNqTZ2HwoFzsG",
+	"3Ka3InMvKei8LKPj7Iztj2UQkGOTn7HFr16xFXCm69Pb7AQP+LF67jeCxZot9DDs626gRbc/LjbEiNB/",
+	"vsuOBw3ndcl1FgQAbkkLXq4xzG/D0+JG2p+PZckuSThKQEPX/KLcIGHJjCB11NkZiZhGUWgwPWq0/xFt",
+	"OJQrpZAwcKlylrLZjOUly1UBw+siT9jUdeU8gBXy/BddJrl/8MSuB7zHtd6gUscAirAN91DUJbk4Y3dn",
+	"Y7bhoOp3dOCsQcBgF21IaFgHxG7iQc+ml9JLNuf1d0V9eHUjnJwFtSk5fWNizsaj3yZ7nNaSTBxfSp3s",
+	"5pHT0MkdRiSYJKM3QsJRcn/RA0+SD9yifF4hKm4FHmBXI1G1swH9FLJGiDgalOe7PN8lwi4X+UFpVJSE",
+	"hDisukXIxIWomVZqxp6kXnHc56UqUkEEZsSnx4U4F5Y1UeVlftXO9eTpd99983y7eKePtdAxrEORHpm9",
+	"jCcbyvFW8WbjC7ePIE1q7fO43Orx88PdcacZ6ui7zlhH36UG6yLWhlTd6yfBdBCp4taCltlx9v9/O3z8",
+	"/OPnb6/+a7t8hC2QYllfEfL3CrShgJCjkrSg8K/fiq4SeTf3o61E5S039jHsapFvtFCTC04stJUPKVsb",
+	"S9lc/RTpQXSEUTFbiJy7gCFT8kxh0pA839okb8ueUudUG9hoHv9iEs5EenHQ2VwaILMzN8MyW/VbFZJx",
+	"2v+gU0xWCmMpS4m+m60qm0tKQMuB34Jgb4RkHyix6iZFZaLP397smb1+NWROV8GQmZCWcRv9vp05/U8l",
+	"ZPArrGjj0lXRnUFO9XaUyDFkPrQ9n4oSmJCXwi559teSwnWq5bZ18bv3erILxKqCFKBPa1qbeOBGvg3G",
+	"5UbazLaWMn+5MVQsnvvy+ZCMji+52vlwLiGiyo1tiuqvzQMb51SCiIhWHL4R/bh8epeAbNgMZIjubqag",
+	"m6rR22vF/btsDaPuRscexce+sNT4rGYMqhtkIY0h6aZ9ZBjhVbA6hyP5HmbqEgr/gKFEbaksMRooumH5",
+	"Jl3KT5uUpBFfXc2TCmUiAhK7+ZXqk9H/5nkgZiYUytVyCeOLnF+WwlXj+KD9VBQwkrmSVqvSsIlWM/c4",
+	"sUqKovq8olmFm0OCotRJ4za3XWS8rW9JUIe4PXNqlb00VdmbXm2SYNPspR2nYSqd4+jHvmY1q4E57zlF",
+	"KLuMWZ/ob0AjUuH3Odd6waRi8WxsATYu7lFzSWLTAs+noDupH27gJK5FleUrubLvf3jJnj/75i/MF5e3",
+	"mHOmucynyIzGOOJ44DGEvhC2hDFTeiTHLnttPEBxgv0wtKuzqUBVJdDeEEFdCpXDpW2z37hlc5JTWsnz",
+	"Br9V7iOIaV+PkMamay/iancs6XeV/pVWRZ37gtcAhCReuldT7vH/VysLbnXk4tJQKW1DyHXdoKaHZeFa",
+	"//bhwzvmHlg1FZ8dPtuqCrSJ56zYpVOlLfPVaq7qTBiGhgN+iNbcTJn9pDAdrpZrAkmJeajgjAlEUzER",
+	"oL3g2zRZreVxBVIujv3Px1LZxz3TL1Ey/bqSEZwi3VOkQP2PNqS+xInVrLezCJr07nc6ZaJlTW5OTOqy",
+	"xGIpeWqU1fJCqrkcZd0tPp08yY/48xQ0e4P8DolL4AaYf8hPUsDlKCPgcobOy5LWUXSnPBweDQ83wi/M",
+	"PggASIKu112I1YmYJZwMTTQpalunW7kXUhKFUoC2HohS8q8vl3q9mZR+lFD4tLjkFlxLkaaAgnL2kqyg",
+	"0gJJ8YPn7dsHHdc4h5qjiOAewLbmTLtNKm7HGXxLPt9o+jUb6A21rcfNa/ptGgRYiX9tOORtgdG3zR7X",
+	"3nVJrI28808h8n6YsHLuBUprDWmS5LWpeVmSOySfQmv574ZsvUEFD/PbsCD9UFEO6n4cYEvz7EgN167G",
+	"PNH/rGV/NeY++VwKClFWyRrv2n0Ee3rDO+0IG1owuBTrOOL61cmr9+zw6LuvY8MBX0AwGSOM7auw+KUq",
+	"uIW3cO22Tq6pU1Mc2HokHzmrdKkM8BWXAkr2dzXdtf5vTe+lFDTDxtb2rLqFHlC9x+kWsH355Z6LIbeT",
+	"Mb943+5ubp/brvZOEX0YcdO5/xr7BFK+L9ft7JfXrtfZKPsAfDbKXhDmnrzzXzcegVUfmNil1cNLVcuE",
+	"KXFC3qIgzIbMrQzNIjwvdNs44mET4LbW0CWi77YyAldZdKoE9+ZFtsGXzXVgA41Tyj94o2LbmOM3a+uC",
+	"92Oq7MlAXmthF6dIxu7kJkLDGTfwuvigLoDsrDPgGvQPAZr/8+uHbLCCNT/499hJbafs9Stm8fW2sYg4",
+	"l1A8FtIzvmHoJkmilSZodzm1tnJd+YScpHtgUJmf5rllZ2Dn4EsbXBlaTn4acrA429Nh84/Kf2TG1mdU",
+	"IDGS+NYrrm3zkgZ2DhI0t1BEzsCJKOFFaEEqLKN0HspeH+DMciR1je4fbi7w/fFwJEfypZKXzlVs2Fep",
+	"/jQDNsqQnJrN4JrRoxHWIJQcZV8f42CPXXtG56CBTzlUzryeUt0guQqAOmF5GxUK38RxfHB5hOt5zJCK",
+	"H5tcVVAwDUbVOgdDhaPRowcNWZuDz1FLx6uD4XDoxvlea+VdvY2XbNzXj3HsnMg8+Ducz8ytR8zAWD6r",
+	"2rGePn36HGnjlw8vh+ytkrDALXmKZTn536qyxtNjoQxoJBkLufPOH4SD/8/pzz8xz5UWzmFLs+R8BuVL",
+	"buAFQyWAXfKy9j8ZyS/g95wb747zLqLModXJu9dREn7wGFwNMlWB5JVAv8XwcPiUXI52StR0gMD9N/53",
+	"DqkuInWeAxTOOUY+RO8Wy8H4ejjEWHJ4DdlrG1zRVE47kk1BsABDrd84C2WsTNWWnwMrFLg2cRoo0srA",
+	"IZHyrnkET5PNlf0I9g0teKkD55PDwzXdN3fruulroHuaboa9C8N0LSUFZGNOlR3/9jHqVpW9J4eib02a",
+	"fB/PkZ8bZJOOVLKPOOCBBl4stjwaGroBLY6NOjqhM1KssIa57eFvfiUeUZDFCOf5Khh8qiC3Zsj+Xp+B",
+	"lmDBMGNVZZhWtXOLKmrmV7gdYdmvwZ5h6bN677ZwL4flmJErwK64MRgnvRpk3xw+vYPJTyxq+saSJtAp",
+	"At8GWeZToHBe5JxEUqPiVKv5ZCLyPqS5PDoIKn4JqfaZLhxmuiq+a+kqixA8w/9kYTwttqZPoycMRjL0",
+	"/ep0C3FYEYcf2QVA5ULkiD4e97hUcjETBhttu6DlgCLdtQFXctuGMmtjkTMvkMfy3A7Z+04/7sPnLhg+",
+	"ku2OEMnxE1XhUuQFlTIesi24ZdMmZOo3d4wvLEaSppvilpqMBOrr4erASEx7QewA7CZyLnK7eFxpdSkK",
+	"0CPJ8xzVGkYl5S7DPkEjr2iQt7BKIs96smn9sML4BTisfnZ41IeszbhtO2F8/vlOzxdtu88t34lb9vlt",
+	"JvWsRybsKULpAM/s49Ugzf0QFnQm1PTUQZnGFi7e5DL7TdNr1KFT0/ieph6M5AUsmsJYoVfP0eV5cEsU",
+	"iOY6YTOyU0cpQo6ksVBFCc3+TYcrnWC0w+Uz4rwYT+mTcG9hnxzzLfSJtlUV+FqY9fQuMetHsEm0GvgT",
+	"JecFsai5l8CLKOqOQrIP7apwvUD3fIJHImvCin/1JRS3cjrLnpyrriVldQ1X94IcNS2s6KLG4Y6ocXSX",
+	"qPGyuY4hxXSCMbp69F6MRnE8z4FWCPUfTbBtbwfSjXL2nI1XJEPU8Nqg26TCBm3kUVAX22hjgKNZGAuz",
+	"FoqtrYZrqZSxqSZCIbfxEbpyXim2ULWLBTAl8YNGKU7BUjRinSD/v6Os4fJKwkiCIIE+54tjNOZUqbyj",
+	"1bc/jJwzIePB+WigScUcSe+qWUo3gtIAw2y9pBBfatG2J87Q0whuKwZxdIsMok0qTSMjyklCkdX7KiTM",
+	"/fUMXwD3IHAHtGnEu9udK4wyrMnq8diPz5oU8ncdFet4SheN9sRV4kyq5CFGp7Sr+H921+Kft1nU/nTa",
+	"LOrE2Qw6lzP9lp63feQgvprk6mOkF3Sh9hPZ4uOoNzMVT6eUh31zip6YxR2rEhtxLGgUd8YRdlVN7xiX",
+	"34Mzw72g0q0zt3XC785rDkK77z4/0s/Iwwz7apxoNj7+mhkALyDdQE1a4ESUFmltMZIkZl/46L12feTJ",
+	"9vZzO7WbnhqQHo4DsrENSQLjkcR4zZB9jyLfz5NzrQU4PutbjKSELwb13zQdzZdIu7tT/xgDWZArgmxG",
+	"Vw5PmYe273Yp9LJvd2HQ2rKSvvWQ35P0N1fr0VkSO7HuJqxvn7ACg1pu2WNc07hvwVbtYbk/d09UdCQ8",
+	"Ha7pXU846Wyna6E2ryB0NiCA9c0eJyHtNPsGyeCzPLZ40t1yhtJjb+w2qkRP8NuAamcLh23EUB6YrmMf",
+	"DUq5kiQxA6aR80bM1j9xG+pD0gTqag9+NrqWkFifj1D5WxOau33CVQKUzR2RgktiBtdSyvPOcVQpcFaq",
+	"/MIwwy+R6/i0k+dfD0eydau5gV2RhJue6gpcW5h1uSu9BpLDwT3pPHFXojs2ify+erQctHlC564Hcjsp",
+	"CsY9PJLktaU2c/A5XARx1avYUNk4KTcDwn2K9JOYasq0mo5qq1HGFln3yrD70KaDMl+ACRY6DiKjIIU1",
+	"2enx9jnqFrLXI8r2xltgvy+i/nsOb3hpFJP48EiOl+/ZGQ8Z9fGz6QtoO+39XjA+kt0bZ5m7cJacVc+O",
+	"nqT4qDPsGtTcDWzhwtyrj/vkwCF9+46NzfXEFCD8H8SHdw3gPTt6cpdM4a26hAELFILGLKkuc2HCaaCL",
+	"NvS+uV2BcOB65yxfw71HxjLYifh21gDjfs39d146frLTpZfhWsKBSzULPT2d7S4mvsrOvUMJlUYN2Ttv",
+	"Prd3CBmrqqTaF113ui+neOJG1T8W61m63cy3vhp32/uOEdp0WxM3TZetBy61dx8/HU6jvQyYqlxH/nJB",
+	"p+Bue/Fdlm+NO/kuX18Yf9pWm2ZfjVO3DY6DdemfOoNczcCwwHOS/KNzadu+OEjyZrirq6t75Bl+SQ8K",
+	"yx0qLFxftGZM0XW134jep+4KjX2aqf6Wjr3mWUZ3iqw1WR8Z5nf8JRivIUnUZYqoWBSUBd2tL7Sx92y2",
+	"XgPpmlrGOzStbyo2krfRjr9exfuToohaP+/Vn9g0zr0XnyLtb41fkS6zefAqeq8iupycxwntTalsh6Jv",
+	"i50TVh58xj/e+diXaZ1EfX8FEWa9UhPqYU9K8BKCb5MajOM67z81PBr+R4bIcWuMS9rs/bLlLZRqwpF1",
+	"fsfry/7YFXgnbPBeHXvrGGFII3lghl6lKYQNFEIpk1bkF/i3lvSfY5S3xQ795WL/ocbskP01+MSi26l4",
+	"4VNeHpmucy52lXnAUN1eyrhFg+MndYqw+zKDTH9qc/G9KydpqvpC8L0QFOlCE/7WDEgNqnJ1zl8Qhfms",
+	"MkwUc+tnXIbcHVel7xIM5nQ/o8ZrUTrWN6U0eBqKRxE25G4Lw/C3X2ShXKH/amXYSCqZA+OhPI3lWMsV",
+	"5y2kKPM9zXTfAeDl4MgDle5Ope9qDE0XlPAf3YK57JNnZzy/QFshvozhGqTru2Kb3vRuylVsntonasXN",
+	"vhMI9pKK0S1rljzAwJLrMPLHd9rgrjqN2Ti24qxKPJP7z9nqy37yoN6Xot65MuCuvRVhb+tyoPwzDyr6",
+	"cXbK0Yh1GNskH055VYG8Gec5+NzefbPWN9EXbX7HfUthf6VoWJwve0344lz7rg52b+OsCOukfgRujP9I",
+	"j8WpVRVe+AbaBRMjXnUv7osGPRxjq3fIRHgT44KNbnai7P45aPBYM5KogL3olgDwokB8olJqV+UPnc7C",
+	"SffGH45nHt4ZzwxujQe+uVLRu5mKNjFMX7jQG5NLFXOF9l5TbpgFaTD/uukp72o0qMWNncJI+lu4hXGm",
+	"IKWWKwl0J8ALNm57RI6RAbqsbAO2r8DFV13uty1Ac8lCqp9Jp9WZ6ymDLfKD9uicKXG/qRsqlE+/JAU0",
+	"Bkvl06Mi8OyjCHELjdSjbdtvFVFt04UKjnc7x0ZoU9HtYhHsb0yLcZ1a2djdmzCm2xaWmrMI13HDD1FS",
+	"U6OoQJNxv7gU6p8UhUPLPQmAZvx7LaZepzV72PwZE0BuJyboCs+QGTXNLHesn/TEffDZ/bOTYr1CgpiD",
+	"yaOKo07vJFSsRnKpVdIs0fAoRBI9+6HbZogDp91ZGDOL6Ggb9bxlGH/kaOIdo1SIPgbooPtS2Gmh+ZwC",
+	"Lg3Hv22Gv1mvf+txc9cKdZbi13jlq6pLtP7QUA2Y5kSDqim61ItuccfePffI2ZlzH94R5w66+wP3vrGm",
+	"37BNf6PPzbn3QRyye+xCdr2GwIkM7e98EIJjoPkFkogwbb9sd4MP6jNqyD64QCJGNqb8EjCMYZkB1wsQ",
+	"v2maknkgHbMnz9hU1do88un7AzKURzJequuSGfJlB22AcV0K7Y9gX0ZjvHO73SNhJGbrIRIH+S+oyUh/",
+	"xPc+PDldjl/3tMijRZMaYaC8BOMSAprOhtQa8auOSEjk2532ItG+Cjriie7FO3NNNP5ze7WvRSabGLiP",
+	"rG/Rv8RjcXih07vEf9n2KBlJ3/AEE06XXgkfnWOT+2vx/eUXYQSmJiOptPvoOgf0h5TRYXAaNrKhSwlF",
+	"1n1fUderAQv95YLNowaWks9gwMS5VORXpo7Qfd0vAP3rndYXy5cUbNd4owHLnBq0LsNDrDQF2XM3EPLC",
+	"hNhBuzohjUUxrSa+5zYJ3t7WJNE9S+1aGkqY8NLAYOWGlS+tOUh8AU6Cj/mfV6LAD51BTEu0gXU1X92N",
+	"F6/hTX2B5dPmHsl9yOPOdVV37B4LO1vjH/PQecDX4PBqbxVN4Ou2svbgc9MyaW2vwhj19su5+nCge/5f",
+	"gBXhF9w0lBSahTvfyBnoLvi7fW6zWQwFSt/Bh9TyJnayIodDmFjo2Ns5ko2786y2zWXMFCEHl4jbdswx",
+	"/Q6mO+F695TzvgHng3fpgfclAsMOJmTmes0O/9VgrOus16kauSFrPIhva7xL2ryZ2nBSFOFi1n2VVMd3",
+	"Ut6tzhB2tkZn8Kf2QDdOZwgRYPRX+k7ZbXeRtskHUZHj3HugoIPP/r+dwmtrkNzFamI83ybs5RfxJ6mi",
+	"C9u9b3VjC2M6IMe2WWtrMMPpD380Dnh4VxwwaA8PXHBVe1hLD9fib801539U9cAFBJR3Y9rYpEroDXQP",
+	"+35IBoe+F42B9rRGXcAjfKCS4N5HaLjsMFNxaYKhdtskc/AZ/3hl4I8jhwhJr2Mg70BmTj7tmdLuybJd",
+	"R2tBMD3Q29J1AAgQwh+sk2TCMp5PBaCvRWlWaFVVnYK1mP66l/ok7s797SPisrvVJ9kyX+W8ZAVcQqmq",
+	"GUjLvnJXyOpaHvNKjL/OBlmtS38n7vEB1aKUU2Xs8XeH3x0SqfiVLY/9zl0Iiy6f6LZJdILVFTXhdreI",
+	"DttYjb/pcDUU9IPzn51hcpKNLkTyt+u2I/jriVZHSN1/xvw1gOEasWic5rqoxEj4aLh+LM4M1qoEs/u9",
+	"1W3QbGYS07WxG0sX26mqbGw5v4jWiIvTDQfR9ojnDlc65qfmCxdAYkG886gsfOnSwF2x5j4Yf+fPzE2z",
+	"Gg0WEE8YxMjVx6v/HQA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

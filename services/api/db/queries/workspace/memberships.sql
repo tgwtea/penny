@@ -111,3 +111,14 @@ SET status = 'removed', removed_at = @removed_at,
     updated_at = now()
 WHERE user_id = @user_id AND status <> 'removed'
 RETURNING id, workspace_id;
+
+-- name: MembersByID :many
+-- Names and roles of the given memberships, removed ones included, so old
+-- lessons still show who taught them.
+SELECT id, user_id, display_name, role, status FROM workspace_memberships
+WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
+
+-- name: MemberNamesByUser :many
+SELECT DISTINCT ON (user_id) user_id, display_name FROM workspace_memberships
+WHERE workspace_id = @workspace_id AND user_id = ANY(@user_ids::uuid[])
+ORDER BY user_id, (status = 'active') DESC, updated_at DESC;

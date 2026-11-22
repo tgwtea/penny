@@ -29,6 +29,10 @@ tags:
     description: The signed-in person and their teams.
   - name: teams
     description: Teams, their members and roles. The UI says "Team"; the API says workspace.
+  - name: students
+    description: Students, the people who get their reminders and receipts, and their goals.
+  - name: lessons
+    description: Lessons, where they happen, what happens in them, and cancellation policies.
 
 paths:
   /livez:
@@ -347,6 +351,840 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces/{workspaceId}/students:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List students
+      description: |
+        Owners (`manage_students`) see every student; teachers
+        (`view_own_students`) see students they are the primary teacher of
+        or teach in a lesson.
+      parameters:
+        - name: search
+          in: query
+          description: Matches the start of any word of the name, ignoring case.
+          schema:
+            type: string
+            maxLength: 100
+        - name: teacherId
+          in: query
+          description: Only students whose primary teacher is this membership.
+          schema:
+            type: string
+            format: uuid
+        - name: archived
+          in: query
+          description: List archived students instead of current ones.
+          schema:
+            type: boolean
+            default: false
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Students, by name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Add a student
+      description: Needs `manage_students`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: The new student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get a student with their contacts and goals
+      responses:
+        "200":
+          description: The student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Change a student, or archive or restore them
+      description: |
+        Needs `manage_students`. Archived students keep their lessons and
+        receipts but are not offered for new lessons.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentChanges"
+      responses:
+        "200":
+          description: The updated student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/contacts:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+    post:
+      operationId: addContact
+      tags: [students]
+      summary: Add someone who gets a student's reminders or receipts
+      description: Needs `manage_students`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: The new contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+      - $ref: "#/components/parameters/ContactId"
+    put:
+      operationId: updateContact
+      tags: [students]
+      summary: Change a contact
+      description: Needs `manage_students`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "200":
+          description: The updated contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: removeContact
+      tags: [students]
+      summary: Remove a contact
+      description: Needs `manage_students`.
+      responses:
+        "204":
+          description: The contact is removed.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/goals:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+    post:
+      operationId: addGoal
+      tags: [students]
+      summary: Set a goal that spans lessons
+      description: Needs `manage_students`, or to teach the student.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "201":
+          description: The new goal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+      - $ref: "#/components/parameters/GoalId"
+    patch:
+      operationId: updateGoal
+      tags: [students]
+      summary: Rename a goal, or mark it achieved or dropped
+      description: Needs `manage_students`, or to teach the student.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalChanges"
+      responses:
+        "200":
+          description: The updated goal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/locations:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listLocations
+      tags: [lessons]
+      summary: List the team's saved places
+      responses:
+        "200":
+          description: Current locations, by name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocationList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createLocation
+      tags: [lessons]
+      summary: Save a place lessons happen
+      description: Needs `manage_lessons`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationInput"
+      responses:
+        "201":
+          description: The new location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/locations/{locationId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LocationId"
+    put:
+      operationId: updateLocation
+      tags: [lessons]
+      summary: Change a saved place
+      description: |
+        Needs `manage_lessons`. Lessons keep the address they were booked
+        with; only lessons added later use the change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationInput"
+      responses:
+        "200":
+          description: The updated location.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: archiveLocation
+      tags: [lessons]
+      summary: Stop offering a saved place
+      description: Needs `manage_lessons`. Past and booked lessons keep it.
+      responses:
+        "204":
+          description: The location is archived.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listLessons
+      tags: [lessons]
+      summary: List lessons in a time range
+      description: |
+        Owners (`view_team_timetable`) see every lesson and may filter by
+        tutor; teachers see only lessons they tutor, whatever `teacherId`
+        says. Each lesson carries its clashes.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Lessons ending after this instant.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: Lessons starting before this instant. At most 62 days after `from`.
+          schema:
+            type: string
+            format: date-time
+        - name: teacherId
+          in: query
+          description: Only lessons this membership tutors.
+          schema:
+            type: string
+            format: uuid
+        - name: studentId
+          in: query
+          description: Only lessons this student is in.
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Lessons by start time.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createLesson
+      tags: [lessons]
+      summary: Add a lesson
+      description: |
+        Needs `manage_lessons`. A clash with another lesson of a tutor or
+        student is reported in `clashes` and never blocks saving (ADR 019).
+        The first tutor listed with role `lead` bills the lesson (ADR 018).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonInput"
+      responses:
+        "201":
+          description: The new lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      summary: Get a lesson with its tasks, goals and notes
+      description: For owners, and for tutors on the lesson.
+      responses:
+        "200":
+          description: The lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: updateLesson
+      tags: [lessons]
+      summary: Move, reassign or otherwise change a scheduled lesson
+      description: |
+        Needs `manage_lessons`; changing tutors also needs
+        `reassign_lessons`. Send the lesson's `version` in `If-Match`; a
+        lesson changed since gets 412.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonChanges"
+      responses:
+        "200":
+          description: The changed lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+      - $ref: "#/components/parameters/IfMatch"
+    post:
+      operationId: completeLesson
+      tags: [lessons]
+      summary: Mark a lesson done
+      description: |
+        For owners, and for tutors on the lesson (`complete_own_lessons`).
+        The lesson becomes billable.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteLessonRequest"
+      responses:
+        "200":
+          description: The completed lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/no-show:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+      - $ref: "#/components/parameters/IfMatch"
+    post:
+      operationId: markNoShow
+      tags: [lessons]
+      summary: Record that the student did not come
+      description: |
+        For owners, and for tutors on the lesson. Billable when the lead
+        tutor's cancellation policy says no-shows are.
+      responses:
+        "200":
+          description: The lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+      - $ref: "#/components/parameters/IfMatch"
+    post:
+      operationId: cancelLesson
+      tags: [lessons]
+      summary: Cancel a lesson, optionally booking a make-up
+      description: |
+        Needs `manage_lessons`. A cancellation by the student's side with
+        less notice than the lead tutor's policy asks for is late, and
+        billable only if that policy says so. Pending reminders stop.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelLessonRequest"
+      responses:
+        "200":
+          description: The cancelled lesson, with `makeupLessonId` if one was booked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+      - $ref: "#/components/parameters/IfMatch"
+    post:
+      operationId: reopenLesson
+      tags: [lessons]
+      summary: Put a done, no-show or cancelled lesson back to scheduled
+      description: |
+        Owners may reopen any lesson; the tutor who marked a lesson done or
+        no-show may reopen it, which is how Undo works. Refused with 409
+        once a receipt covers the lesson.
+      responses:
+        "200":
+          description: The scheduled lesson.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lesson"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/items:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+    post:
+      operationId: addLessonItem
+      tags: [lessons]
+      summary: Add a task, goal or note to a lesson
+      description: For owners, and for tutors on the lesson (`edit_own_lesson_items`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonItemInput"
+      responses:
+        "201":
+          description: The new item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonItem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/items/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+      - $ref: "#/components/parameters/ItemId"
+    patch:
+      operationId: updateLessonItem
+      tags: [lessons]
+      summary: Edit an item, or tick or untick a task
+      description: For owners, and for tutors on the lesson.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LessonItemChanges"
+      responses:
+        "200":
+          description: The updated item.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonItem"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteLessonItem
+      tags: [lessons]
+      summary: Remove an item
+      description: For owners, and for the item's author.
+      responses:
+        "204":
+          description: The item is removed.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/lessons/{lessonId}/history:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/LessonId"
+    get:
+      operationId: getLessonHistory
+      tags: [lessons]
+      summary: Every change to a lesson, oldest first
+      description: For owners, and for tutors on the lesson.
+      responses:
+        "200":
+          description: The lesson's history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getCancellationPolicy
+      tags: [lessons]
+      summary: Get a tutor's cancellation policy
+      description: |
+        Any member may read it; it is shown to parents too. Tutors who have
+        not set one have Penny's default: 24 hours' notice, late
+        cancellations not billable, no-shows billable.
+      responses:
+        "200":
+          description: The policy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancellationPolicy"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: setCancellationPolicy
+      tags: [lessons]
+      summary: Set a tutor's cancellation policy
+      description: The tutor themselves, or the team owner (`manage_team`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancellationPolicyInput"
+      responses:
+        "200":
+          description: The policy.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancellationPolicy"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -372,6 +1210,76 @@ components:
       schema:
         type: string
         format: uuid
+
+    StudentId:
+      name: studentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ContactId:
+      name: contactId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GoalId:
+      name: goalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LocationId:
+      name: locationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LessonId:
+      name: lessonId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      description: The `nextCursor` of the previous page.
+      schema:
+        type: string
+        maxLength: 200
+    Limit:
+      name: limit
+      in: query
+      description: The most items to return.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 500
+        default: 100
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: |
+        The lesson's `version` as last read, such as `"3"`. A lesson changed
+        since is refused with 412, so nobody overwrites a change they have
+        not seen.
+      schema:
+        type: string
 
   responses:
     Problem:
@@ -620,6 +1528,736 @@ components:
       properties:
         role:
           $ref: "#/components/schemas/MembershipRole"
+
+    MemberRef:
+      type: object
+      description: A team member, as other records mention them.
+      required: [membershipId, displayName]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+
+    StudentSummary:
+      type: object
+      required: [id, name, archived]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Arjun Nair
+        primaryTeacher:
+          $ref: "#/components/schemas/MemberRef"
+        archived:
+          type: boolean
+
+    StudentList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentSummary"
+        nextCursor:
+          type: string
+
+    Student:
+      type: object
+      required: [id, name, archived, contacts, goals]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        primaryTeacher:
+          $ref: "#/components/schemas/MemberRef"
+        notes:
+          type: string
+          description: Private to the team's staff.
+        archived:
+          type: boolean
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Goal"
+
+    StudentInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        primaryTeacherId:
+          type: string
+          format: uuid
+          description: The membership that usually teaches them.
+        notes:
+          type: string
+          maxLength: 2000
+        contacts:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ContactInput"
+
+    StudentChanges:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        primaryTeacherId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          maxLength: 2000
+        archived:
+          type: boolean
+
+    ContactRelationship:
+      type: string
+      enum: [parent, guardian, self, other]
+
+    Contact:
+      type: object
+      description: Someone who gets a student's reminders or receipts.
+      required: [id, name, relationship, receivesReminders, receivesBilling]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Priya Nair
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          example: "+65 9123 4567"
+        relationship:
+          $ref: "#/components/schemas/ContactRelationship"
+        receivesReminders:
+          type: boolean
+        receivesBilling:
+          type: boolean
+
+    ContactInput:
+      type: object
+      required: [name, relationship]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          maxLength: 30
+        relationship:
+          $ref: "#/components/schemas/ContactRelationship"
+        receivesReminders:
+          type: boolean
+          default: true
+        receivesBilling:
+          type: boolean
+          default: true
+
+    GoalStatus:
+      type: string
+      enum: [active, achieved, dropped]
+
+    Goal:
+      type: object
+      description: Something a student works towards over several lessons.
+      required: [id, title, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: Play Malaguena at 120 bpm
+        status:
+          $ref: "#/components/schemas/GoalStatus"
+        achievedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    GoalInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    GoalChanges:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: "#/components/schemas/GoalStatus"
+
+    LocationKind:
+      type: string
+      enum: [in_person, online]
+
+    Location:
+      type: object
+      required: [id, name, kind]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Studio room 2
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        addressLine1:
+          type: string
+        addressLine2:
+          type: string
+        postalCode:
+          type: string
+          description: A six-digit Singapore postal code.
+          example: "238859"
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        meetingUrl:
+          type: string
+          description: For online lessons.
+
+    LocationInput:
+      type: object
+      required: [name, kind]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        addressLine1:
+          type: string
+          maxLength: 200
+        addressLine2:
+          type: string
+          maxLength: 200
+        postalCode:
+          type: string
+          pattern: "^[0-9]{6}$"
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        meetingUrl:
+          type: string
+          maxLength: 500
+
+    LocationList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Location"
+        nextCursor:
+          type: string
+
+    LessonStatus:
+      type: string
+      enum: [scheduled, completed, cancelled, no_show]
+
+    LessonKind:
+      type: string
+      enum: [regular, makeup, trial]
+
+    TutorRole:
+      type: string
+      description: The lead tutor bills the lesson (ADR 018).
+      enum: [lead, assisting]
+
+    Attendance:
+      type: string
+      enum: [present, absent, late]
+
+    CancellationParty:
+      type: string
+      description: Who called the lesson off.
+      enum: [tutor, student]
+
+    LessonTutor:
+      type: object
+      required: [membershipId, displayName, role]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        role:
+          $ref: "#/components/schemas/TutorRole"
+
+    LessonStudent:
+      type: object
+      required: [studentId, name]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        attendance:
+          $ref: "#/components/schemas/Attendance"
+
+    LessonLocation:
+      type: object
+      description: Where the lesson is, as it was when booked.
+      required: [kind, name]
+      properties:
+        locationId:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/LocationKind"
+        name:
+          type: string
+        address:
+          type: string
+          description: The address on one line, with the postal code.
+        meetingUrl:
+          type: string
+
+    Cancellation:
+      type: object
+      required: [at, party, late]
+      properties:
+        at:
+          type: string
+          format: date-time
+        party:
+          $ref: "#/components/schemas/CancellationParty"
+        reason:
+          type: string
+        late:
+          type: boolean
+          description: Cancelled by the student's side with less notice than the lead tutor's policy asks for.
+
+    Clash:
+      type: object
+      description: Another non-cancelled lesson overlapping this one for the same tutor or student.
+      required: [lessonId, startsAt, endsAt, who]
+      properties:
+        lessonId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        membershipId:
+          type: string
+          format: uuid
+          description: The tutor booked twice, if it is a tutor.
+        studentId:
+          type: string
+          format: uuid
+          description: The student booked twice, if it is a student.
+        who:
+          type: string
+          description: Their name, for "This lesson overlaps Ravi's 16:00 lesson."
+
+    ItemKind:
+      type: string
+      enum: [task, goal, note]
+
+    ItemVisibility:
+      type: string
+      description: |
+        Who may see the item. `student` and `contacts` take effect when those
+        roles can sign in (build plan, Phase 10); today only staff sign in.
+      enum: [staff, student, contacts]
+
+    LessonItem:
+      type: object
+      required: [id, kind, body, visibility, done, author, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/ItemKind"
+        body:
+          type: string
+        visibility:
+          $ref: "#/components/schemas/ItemVisibility"
+        done:
+          type: boolean
+          description: Ticked off. Tasks only.
+        doneAt:
+          type: string
+          format: date-time
+        goalId:
+          type: string
+          format: uuid
+          description: The student goal this item works towards.
+        author:
+          $ref: "#/components/schemas/MemberRef"
+        createdAt:
+          type: string
+          format: date-time
+
+    LessonItemInput:
+      type: object
+      required: [kind, body]
+      properties:
+        kind:
+          $ref: "#/components/schemas/ItemKind"
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        visibility:
+          $ref: "#/components/schemas/ItemVisibility"
+        goalId:
+          type: string
+          format: uuid
+
+    LessonItemChanges:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        done:
+          type: boolean
+        visibility:
+          $ref: "#/components/schemas/ItemVisibility"
+
+    CancellationPolicySummary:
+      type: object
+      description: The lead tutor's policy, as parents see it.
+      required: [noticeHours, lateCancellationBillable, noShowBillable, summary]
+      properties:
+        noticeHours:
+          type: integer
+          format: int32
+        lateCancellationBillable:
+          type: boolean
+        noShowBillable:
+          type: boolean
+        summary:
+          type: string
+
+    Lesson:
+      type: object
+      required: [id, startsAt, endsAt, status, kind, tutors, students, feeCents, currency, billable, clashes, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/LessonStatus"
+        kind:
+          $ref: "#/components/schemas/LessonKind"
+        title:
+          type: string
+          example: Guitar, Grade 5
+        tutors:
+          type: array
+          description: The lead first.
+          items:
+            $ref: "#/components/schemas/LessonTutor"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonStudent"
+        location:
+          $ref: "#/components/schemas/LessonLocation"
+        feeCents:
+          type: integer
+          format: int64
+          minimum: 0
+          description: The whole lesson's fee, billed by the lead tutor.
+        currency:
+          type: string
+          description: ISO 4217.
+          example: SGD
+        billable:
+          type: boolean
+          description: Done, or a no-show or late cancellation the lead tutor's policy bills.
+        makeupForLessonId:
+          type: string
+          format: uuid
+        makeupLessonId:
+          type: string
+          format: uuid
+          description: The make-up booked when this lesson was cancelled.
+        cancellation:
+          $ref: "#/components/schemas/Cancellation"
+        completedAt:
+          type: string
+          format: date-time
+        clashes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Clash"
+        items:
+          type: array
+          description: Tasks, goals and notes. Only when the lesson is fetched on its own.
+          items:
+            $ref: "#/components/schemas/LessonItem"
+        cancellationPolicy:
+          $ref: "#/components/schemas/CancellationPolicySummary"
+        version:
+          type: integer
+          format: int32
+          description: Send in `If-Match` when changing the lesson.
+
+    LessonList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+        nextCursor:
+          type: string
+
+    TutorInput:
+      type: object
+      required: [membershipId, role]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/TutorRole"
+
+    LessonInput:
+      type: object
+      required: [startsAt, endsAt, tutors, studentIds]
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        tutors:
+          type: array
+          minItems: 1
+          description: Exactly one `lead`.
+          items:
+            $ref: "#/components/schemas/TutorInput"
+        studentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        locationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 100
+        feeCents:
+          type: integer
+          format: int64
+          minimum: 0
+        kind:
+          $ref: "#/components/schemas/LessonKind"
+        makeupForLessonId:
+          type: string
+          format: uuid
+
+    LessonChanges:
+      type: object
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        tutors:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TutorInput"
+        studentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        locationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 100
+        feeCents:
+          type: integer
+          format: int64
+          minimum: 0
+
+    StudentAttendance:
+      type: object
+      required: [studentId, attendance]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        attendance:
+          $ref: "#/components/schemas/Attendance"
+
+    CompleteLessonRequest:
+      type: object
+      properties:
+        attendance:
+          type: array
+          description: Per student. Students left out are recorded as present.
+          items:
+            $ref: "#/components/schemas/StudentAttendance"
+
+    MakeupTime:
+      type: object
+      required: [startsAt, endsAt]
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    CancelLessonRequest:
+      type: object
+      required: [party]
+      properties:
+        party:
+          $ref: "#/components/schemas/CancellationParty"
+        reason:
+          type: string
+          maxLength: 500
+        makeup:
+          $ref: "#/components/schemas/MakeupTime"
+
+    HistoryEntry:
+      type: object
+      required: [action, at]
+      properties:
+        action:
+          type: string
+          example: lesson.completed
+        at:
+          type: string
+          format: date-time
+        actorName:
+          type: string
+          description: Absent for changes Penny made itself.
+        before:
+          type: object
+          additionalProperties: true
+        after:
+          type: object
+          additionalProperties: true
+
+    HistoryList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEntry"
+        nextCursor:
+          type: string
+
+    CancellationPolicy:
+      type: object
+      required: [membershipId, noticeHours, lateCancellationBillable, noShowBillable, summary, isDefault]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        noticeHours:
+          type: integer
+          format: int32
+          description: Cancelling with less notice than this is late.
+        lateCancellationBillable:
+          type: boolean
+        noShowBillable:
+          type: boolean
+        summary:
+          type: string
+          description: The policy in the tutor's words, shown to parents.
+        isDefault:
+          type: boolean
+          description: The tutor has not set a policy, so Penny's default applies.
+
+    CancellationPolicyInput:
+      type: object
+      required: [noticeHours, lateCancellationBillable, noShowBillable]
+      properties:
+        noticeHours:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 336
+        lateCancellationBillable:
+          type: boolean
+        noShowBillable:
+          type: boolean
+        summary:
+          type: string
+          maxLength: 500
 
     MembershipRole:
       type: string

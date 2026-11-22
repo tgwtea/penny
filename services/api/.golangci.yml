@@ -58,6 +58,13 @@ linters:
           deny:
             - pkg: github.com/tgwtea/penny/services/api/internal/workspace/workspacesql
               desc: only the workspace module reads teams and memberships; call workspace.Service
+        scheduling-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/scheduling/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/scheduling/schedulingsql
+              desc: only the scheduling module reads students, locations and lessons; call scheduling.Service
         audit-queries-are-private:
           files:
             - "$all"

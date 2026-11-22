@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,4 +59,14 @@ func inTx(ctx context.Context, pool *pgxpool.Pool, workspaceID uuid.UUID, fn fun
 		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
+}
+
+// DBTX is a pool or a transaction: what services pass across module
+// boundaries so another module's work joins the caller's transaction. It
+// has the same methods as every sqlc package's DBTX, so a value of it can
+// be handed to any module's generated queries.
+type DBTX interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
