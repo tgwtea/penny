@@ -238,6 +238,33 @@ void main() {
       );
     });
 
+    testWidgets('day columns name the tutor of lessons the viewer does not '
+        'teach', (tester) async {
+      await tester.pumpWidget(
+        pennyTestApp(
+          Timetable(
+            columns: [
+              TimetableColumn(id: 'thu', date: _thursday, title: 'Thu 19'),
+            ],
+            entries: [
+              TimetableEntry(
+                columnId: 'thu',
+                lesson: _lesson(
+                  minutes: 90,
+                  tutors: const [_aisha],
+                  location: 'Room 2',
+                ),
+              ),
+            ],
+            startHour: 14,
+            endHour: 20,
+            viewerMembershipId: _mei.membershipId,
+          ),
+        ),
+      );
+      expect(find.text('Aisha, Room 2'), findsOneWidget);
+    });
+
     testWidgets('a shared lesson appears in each tutor column', (tester) async {
       final shared = _lesson(
         id: 's',

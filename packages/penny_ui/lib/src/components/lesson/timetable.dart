@@ -74,6 +74,7 @@ class Timetable extends StatefulWidget {
     this.now,
     this.onTapLesson,
     this.onTapSlot,
+    this.viewerMembershipId,
   }) : assert(
          startHour >= 0 && endHour <= 24 && startHour < endHour,
          'Invalid hour range.',
@@ -101,6 +102,11 @@ class Timetable extends StatefulWidget {
   /// Called with a column and the 15-minute slot tapped in it. Null makes
   /// free slots inert (for people who may not add lessons).
   final void Function(TimetableColumn column, DateTime slotStart)? onTapSlot;
+
+  /// Who is looking, for columns that are days rather than people: their
+  /// own lessons read as usual, and other tutors' lessons name the tutor.
+  /// A person's column always reads as that person's.
+  final String? viewerMembershipId;
 
   /// The narrowest a column gets before the grid scrolls sideways.
   static const double minColumnWidth = 120;
@@ -324,7 +330,7 @@ class _TimetableState extends State<Timetable> {
               child: LessonBlock(
                 lesson: p.lesson,
                 viewerMembershipId: column.personName == null
-                    ? null
+                    ? widget.viewerMembershipId
                     : column.id,
                 onTap: widget.onTapLesson == null
                     ? null
