@@ -144,3 +144,11 @@ WHERE l.workspace_id = @workspace_id AND l.billable
   AND (sqlc.narg('ids')::uuid[] IS NULL OR l.id = ANY(sqlc.narg('ids')::uuid[]))
 ORDER BY l.starts_at, l.id
 LIMIT 500;
+
+-- name: ListStudentLessons :many
+-- Every lesson a student is in, oldest first, for their data export.
+SELECT l.* FROM lessons l
+WHERE l.workspace_id = @workspace_id
+  AND EXISTS (SELECT 1 FROM lesson_participants p
+              WHERE p.workspace_id = l.workspace_id AND p.lesson_id = l.id AND p.student_id = @student_id)
+ORDER BY l.starts_at, l.id;

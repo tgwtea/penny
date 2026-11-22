@@ -17,3 +17,8 @@ SELECT EXISTS (
       AND to_email = @to_email AND status = 'sent'
       AND scheduled_for IS NOT DISTINCT FROM sqlc.narg('scheduled_for')
 ) AS sent;
+
+-- name: PurgeEmailLog :execrows
+-- Retention (docs/privacy.md): the log answers "did it arrive?", which
+-- nobody asks after a year.
+DELETE FROM email_log WHERE sent_at < @before;

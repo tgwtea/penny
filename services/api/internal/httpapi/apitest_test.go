@@ -46,9 +46,11 @@ const testSecret = "test-unsubscribe-secret-0123456789abcdef"
 // 16:20 in Singapore, the moment the designs show.
 var testNow = time.Date(2026, 11, 19, 8, 20, 0, 0, time.UTC)
 
-func newAPITest(t *testing.T) *apiTest {
+func newAPITest(t *testing.T, configure ...func(*Options)) *apiTest {
 	t.Helper()
-	pool := schematest.NewDatabase(t)
+	// The services act as the app role, under row-level security, as in
+	// production; the test inspects rows as the owner.
+	pool, owner := schematest.NewAppDatabase(t)
 	verifier := identitytest.NewVerifier()
 	clk := clock.NewFixed(testNow)
 
@@ -64,12 +66,16 @@ func newAPITest(t *testing.T) *apiTest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := NewHandler(Options{
+	opts := Options{
 		Logger:      slog.New(slog.DiscardHandler),
 		Build:       buildinfo.Info{Version: "test", Commit: "test"},
 		CORSOrigins: []string{testOrigin},
 		Services:    services,
-	})
+	}
+	for _, c := range configure {
+		c(&opts)
+	}
+	h, err := NewHandler(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +86,7 @@ func newAPITest(t *testing.T) *apiTest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &apiTest{t: t, Client: client, URL: srv.URL, Pool: pool, Verifier: verifier, Clock: clk, Mailer: mailer, services: services}
+	return &apiTest{t: t, Client: client, URL: srv.URL, Pool: owner, Verifier: verifier, Clock: clk, Mailer: mailer, services: services}
 }
 
 var tokenSeq atomic.Int64

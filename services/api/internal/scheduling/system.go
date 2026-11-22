@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/tgwtea/penny/services/api/internal/apperr"
 	"github.com/tgwtea/penny/services/api/internal/platform/database"
@@ -195,4 +196,70 @@ func (s *Service) BillingContacts(ctx context.Context, db database.DBTX, workspa
 // public payment page.
 func (s *Service) PolicyFor(ctx context.Context, db database.DBTX, workspaceID, membershipID uuid.UUID) (Policy, error) {
 	return newStore(db, workspaceID).policy(ctx, membershipID)
+}
+
+// StudentRecord is everything a team holds about one student: their
+// details, contacts and goals, and every lesson they are in with its
+// items, oldest first. It answers a PDPA access request (internal/privacy).
+type StudentRecord struct {
+	Student Student
+	Lessons []Lesson
+}
+
+// StudentRecordFor reads a student's record, archived or not.
+func (s *Service) StudentRecordFor(ctx context.Context, tx pgx.Tx, workspaceID, studentID uuid.UUID) (StudentRecord, error) {
+	st := newStore(tx, workspaceID)
+	row, err := st.q.GetStudent(ctx, schedulingsql.GetStudentParams{WorkspaceID: workspaceID, ID: studentID})
+	if err != nil {
+		return StudentRecord{}, readErr(err, "student")
+	}
+	student, err := s.student(ctx, tx, st, row)
+	if err != nil {
+		return StudentRecord{}, err
+	}
+	rows, err := st.q.ListStudentLessons(ctx, schedulingsql.ListStudentLessonsParams{WorkspaceID: workspaceID, StudentID: studentID})
+	if err != nil {
+		return StudentRecord{}, fmt.Errorf("list student lessons: %w", err)
+	}
+	lessons, err := st.loadLessons(ctx, s.teams, rows)
+	if err != nil {
+		return StudentRecord{}, err
+	}
+	ids := make([]uuid.UUID, len(lessons))
+	for i, l := range lessons {
+		ids[i] = l.ID
+	}
+	items, err := st.q.ListItemsOfLessons(ctx, schedulingsql.ListItemsOfLessonsParams{WorkspaceID: workspaceID, LessonIds: ids})
+	if err != nil {
+		return StudentRecord{}, fmt.Errorf("list lesson items: %w", err)
+	}
+	authors := map[uuid.UUID]bool{}
+	for _, it := range items {
+		authors[it.AuthorMembership] = true
+	}
+	names, err := s.teams.MembersByID(ctx, tx, workspaceID, keys(authors))
+	if err != nil {
+		return StudentRecord{}, err
+	}
+	byLesson := map[uuid.UUID][]LessonItem{}
+	for _, it := range items {
+		byLesson[it.LessonID] = append(byLesson[it.LessonID], toItem(it, names[it.AuthorMembership].DisplayName))
+	}
+	for i := range lessons {
+		lessons[i].Items = byLesson[lessons[i].ID]
+		if lessons[i].Items == nil {
+			lessons[i].Items = []LessonItem{}
+		}
+	}
+	return StudentRecord{Student: student, Lessons: lessons}, nil
+}
+
+// PoliciesSetBy lists the cancellation policies a membership has set
+// itself, for its person's data export. The default is not listed.
+func (s *Service) PoliciesSetBy(ctx context.Context, db database.DBTX, workspaceID, membershipID uuid.UUID) ([]Policy, error) {
+	p, err := newStore(db, workspaceID).policy(ctx, membershipID)
+	if err != nil || p.IsDefault {
+		return nil, err
+	}
+	return []Policy{p}, nil
 }

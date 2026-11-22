@@ -59,10 +59,14 @@ func (s *Service) Create(ctx context.Context, user identity.User, name, timezone
 		return Membership{}, err
 	}
 
+	id, err := uuid.NewV7()
+	if err != nil {
+		return Membership{}, fmt.Errorf("make team ID: %w", err)
+	}
 	var created Membership
-	err = database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = database.InWorkspaceTx(ctx, s.pool, id, func(tx pgx.Tx) error {
 		st := newStore(tx)
-		w, err := st.createWorkspace(ctx, name, timezone, user.ID)
+		w, err := st.createWorkspace(ctx, id, name, timezone, user.ID)
 		if err != nil {
 			return err
 		}
@@ -293,7 +297,13 @@ func (s *Service) RemoveMember(ctx context.Context, userID, workspaceID, memberI
 // MembershipsOf lists every team user is active in, with what they may do
 // in each, for GET /v1/me.
 func (s *Service) MembershipsOf(ctx context.Context, userID uuid.UUID) ([]Membership, error) {
-	return newStore(s.pool).membershipsOfUser(ctx, userID)
+	var out []Membership
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		out, err = newStore(tx).membershipsOfUser(ctx, userID)
+		return err
+	})
+	return out, err
 }
 
 // ClaimInvitations activates every invitation for user's email, inside tx.

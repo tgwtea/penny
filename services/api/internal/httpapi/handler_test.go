@@ -202,9 +202,10 @@ func TestSecurityHeaders(t *testing.T) {
 	resp := do(t, http.MethodGet, srv.URL+"/v1/version", nil)
 	readAll(t, resp)
 	for header, want := range map[string]string{
-		"Cache-Control":          "no-store",
-		"X-Content-Type-Options": "nosniff",
-		"Referrer-Policy":        "no-referrer",
+		"Cache-Control":             "no-store",
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "no-referrer",
+		"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 	} {
 		if got := resp.Header.Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)

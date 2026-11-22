@@ -435,6 +435,71 @@ func (q *Queries) ListLessons(ctx context.Context, arg ListLessonsParams) ([]Les
 	return items, nil
 }
 
+const listStudentLessons = `-- name: ListStudentLessons :many
+SELECT l.id, l.workspace_id, l.starts_at, l.ends_at, l.status, l.kind, l.title, l.makeup_for_lesson_id, l.location_id, l.location_kind, l.location_name, l.location_address, l.meeting_url, l.fee_cents, l.currency, l.billable, l.completed_at, l.no_show_at, l.marked_by, l.cancelled_at, l.cancelled_by, l.cancellation_party, l.cancellation_reason, l.cancellation_late, l.created_by, l.version, l.created_at, l.updated_at, l.series_id, l.series_date FROM lessons l
+WHERE l.workspace_id = $1
+  AND EXISTS (SELECT 1 FROM lesson_participants p
+              WHERE p.workspace_id = l.workspace_id AND p.lesson_id = l.id AND p.student_id = $2)
+ORDER BY l.starts_at, l.id
+`
+
+type ListStudentLessonsParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+// Every lesson a student is in, oldest first, for their data export.
+func (q *Queries) ListStudentLessons(ctx context.Context, arg ListStudentLessonsParams) ([]Lesson, error) {
+	rows, err := q.db.Query(ctx, listStudentLessons, arg.WorkspaceID, arg.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Lesson
+	for rows.Next() {
+		var i Lesson
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.Status,
+			&i.Kind,
+			&i.Title,
+			&i.MakeupForLessonID,
+			&i.LocationID,
+			&i.LocationKind,
+			&i.LocationName,
+			&i.LocationAddress,
+			&i.MeetingUrl,
+			&i.FeeCents,
+			&i.Currency,
+			&i.Billable,
+			&i.CompletedAt,
+			&i.NoShowAt,
+			&i.MarkedBy,
+			&i.CancelledAt,
+			&i.CancelledBy,
+			&i.CancellationParty,
+			&i.CancellationReason,
+			&i.CancellationLate,
+			&i.CreatedBy,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SeriesID,
+			&i.SeriesDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockLesson = `-- name: LockLesson :one
 SELECT id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date FROM lessons WHERE workspace_id = $1 AND id = $2 FOR UPDATE
 `

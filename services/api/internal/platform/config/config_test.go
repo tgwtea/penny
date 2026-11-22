@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
@@ -64,9 +65,13 @@ func TestLoadAPIReadsEveryVariable(t *testing.T) {
 		"PENNY_FIREBASE_PROJECT_ID": "penny-prod",
 		"PENNY_UNSUBSCRIBE_SECRET":  testSecret,
 		"PENNY_APP_URL":             "https://app.example.com",
+		"PENNY_TRUSTED_PROXIES":     "10.42.0.0/16, 192.168.1.7",
 	}))
 	if err != nil {
 		t.Fatalf("LoadAPI: %v", err)
+	}
+	if got := fmt.Sprint(cfg.TrustedProxies); got != "[10.42.0.0/16 192.168.1.7/32]" {
+		t.Errorf("TrustedProxies = %s", got)
 	}
 	if cfg.AppURL != "https://app.example.com" || cfg.UnsubscribeSecret != testSecret {
 		t.Errorf("AppURL, secret = %q, %q", cfg.AppURL, cfg.UnsubscribeSecret)
@@ -136,6 +141,11 @@ func TestLoadAPIRejectsBadValues(t *testing.T) {
 			name:    "origin with a path",
 			vars:    map[string]string{"PENNY_DATABASE_URL": testDatabaseURL, "PENNY_CORS_ORIGINS": "https://app.example.com/login"},
 			wantErr: "PENNY_CORS_ORIGINS",
+		},
+		{
+			name:    "proxy that is not an address",
+			vars:    map[string]string{"PENNY_DATABASE_URL": testDatabaseURL, "PENNY_TRUSTED_PROXIES": "ingress.local"},
+			wantErr: "PENNY_TRUSTED_PROXIES",
 		},
 	}
 	for _, tt := range tests {

@@ -43,3 +43,8 @@ SET notice_hours = EXCLUDED.notice_hours,
     updated_by = EXCLUDED.updated_by,
     updated_at = now()
 RETURNING *;
+
+-- name: ListItemsOfLessons :many
+SELECT * FROM lesson_items
+WHERE workspace_id = @workspace_id AND lesson_id = ANY(@lesson_ids::uuid[])
+ORDER BY lesson_id, created_at, id;

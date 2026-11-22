@@ -191,5 +191,28 @@ SELECT operation, entity_id FROM idempotency_keys
 WHERE workspace_id = @workspace_id AND user_id = @user_id AND key = @key;
 
 -- name: SaveIdempotencyKey :exec
-INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id)
-VALUES (@workspace_id, @user_id, @key, @operation, @entity_id);
+-- created_at is the service's clock, which retention compares against.
+INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id, created_at)
+VALUES (@workspace_id, @user_id, @key, @operation, @entity_id, @now);
+
+-- Retention (docs/privacy.md). Each runs across teams.
+
+-- name: PurgeIdempotencyKeys :execrows
+-- A retry comes within minutes; a day covers any client's backoff.
+DELETE FROM idempotency_keys WHERE created_at < @before;
+
+-- name: PurgeExpiredLinks :execrows
+-- Links stop working when they expire; their hashes serve no purpose after.
+DELETE FROM payment_links WHERE expires_at < @before;
+
+-- name: ListRequestsForStudent :many
+-- Every request for a student, oldest first, for their data export.
+SELECT * FROM payment_requests
+WHERE workspace_id = @workspace_id AND student_id = @student_id
+ORDER BY created_at, id;
+
+-- name: ListReceiptsForStudent :many
+SELECT r.* FROM receipts r
+JOIN payment_requests q ON q.workspace_id = r.workspace_id AND q.id = r.request_id
+WHERE r.workspace_id = @workspace_id AND q.student_id = @student_id
+ORDER BY r.issued_at, r.id;

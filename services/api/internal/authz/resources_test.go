@@ -127,3 +127,19 @@ func TestPaymentRules(t *testing.T) {
 		}
 	}
 }
+
+func TestPrivacyRules(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"owner exports a student's record", ExportStudentData(owner), "allowed"},
+		{"teacher cannot", ExportStudentData(teacher), "forbidden"},
+		{"reserved roles cannot", ExportStudentData(student), "forbidden"},
+	} {
+		if got := outcome(tt.err); got != tt.want {
+			t.Errorf("%s: %s, want %s", tt.name, got, tt.want)
+		}
+	}
+}

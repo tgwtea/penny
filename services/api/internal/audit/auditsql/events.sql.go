@@ -12,6 +12,49 @@ import (
 	"github.com/google/uuid"
 )
 
+const listEventsByActor = `-- name: ListEventsByActor :many
+SELECT id, workspace_id, actor_user_id, action, entity_type, entity_id, before, after, at FROM audit_events
+WHERE actor_user_id = $1
+ORDER BY at DESC, id DESC
+LIMIT $2
+`
+
+type ListEventsByActorParams struct {
+	ActorUserID *uuid.UUID
+	MaxEvents   int32
+}
+
+// What one person did, newest first, for their data export.
+func (q *Queries) ListEventsByActor(ctx context.Context, arg ListEventsByActorParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listEventsByActor, arg.ActorUserID, arg.MaxEvents)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ActorUserID,
+			&i.Action,
+			&i.EntityType,
+			&i.EntityID,
+			&i.Before,
+			&i.After,
+			&i.At,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEventsForEntity = `-- name: ListEventsForEntity :many
 SELECT id, workspace_id, actor_user_id, action, entity_type, entity_id, before, after, at FROM audit_events
 WHERE entity_type = $1 AND entity_id = $2

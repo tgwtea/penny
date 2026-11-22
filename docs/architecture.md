@@ -141,6 +141,7 @@ services/api/
 │   ├── billing/      payee accounts, payment requests, PayNow encoder, payment records, receipts
 │   ├── notify/       Mailer interface, templates, reminder jobs, email log
 │   ├── audit/        append-only audit log writer
+│   ├── privacy/      PDPA data exports, composed from each module's part
 │   └── messaging/    reserved, empty
 └── db/
     ├── migrations/   goose SQL, numbered
@@ -305,7 +306,7 @@ The two reserved roles exist in the `membership_role` enum and in the `authz` pa
 **Enforcement, in three layers**
 
 1. **Service layer (authoritative).** Every service method calls `authz.Can(actor, action, resource)` before acting. The policy is a pure function with a table-driven test per row of the matrix above.
-2. **Postgres row-level security (defence in depth, Phase 9).** Each transaction runs `SET LOCAL app.workspace_id`; policies reject rows from other teams even if a query forgets its filter.
+2. **Postgres row-level security (defence in depth, Phase 9).** Each transaction runs `SET LOCAL app.workspace_id`; policies reject rows from other teams even if a query forgets its filter. The few operations that span teams by design (a person's own memberships, looking up a public token's team, the worker's sweeps) say so with `database.InCrossTeamTx`; a transaction scoped to neither sees no team's rows. The policies bind the app role, which owns no tables, and the API tests run as that role.
 3. **Client (convenience only).** Router guards and hidden controls. They make a teacher unable to reach `/team` by typing the URL, but the server would refuse the request regardless.
 
 A team with one member hides every team feature in the UI. There is no separate solo mode.
@@ -627,6 +628,8 @@ Payee setup with test-scan confirmation, PayNow encoder with golden payloads ver
 ### Phase 9: Hardening
 
 Row-level security, ASVS Level 1 review, rate limits, PDPA access and deletion flows, retention jobs, prod overlay and first promotion, restore drill, load test at ten times expected traffic. Done when prod is live and the first runbook has been exercised.
+
+Server done on 22 Nov 2026 except the deployment steps (prod overlay, first promotion, restore drill, load test), which are done elsewhere. Row-level security covers every team table (migration 00011), with triggers that make the audit log append-only and receipts immutable for every role. Public operations are rate-limited per client address, believing `X-Forwarded-For` only from `PENNY_TRUSTED_PROXIES`; request bodies are capped at 1 MiB and responses carry HSTS. A daily `retention` job purges idempotency keys, long-expired payment links and year-old email log rows. PDPA access requests are answered by `GET /v1/me/export` and, for owners, a student export (`internal/privacy`); the retention policy is docs/privacy.md, and the ASVS Level 1 review with its follow-ups is docs/security.md. Runbooks cover data requests and breach response.
 
 ### Phase 10: Student and parent roles
 

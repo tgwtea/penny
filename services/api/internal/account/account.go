@@ -42,7 +42,9 @@ func NewService(pool *pgxpool.Pool, users *identity.Service, teams *workspace.Se
 // moment invitations to their (verified) email become memberships, and
 // their teams see their current name and email.
 func (s *Service) Me(ctx context.Context, user identity.User) (Me, error) {
-	err := database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	// Across teams: invitations and memberships in any team are the
+	// person's own.
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := s.teams.ClaimInvitations(ctx, tx, user); err != nil {
 			return err
 		}
@@ -71,7 +73,7 @@ func (s *Service) Rename(ctx context.Context, user identity.User, name string) (
 // every team, then their user row is anonymised. Refused while they are the
 // only owner of a team with other members.
 func (s *Service) Delete(ctx context.Context, user identity.User) error {
-	return database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	return database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := s.teams.LeaveAll(ctx, tx, user.ID); err != nil {
 			return err
 		}

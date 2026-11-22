@@ -306,9 +306,7 @@ func (s *Service) CreateRequest(ctx context.Context, userID, workspaceID uuid.UU
 			map[string]any{"amount_cents": total, "lines": len(lines), "payee_membership_id": in.PayeeID, "due_on": row.DueOn}); err != nil {
 			return err
 		}
-		if err := q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
-			WorkspaceID: workspaceID, UserID: userID, Key: key, Operation: "payment_request.create", EntityID: row.ID,
-		}); err != nil {
+		if err := s.saveKey(ctx, q, workspaceID, userID, key, "payment_request.create", row.ID); err != nil {
 			return fmt.Errorf("save idempotency key: %w", err)
 		}
 		if account.SendAutomatically {
@@ -521,9 +519,7 @@ func (s *Service) RecordPayment(ctx context.Context, userID, workspaceID, reques
 			map[string]any{"amount_cents": in.AmountCents, "paid_on": rec.PaidOn, "method": in.Method, "matches_request": in.AmountCents == row.AmountCents}); err != nil {
 			return err
 		}
-		if err := q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
-			WorkspaceID: workspaceID, UserID: userID, Key: key, Operation: "payment.record", EntityID: requestID,
-		}); err != nil {
+		if err := s.saveKey(ctx, q, workspaceID, userID, key, "payment.record", requestID); err != nil {
 			return fmt.Errorf("save idempotency key: %w", err)
 		}
 		if row.PayerConfirmedAt != nil {
@@ -678,7 +674,12 @@ func (s *Service) PayerConfirmed(ctx context.Context, token string) (PublicReque
 // draft requests' links are not found.
 func (s *Service) withLink(ctx context.Context, token string, fn func(pgx.Tx, *billingsql.Queries, billingsql.PaymentRequest) error) error {
 	hash := sha256.Sum256([]byte(token))
-	link, err := billingsql.New(s.pool).FindPaymentLink(ctx, hash[:])
+	var link billingsql.FindPaymentLinkRow
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		link, err = billingsql.New(tx).FindPaymentLink(ctx, hash[:])
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !s.clock.Now().Before(link.ExpiresAt)) {
 		return apperr.ErrNotFound
 	}
@@ -760,6 +761,51 @@ func (s *Service) PublicFor(ctx context.Context, tx pgx.Tx, workspaceID, request
 	return s.public(ctx, tx, q, row)
 }
 
+// PayeeAccountFor reads a membership's PayNow account, if it has one, for
+// its person's data export.
+func (s *Service) PayeeAccountFor(ctx context.Context, db database.DBTX, workspaceID, membershipID uuid.UUID) (*PayeeAccount, error) {
+	row, err := billingsql.New(db).GetPayeeAccount(ctx, billingsql.GetPayeeAccountParams{WorkspaceID: workspaceID, MembershipID: membershipID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read payee account: %w", err)
+	}
+	a, err := toPayeeAccount(row)
+	return &a, err
+}
+
+// StudentBilling reads every request and receipt for a student, oldest
+// first, for their data export.
+func (s *Service) StudentBilling(ctx context.Context, tx pgx.Tx, workspaceID, studentID uuid.UUID) ([]Request, []Receipt, error) {
+	q := billingsql.New(tx)
+	rows, err := q.ListRequestsForStudent(ctx, billingsql.ListRequestsForStudentParams{WorkspaceID: workspaceID, StudentID: studentID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list student requests: %w", err)
+	}
+	requests, err := s.requests(ctx, tx, q, workspaceID, rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	stored, err := q.ListReceiptsForStudent(ctx, billingsql.ListReceiptsForStudentParams{WorkspaceID: workspaceID, StudentID: studentID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list student receipts: %w", err)
+	}
+	payees := map[uuid.UUID]uuid.UUID{}
+	for _, r := range rows {
+		payees[r.ID] = r.PayeeMembershipID
+	}
+	receipts := make([]Receipt, 0, len(stored))
+	for _, r := range stored {
+		rc, err := toReceipt(r, studentID, payees[r.RequestID])
+		if err != nil {
+			return nil, nil, err
+		}
+		receipts = append(receipts, rc)
+	}
+	return requests, receipts, s.voiders(ctx, tx, workspaceID, receipts)
+}
+
 // ReminderDue is an overdue request to chase.
 type ReminderDue struct {
 	WorkspaceID uuid.UUID
@@ -770,8 +816,13 @@ type ReminderDue struct {
 // reminded in the last interval and whose payee has not confirmed the money.
 func (s *Service) RemindersDue(ctx context.Context, interval time.Duration) ([]ReminderDue, error) {
 	now := s.clock.Now()
-	rows, err := billingsql.New(s.pool).OpenRequestsToRemind(ctx, billingsql.OpenRequestsToRemindParams{
-		Today: dateOnly(now), RemindedBefore: ptr(now.Add(-interval)),
+	var rows []billingsql.OpenRequestsToRemindRow
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		rows, err = billingsql.New(tx).OpenRequestsToRemind(ctx, billingsql.OpenRequestsToRemindParams{
+			Today: dateOnly(now), RemindedBefore: ptr(now.Add(-interval)),
+		})
+		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("find requests to remind: %w", err)
@@ -809,6 +860,13 @@ func (s *Service) replayed(ctx context.Context, q *billingsql.Queries, workspace
 		return uuid.Nil, false, apperr.New(apperr.ErrConflict, "This Idempotency-Key was used for something else. Use a new one.")
 	}
 	return row.EntityID, true, nil
+}
+
+// saveKey records that key made entityID, for replayed to find.
+func (s *Service) saveKey(ctx context.Context, q *billingsql.Queries, workspaceID, userID uuid.UUID, key, operation string, entityID uuid.UUID) error {
+	return q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
+		WorkspaceID: workspaceID, UserID: userID, Key: strings.TrimSpace(key), Operation: operation, EntityID: entityID, Now: s.clock.Now(),
+	})
 }
 
 func (s *Service) checkPayee(ctx context.Context, tx pgx.Tx, workspaceID, membershipID uuid.UUID) error {

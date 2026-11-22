@@ -694,6 +694,113 @@ func (q *Queries) ListReceipts(ctx context.Context, arg ListReceiptsParams) ([]L
 	return items, nil
 }
 
+const listReceiptsForStudent = `-- name: ListReceiptsForStudent :many
+SELECT r.id, r.workspace_id, r.receipt_number, r.payment_record_id, r.request_id, r.issued_at, r.team_name, r.payee_name, r.student_name, r.reference, r.lines, r.amount_cents, r.currency, r.paid_on, r.method, r.co_taught, r.timezone, r.replaces_number, r.content_sha256, r.replaces_receipt_id, r.voided_at, r.voided_by, r.void_reason FROM receipts r
+JOIN payment_requests q ON q.workspace_id = r.workspace_id AND q.id = r.request_id
+WHERE r.workspace_id = $1 AND q.student_id = $2
+ORDER BY r.issued_at, r.id
+`
+
+type ListReceiptsForStudentParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+func (q *Queries) ListReceiptsForStudent(ctx context.Context, arg ListReceiptsForStudentParams) ([]Receipt, error) {
+	rows, err := q.db.Query(ctx, listReceiptsForStudent, arg.WorkspaceID, arg.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Receipt
+	for rows.Next() {
+		var i Receipt
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ReceiptNumber,
+			&i.PaymentRecordID,
+			&i.RequestID,
+			&i.IssuedAt,
+			&i.TeamName,
+			&i.PayeeName,
+			&i.StudentName,
+			&i.Reference,
+			&i.Lines,
+			&i.AmountCents,
+			&i.Currency,
+			&i.PaidOn,
+			&i.Method,
+			&i.CoTaught,
+			&i.Timezone,
+			&i.ReplacesNumber,
+			&i.ContentSha256,
+			&i.ReplacesReceiptID,
+			&i.VoidedAt,
+			&i.VoidedBy,
+			&i.VoidReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRequestsForStudent = `-- name: ListRequestsForStudent :many
+SELECT id, workspace_id, reference, payee_membership_id, student_id, amount_cents, currency, due_on, status, note, sent_at, payer_confirmed_at, paid_at, cancelled_at, last_reminded_at, created_by, created_at, updated_at FROM payment_requests
+WHERE workspace_id = $1 AND student_id = $2
+ORDER BY created_at, id
+`
+
+type ListRequestsForStudentParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+// Every request for a student, oldest first, for their data export.
+func (q *Queries) ListRequestsForStudent(ctx context.Context, arg ListRequestsForStudentParams) ([]PaymentRequest, error) {
+	rows, err := q.db.Query(ctx, listRequestsForStudent, arg.WorkspaceID, arg.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentRequest
+	for rows.Next() {
+		var i PaymentRequest
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Reference,
+			&i.PayeeMembershipID,
+			&i.StudentID,
+			&i.AmountCents,
+			&i.Currency,
+			&i.DueOn,
+			&i.Status,
+			&i.Note,
+			&i.SentAt,
+			&i.PayerConfirmedAt,
+			&i.PaidAt,
+			&i.CancelledAt,
+			&i.LastRemindedAt,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const livePaymentRecord = `-- name: LivePaymentRecord :one
 SELECT id, workspace_id, request_id, amount_cents, paid_on, method, recorded_by, superseded_at, created_at FROM payment_records
 WHERE workspace_id = $1 AND request_id = $2 AND superseded_at IS NULL
@@ -1059,6 +1166,34 @@ func (q *Queries) OpenRequestsToRemind(ctx context.Context, arg OpenRequestsToRe
 	return items, nil
 }
 
+const purgeExpiredLinks = `-- name: PurgeExpiredLinks :execrows
+DELETE FROM payment_links WHERE expires_at < $1
+`
+
+// Links stop working when they expire; their hashes serve no purpose after.
+func (q *Queries) PurgeExpiredLinks(ctx context.Context, before time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredLinks, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeIdempotencyKeys = `-- name: PurgeIdempotencyKeys :execrows
+
+DELETE FROM idempotency_keys WHERE created_at < $1
+`
+
+// Retention (docs/privacy.md). Each runs across teams.
+// A retry comes within minutes; a day covers any client's backoff.
+func (q *Queries) PurgeIdempotencyKeys(ctx context.Context, before time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeIdempotencyKeys, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const receiptReplacing = `-- name: ReceiptReplacing :one
 SELECT id FROM receipts WHERE workspace_id = $1 AND replaces_receipt_id = $2
 `
@@ -1130,8 +1265,8 @@ func (q *Queries) ReopenPaidRequest(ctx context.Context, arg ReopenPaidRequestPa
 }
 
 const saveIdempotencyKey = `-- name: SaveIdempotencyKey :exec
-INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type SaveIdempotencyKeyParams struct {
@@ -1140,8 +1275,10 @@ type SaveIdempotencyKeyParams struct {
 	Key         string
 	Operation   string
 	EntityID    uuid.UUID
+	Now         time.Time
 }
 
+// created_at is the service's clock, which retention compares against.
 func (q *Queries) SaveIdempotencyKey(ctx context.Context, arg SaveIdempotencyKeyParams) error {
 	_, err := q.db.Exec(ctx, saveIdempotencyKey,
 		arg.WorkspaceID,
@@ -1149,6 +1286,7 @@ func (q *Queries) SaveIdempotencyKey(ctx context.Context, arg SaveIdempotencyKey
 		arg.Key,
 		arg.Operation,
 		arg.EntityID,
+		arg.Now,
 	)
 	return err
 }

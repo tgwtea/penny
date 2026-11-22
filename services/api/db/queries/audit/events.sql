@@ -9,3 +9,10 @@ VALUES (sqlc.narg('workspace_id'), sqlc.narg('actor_user_id'), @action, @entity_
 SELECT * FROM audit_events
 WHERE entity_type = @entity_type AND entity_id = @entity_id
 ORDER BY at, id;
+
+-- name: ListEventsByActor :many
+-- What one person did, newest first, for their data export.
+SELECT * FROM audit_events
+WHERE actor_user_id = @actor_user_id
+ORDER BY at DESC, id DESC
+LIMIT @max_events;

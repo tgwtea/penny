@@ -5,6 +5,7 @@ import 'package:penny_api/api_client.dart';
 import 'package:penny_api/api_exception.dart';
 import 'package:penny_api/messages/update_me_request.dart';
 import 'package:penny_api/models/me.dart';
+import 'package:penny_api/models/personal_data_export.dart';
 import 'package:penny_api/models/problem.dart';
 
 /// The signed-in person and their teams.
@@ -96,6 +97,42 @@ class IdentityApi {
 
     if (response.body.isNotEmpty) {
       return Me.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Download everything Penny holds about the signed-in person
+  /// For a PDPA access request: the person's profile, their membership in
+  /// each team with the name, email, PayNow account and cancellation
+  /// policy that team holds for them, and what they did, newest first.
+  /// Records a team keeps that mention them, such as lessons they taught,
+  /// belong to the team; its owner can export those. Each export is
+  /// written to the audit log.
+  Future<PersonalDataExport> exportMyData() async {
+    final response = await client.invokeApi(
+      method: Method.get,
+      path: '/v1/me/export',
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return PersonalDataExport.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
 
     throw ApiException<Object?>.unhandled(response.statusCode);

@@ -74,7 +74,12 @@ func (s *Service) RevokeFeed(ctx context.Context, userID, workspaceID, membershi
 // an unknown or revoked one is not found.
 func (s *Service) Feed(ctx context.Context, token string) ([]byte, error) {
 	hash := sha256.Sum256([]byte(token))
-	found, err := schedulingsql.New(s.pool).FindCalendarFeed(ctx, hash[:])
+	var found schedulingsql.FindCalendarFeedRow
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		found, err = schedulingsql.New(tx).FindCalendarFeed(ctx, hash[:])
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, apperr.ErrNotFound
 	}
