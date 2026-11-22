@@ -50,12 +50,26 @@ These have no artboard; they were designed in code from the components above and
 | Lesson details, repeating | `/lessons/:id` | Owner, tutors on the lesson | A Repeats section ("Every Thursday, 16:30 to 17:15.") with Stop repeating, which confirms and removes later lessons that never happened | SectionHeader, ListRow, Dialog |
 | Calendar link | Account | Owners and teachers | Make a link, shown once with a warning to treat it like a password; Copy link; Stop the link | Notice, Button, Dialog |
 
+## Designed while building Phases 7 and 8
+
+| Screen | Route or opener | Who sees it | Notes | Components used |
+| --- | --- | --- | --- | --- |
+| Unsubscribe | `/unsubscribe/:token` (public) | Anyone with an email's link | The team that sends the emails, what the link stops, the masked address, and one button to confirm; then "Lesson reminders stopped". An unknown link says so with nothing to press | PublicPage, Button, Notice |
+| Lesson reminders | Account | Owners | How many hours before a lesson contacts are emailed: off, 2, 12, 24 or 48 | SelectField, Sheet |
+| Contact, payment reminders | Contact form | Owners | "Payment reminders" under "Payment requests and receipts", shown only while the contact gets those | ToggleRow |
+| PayNow setup | Account, and the Payments notice | Owners and teachers | Mobile number or UEN, the name payers see (25 characters), send new requests at once; then the test code with "It shows my name" or "It shows someone else". A changed number is checked again | SegmentedControl, TextField, ToggleRow, QrCode, Notice |
+| Payments, phone, empty, loading, error | `/payments` | Owner (all), teacher (as payee) | Totals for open, overdue and paid; All, Open, Overdue and Paid; a row per request with its amount and badge, or who it waits for once one side has confirmed. Empty invites the first request; a tutor without a checked PayNow account is asked to set one up | SegmentedControl, ListRow, StatusBadge, Notice, EmptyState, Skeleton rows |
+| New payment request | Sheet from Payments | Owner, teacher | Student; who is paid (owners); the student's done lessons the payee led and nobody has billed, as check rows; other lines; due day; note; the total. "Save draft", or "Send request" for a payee who sends at once | Sheet, SelectField, CheckRow, TextField |
+| Payment request, all states | `/payments/:id` | Owner, the payee | Amount, badge, due day and reference; who it waits for; what it covers; the link right after sending, with Copy and "Open payment page"; where it stands, step by step; the receipt. Record payment, Send again, Withdraw | Notice, CheckRow, ListRow, Button |
+| Record payment | Sheet from Payment request | Owner, the payee | The amount that arrived (the request's to start), the day and how | Sheet, TextField, SelectField |
+| Receipts and receipt | `/receipts`, `/receipts/:id` | Owner, the payee | Newest first with Void badges; a receipt's facts, its lines, its SHA-256 to prove a copy, what voided or replaced it; Download PDF, Open request, Void receipt | ListRow, StatusBadge, Notice |
+| Void receipt | Sheet from Receipt | Owner, the payee | The reason; "Issue a corrected receipt" with the payment as it really was, or not, which reopens the request | Sheet, TextField, ToggleRow |
+| Public payment page, all states | `/pay/:token` (public) | Anyone with the link | As the artboard, with "I've paid" under what it covers; then "Thanks. You said you paid."; paid, withdrawn and unknown-link states; the payee's cancellation policy | PublicPage, QrCode, Notice, Button |
+
 ## Still to design
 
 The design track's definition of done is every key screen in all five states at both widths. This first pass covers each screen once, plus the empty, loading, error and no-permission states on Today and Team. Still to draw, before or during Phase 2:
 
 - Lesson details and Student details as a side panel beside the list on laptop (today they are pages with Back), and Payment request on laptop.
-- Phone version of Payments. (Team list at phone width, onboarding's single-choice question and the add-teacher sheet were designed while building Phase 4, from PennyListRow, PennyOptionRow and PennySheet.)
-- Empty, loading and error states for Payments (Calendar's were designed while building Phase 6).
-- Record payment. Add lesson as a panel on laptop (it is a sheet at both widths today).
+- Add lesson, New payment request and Record payment as panels on laptop (they are sheets at both widths today), and Payment request beside the list.
 - Swiping between tutors and days on phone, and dragging a lesson to move it (Timetable and LessonBlock guidelines).

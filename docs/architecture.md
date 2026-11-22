@@ -621,9 +621,13 @@ Client done on 22 Nov 2026, on web. The Calendar page has Day, Week and Month, a
 
 Worker binary deployed, `Mailer` with Mailpit and provider adapters, sending domain with SPF, DKIM and DMARC, templates with golden tests, lesson reminders, email log, per-category unsubscribe, reminder-lag metric and alert. Done when moving a lesson sends exactly one reminder at the new time, and a cancelled lesson sends none.
 
+Client done on 22 Nov 2026, on web. Owners set how many hours ahead the team reminds contacts, or turn reminders off, on Account. A contact's form has "Payment reminders" beside lesson reminders and payment requests, shown while they get payment requests. `/unsubscribe/:token`, a public page outside the shell, says what an email's link stops and to which masked address, and stops it only when the person confirms, since mail scanners open links too. The demo sends no email, so two links stand in for a reminder's: `/unsubscribe/demo-lesson-reminders` and `/unsubscribe/demo-payment-reminders`.
+
 ### Phase 8: Payments and receipts
 
 Payee setup with test-scan confirmation, PayNow encoder with golden payloads verified on three bank apps, payment requests and lines, public link page, "I've paid" notice, payment records, gapless receipt numbering, PDF rendering with content hash, void and reissue, payment reminders. Done when any receipt can be traced to its lessons through the UI and the audit log.
+
+Client done on 22 Nov 2026, on web. Account has a PayNow section for anyone who bills: a mobile number or UEN, the name payers see and whether new requests go out at once, then the test code to scan and "It shows my name". Payments lists requests (Draft, Open, Overdue, Paid) with who an open one waits for once one side has confirmed (ADR 024); a new request bills a student's done lessons the payee led plus any other lines, with one Idempotency-Key per opened form; a request's page traces it step by step, shows the link once after sending, and records the payment. Receipts show their SHA-256, void status and replacement, download as PDF in the browser, and void with or without a correction. `/pay/:token` is the payer's page: the PayNow code drawn by `PennyQrCode`, how to pay, the payee's cancellation policy and "I've paid". From a receipt, "Open request" reaches the request and its lines name the lessons. The demo keeps the server's rules, encodes PayNow codes with the Dart encoder pinned by the same fixtures, and writes one-page PDFs with their real SHA-256; its studio has an open, an overdue, a paid and a draft request, with payment pages at `/pay/demo-open-request` and `/pay/demo-overdue-request`. The codes have not yet been scanned with a bank app.
 
 ### Phase 9: Hardening
 
