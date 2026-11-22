@@ -5,46 +5,49 @@ import 'package:integration_test/integration_test.dart';
 
 import 'support/app.dart';
 import 'support/auth_emulator.dart';
+import 'support/flows.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   final emulator = AuthEmulator();
 
-  testWidgets('a new person signs up, verifies, signs out and back in', (
-    tester,
-  ) async {
-    final email = uniqueEmail('hana');
-    const password = 'correct horse battery';
+  testWidgets(
+    'a new person signs up, verifies, sets up, signs out and back in',
+    (tester) async {
+      final email = uniqueEmail('hana');
+      const password = 'correct horse battery';
 
-    await startApp(tester);
-    await waitFor(tester, find.text('Sign in to Penny'));
+      await startApp(tester);
+      await signUp(
+        tester,
+        emulator,
+        name: 'Hana Lim',
+        email: email,
+        password: password,
+      );
 
-    await press(tester, 'New to Penny? Create an account');
-    await waitFor(tester, find.text('Create your Penny account'));
-    await fill(tester, 'Your name', 'Hana Lim');
-    await fill(tester, 'Email', email);
-    await fill(tester, 'Password', password);
-    await press(tester, 'Create account');
+      // No team yet: onboarding, solo by default and named after them.
+      await waitFor(
+        tester,
+        find.text('Do you teach on your own, or run a team?'),
+      );
+      await press(tester, 'Continue');
 
-    await waitFor(tester, find.text('Check your email'));
-    await emulator.clickVerificationLink(email);
-    await press(tester, 'I have verified my email');
+      // Signed in: the shell, with the account reachable from the avatar.
+      await waitFor(tester, inTheApp);
+      expect(find.text('Today'), findsWidgets);
 
-    // Signed in: the shell, with the account reachable from the avatar.
-    await waitFor(tester, inTheApp);
-    expect(find.text('Today'), findsWidgets);
+      // Penny knows them by the name they gave.
+      await openAccount(tester, 'Hana Lim');
+      expect(find.text(email), findsOneWidget);
 
-    // Penny knows them by the name they gave.
-    await tester.tap(find.bySemanticsLabel(RegExp('^Account: Hana Lim')));
-    await waitFor(tester, find.text('Delete account'));
-    expect(find.text(email), findsOneWidget);
+      await press(tester, 'Sign out');
+      await waitFor(tester, find.text('Sign in to Penny'));
 
-    await press(tester, 'Sign out');
-    await waitFor(tester, find.text('Sign in to Penny'));
-
-    await fill(tester, 'Email', email);
-    await fill(tester, 'Password', password);
-    await press(tester, 'Sign in');
-    await waitFor(tester, inTheApp);
-  });
+      await fill(tester, 'Email', email);
+      await fill(tester, 'Password', password);
+      await press(tester, 'Sign in');
+      await waitFor(tester, inTheApp);
+    },
+  );
 }

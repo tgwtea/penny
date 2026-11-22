@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/oapi-codegen/runtime"
@@ -83,6 +84,24 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
+// Defines values for MemberStatus.
+const (
+	MemberStatusActive  MemberStatus = "active"
+	MemberStatusInvited MemberStatus = "invited"
+)
+
+// Valid indicates whether the value is a known member of the MemberStatus enum.
+func (e MemberStatus) Valid() bool {
+	switch e {
+	case MemberStatusActive:
+		return true
+	case MemberStatusInvited:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MembershipRole.
 const (
 	MembershipRoleOwner   MembershipRole = "owner"
@@ -107,8 +126,31 @@ func (e MembershipRole) Valid() bool {
 	}
 }
 
+// AddMemberRequest defines model for AddMemberRequest.
+type AddMemberRequest struct {
+	// DisplayName Their name as the team will see it until they sign in.
+	DisplayName string              `json:"displayName"`
+	Email       openapi_types.Email `json:"email"`
+
+	// Role Student and parent are reserved and carry no capabilities yet.
+	Role *MembershipRole `json:"role,omitempty"`
+}
+
 // Capability One row of the authorization matrix in docs/architecture.md.
 type Capability string
+
+// CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
+type CreateWorkspaceRequest struct {
+	// Name The team's name, shown to parents on payment requests and receipts.
+	//
+	// Example: Koh Guitar Studio
+	Name string `json:"name"`
+
+	// Timezone An IANA timezone name. Defaults to Asia/Singapore.
+	//
+	// Example: Asia/Singapore
+	Timezone *string `json:"timezone,omitempty"`
+}
 
 // Health defines model for Health.
 type Health struct {
@@ -136,6 +178,38 @@ type Me struct {
 	Memberships []Membership `json:"memberships"`
 	User        User         `json:"user"`
 }
+
+// Member A person in a team, as the team list shows them.
+type Member struct {
+	// DisplayName Example: Mei Lin Tan
+	DisplayName string              `json:"displayName"`
+	Email       openapi_types.Email `json:"email"`
+
+	// Id The membership ID. Lessons point at memberships.
+	Id openapi_types.UUID `json:"id"`
+
+	// JoinedAt When they became active. Absent while invited.
+	JoinedAt *time.Time `json:"joinedAt,omitempty"`
+
+	// Role Student and parent are reserved and carry no capabilities yet.
+	Role MembershipRole `json:"role"`
+
+	// Status `invited` until someone signs in with the member's email address.
+	// Removed members are not listed.
+	Status MemberStatus `json:"status"`
+}
+
+// MemberList defines model for MemberList.
+type MemberList struct {
+	Items []Member `json:"items"`
+
+	// NextCursor Pass as `cursor` for the next page. Absent on the last page.
+	NextCursor *string `json:"nextCursor,omitempty"`
+}
+
+// MemberStatus `invited` until someone signs in with the member's email address.
+// Removed members are not listed.
+type MemberStatus string
 
 // Membership defines model for Membership.
 type Membership struct {
@@ -203,6 +277,20 @@ type UpdateMeRequest struct {
 	DisplayName string `json:"displayName"`
 }
 
+// UpdateMemberRequest defines model for UpdateMemberRequest.
+type UpdateMemberRequest struct {
+	// Role Student and parent are reserved and carry no capabilities yet.
+	Role MembershipRole `json:"role"`
+}
+
+// UpdateWorkspaceRequest defines model for UpdateWorkspaceRequest.
+type UpdateWorkspaceRequest struct {
+	Name *string `json:"name,omitempty"`
+
+	// Timezone An IANA timezone name.
+	Timezone *string `json:"timezone,omitempty"`
+}
+
 // User defines model for User.
 type User struct {
 	DisplayName string              `json:"displayName"`
@@ -228,8 +316,26 @@ type Workspace struct {
 	Timezone string `json:"timezone"`
 }
 
+// MemberId defines model for MemberId.
+type MemberId = openapi_types.UUID
+
+// WorkspaceId defines model for WorkspaceId.
+type WorkspaceId = openapi_types.UUID
+
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
 type UpdateMeJSONRequestBody = UpdateMeRequest
+
+// CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
+type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
+
+// UpdateWorkspaceJSONRequestBody defines body for UpdateWorkspace for application/json ContentType.
+type UpdateWorkspaceJSONRequestBody = UpdateWorkspaceRequest
+
+// AddMemberJSONRequestBody defines body for AddMember for application/json ContentType.
+type AddMemberJSONRequestBody = AddMemberRequest
+
+// UpdateMemberJSONRequestBody defines body for UpdateMember for application/json ContentType.
+type UpdateMemberJSONRequestBody = UpdateMemberRequest
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -360,6 +466,109 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /v1/version (the `GetVersion` operationId).
 	GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkspaceWithBody Create a team with the caller as its owner
+	//
+	// Onboarding's "Do you teach on your own, or run a team?" creates one
+	// either way: a solo tutor gets a team of one, which hides every team
+	// feature until someone else joins.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+	CreateWorkspaceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkspace Create a team with the caller as its owner
+	//
+	// Onboarding's "Do you teach on your own, or run a team?" creates one
+	// either way: a solo tutor gets a team of one, which hides every team
+	// feature until someone else joins.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+	CreateWorkspace(ctx context.Context, body CreateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkspace Get a team the caller belongs to
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId} (the `GetWorkspace` operationId).
+	GetWorkspace(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWorkspaceWithBody Rename a team or change its timezone
+	//
+	// Needs `manage_team`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+	UpdateWorkspaceWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWorkspace Rename a team or change its timezone
+	//
+	// Needs `manage_team`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+	UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMembers List the team's members and pending invitations
+	//
+	// Needs `manage_team`. A team has tens of members at most, so the
+	// whole list comes in one page; `nextCursor` is never set.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members (the `ListMembers` operationId).
+	ListMembers(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddMemberWithBody Add a teacher by email
+	//
+	// Needs `manage_team`. The member is `invited` until someone signs in
+	// with that verified email address, which makes them `active`.
+	// Refused with 409 if the email already belongs to a member.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+	AddMemberWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AddMember Add a teacher by email
+	//
+	// Needs `manage_team`. The member is `invited` until someone signs in
+	// with that verified email address, which makes them `active`.
+	// Refused with 409 if the email already belongs to a member.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+	AddMember(ctx context.Context, workspaceId WorkspaceId, body AddMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveMember Remove a member or withdraw an invitation
+	//
+	// Needs `manage_team`. The member's past lessons and receipts keep
+	// pointing at them. Refused with 409 for the team's last owner.
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId} (the `RemoveMember` operationId).
+	RemoveMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMemberWithBody Change a member's role
+	//
+	// Needs `manage_team`. Refused with 409 if it would leave the team
+	// without an owner.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+	UpdateMemberWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMember Change a member's role
+	//
+	// Needs `manage_team`. Refused with 409 if it would leave the team
+	// without an owner.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+	UpdateMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetLivez Report that the process is running
@@ -478,6 +687,219 @@ func (c *Client) UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, req
 // Corresponds with GET /v1/version (the `GetVersion` operationId).
 func (c *Client) GetVersion(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetVersionRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateWorkspaceWithBody Create a team with the caller as its owner
+//
+// Onboarding's "Do you teach on your own, or run a team?" creates one
+// either way: a solo tutor gets a team of one, which hides every team
+// feature until someone else joins.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+func (c *Client) CreateWorkspaceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkspaceRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateWorkspace Create a team with the caller as its owner
+//
+// Onboarding's "Do you teach on your own, or run a team?" creates one
+// either way: a solo tutor gets a team of one, which hides every team
+// feature until someone else joins.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+func (c *Client) CreateWorkspace(ctx context.Context, body CreateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkspaceRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetWorkspace Get a team the caller belongs to
+//
+// Corresponds with GET /v1/workspaces/{workspaceId} (the `GetWorkspace` operationId).
+func (c *Client) GetWorkspace(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkspaceRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWorkspaceWithBody Rename a team or change its timezone
+//
+// Needs `manage_team`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+func (c *Client) UpdateWorkspaceWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWorkspaceRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateWorkspace Rename a team or change its timezone
+//
+// Needs `manage_team`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+func (c *Client) UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateWorkspaceRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListMembers List the team's members and pending invitations
+//
+// Needs `manage_team`. A team has tens of members at most, so the
+// whole list comes in one page; `nextCursor` is never set.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members (the `ListMembers` operationId).
+func (c *Client) ListMembers(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMembersRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddMemberWithBody Add a teacher by email
+//
+// Needs `manage_team`. The member is `invited` until someone signs in
+// with that verified email address, which makes them `active`.
+// Refused with 409 if the email already belongs to a member.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+func (c *Client) AddMemberWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddMemberRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// AddMember Add a teacher by email
+//
+// Needs `manage_team`. The member is `invited` until someone signs in
+// with that verified email address, which makes them `active`.
+// Refused with 409 if the email already belongs to a member.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+func (c *Client) AddMember(ctx context.Context, workspaceId WorkspaceId, body AddMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddMemberRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveMember Remove a member or withdraw an invitation
+//
+// Needs `manage_team`. The member's past lessons and receipts keep
+// pointing at them. Refused with 409 for the team's last owner.
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId} (the `RemoveMember` operationId).
+func (c *Client) RemoveMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveMemberRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMemberWithBody Change a member's role
+//
+// Needs `manage_team`. Refused with 409 if it would leave the team
+// without an owner.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+func (c *Client) UpdateMemberWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMemberRequestWithBody(c.Server, workspaceId, memberId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMember Change a member's role
+//
+// Needs `manage_team`. Refused with 409 if it would leave the team
+// without an owner.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+func (c *Client) UpdateMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMemberRequest(c.Server, workspaceId, memberId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -663,6 +1085,303 @@ func NewGetVersionRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateWorkspaceRequest calls the generic CreateWorkspace builder with application/json body
+func NewCreateWorkspaceRequest(server string, body CreateWorkspaceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWorkspaceRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateWorkspaceRequestWithBody constructs an http.Request for the CreateWorkspace method, with any body, and a specified content type
+func NewCreateWorkspaceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetWorkspaceRequest constructs an http.Request for the GetWorkspace method
+func NewGetWorkspaceRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateWorkspaceRequest calls the generic UpdateWorkspace builder with application/json body
+func NewUpdateWorkspaceRequest(server string, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateWorkspaceRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewUpdateWorkspaceRequestWithBody constructs an http.Request for the UpdateWorkspace method, with any body, and a specified content type
+func NewUpdateWorkspaceRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListMembersRequest constructs an http.Request for the ListMembers method
+func NewListMembersRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewAddMemberRequest calls the generic AddMember builder with application/json body
+func NewAddMemberRequest(server string, workspaceId WorkspaceId, body AddMemberJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewAddMemberRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewAddMemberRequestWithBody constructs an http.Request for the AddMember method, with any body, and a specified content type
+func NewAddMemberRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveMemberRequest constructs an http.Request for the RemoveMember method
+func NewRemoveMemberRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateMemberRequest calls the generic UpdateMember builder with application/json body
+func NewUpdateMemberRequest(server string, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMemberRequestWithBody(server, workspaceId, memberId, "application/json", bodyReader)
+}
+
+// NewUpdateMemberRequestWithBody constructs an http.Request for the UpdateMember method, with any body, and a specified content type
+func NewUpdateMemberRequestWithBody(server string, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -772,6 +1491,115 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/version (the `GetVersion` operationId).
 	GetVersionWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetVersionResponse, error)
+
+	// CreateWorkspaceWithBodyWithResponse Create a team with the caller as its owner
+	//
+	// Onboarding's "Do you teach on your own, or run a team?" creates one
+	// either way: a solo tutor gets a team of one, which hides every team
+	// feature until someone else joins.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+	CreateWorkspaceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkspaceResponse, error)
+
+	// CreateWorkspaceWithResponse Create a team with the caller as its owner
+	//
+	// Onboarding's "Do you teach on your own, or run a team?" creates one
+	// either way: a solo tutor gets a team of one, which hides every team
+	// feature until someone else joins.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+	CreateWorkspaceWithResponse(ctx context.Context, body CreateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkspaceResponse, error)
+
+	// GetWorkspaceWithResponse Get a team the caller belongs to
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId} (the `GetWorkspace` operationId).
+	GetWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error)
+
+	// UpdateWorkspaceWithBodyWithResponse Rename a team or change its timezone
+	//
+	// Needs `manage_team`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+	UpdateWorkspaceWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
+
+	// UpdateWorkspaceWithResponse Rename a team or change its timezone
+	//
+	// Needs `manage_team`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+	UpdateWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
+
+	// ListMembersWithResponse List the team's members and pending invitations
+	//
+	// Needs `manage_team`. A team has tens of members at most, so the
+	// whole list comes in one page; `nextCursor` is never set.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members (the `ListMembers` operationId).
+	ListMembersWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListMembersResponse, error)
+
+	// AddMemberWithBodyWithResponse Add a teacher by email
+	//
+	// Needs `manage_team`. The member is `invited` until someone signs in
+	// with that verified email address, which makes them `active`.
+	// Refused with 409 if the email already belongs to a member.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+	AddMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddMemberResponse, error)
+
+	// AddMemberWithResponse Add a teacher by email
+	//
+	// Needs `manage_team`. The member is `invited` until someone signs in
+	// with that verified email address, which makes them `active`.
+	// Refused with 409 if the email already belongs to a member.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+	AddMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*AddMemberResponse, error)
+
+	// RemoveMemberWithResponse Remove a member or withdraw an invitation
+	//
+	// Needs `manage_team`. The member's past lessons and receipts keep
+	// pointing at them. Refused with 409 for the team's last owner.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId} (the `RemoveMember` operationId).
+	RemoveMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*RemoveMemberResponse, error)
+
+	// UpdateMemberWithBodyWithResponse Change a member's role
+	//
+	// Needs `manage_team`. Refused with 409 if it would leave the team
+	// without an owner.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+	UpdateMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error)
+
+	// UpdateMemberWithResponse Change a member's role
+	//
+	// Needs `manage_team`. Refused with 409 if it would leave the team
+	// without an owner.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+	UpdateMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error)
 }
 
 type GetLivezResponse struct {
@@ -1090,6 +1918,510 @@ func (r GetVersionResponse) ContentType() string {
 	return ""
 }
 
+type CreateWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Membership
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateWorkspaceResponse) GetJSON201() *Membership {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateWorkspaceResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateWorkspaceResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Workspace
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetWorkspaceResponse) GetJSON200() *Workspace {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetWorkspaceResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetWorkspaceResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateWorkspaceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Workspace
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateWorkspaceResponse) GetJSON200() *Workspace {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateWorkspaceResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateWorkspaceResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateWorkspaceResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateWorkspaceResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateWorkspaceResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateWorkspaceResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateWorkspaceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateWorkspaceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListMembersResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *MemberList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListMembersResponse) GetJSON200() *MemberList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListMembersResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListMembersResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListMembersResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListMembersResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListMembersResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMembersResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMembersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMembersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type AddMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Member
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r AddMemberResponse) GetJSON201() *Member {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r AddMemberResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r AddMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r AddMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AddMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AddMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RemoveMemberResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RemoveMemberResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RemoveMemberResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RemoveMemberResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RemoveMemberResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMemberResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Member
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateMemberResponse) GetJSON200() *Member {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateMemberResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateMemberResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMemberResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMemberResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMemberResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetLivezWithResponse Report that the process is running
 //
 // Succeeds whenever the process can serve HTTP. It never checks
@@ -1196,6 +2528,181 @@ func (c *ClientWithResponses) GetVersionWithResponse(ctx context.Context, reqEdi
 		return nil, err
 	}
 	return ParseGetVersionResponse(rsp)
+}
+
+// CreateWorkspaceWithBodyWithResponse Create a team with the caller as its owner
+//
+// Onboarding's "Do you teach on your own, or run a team?" creates one
+// either way: a solo tutor gets a team of one, which hides every team
+// feature until someone else joins.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+func (c *ClientWithResponses) CreateWorkspaceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkspaceResponse, error) {
+	rsp, err := c.CreateWorkspaceWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkspaceResponse(rsp)
+}
+
+// CreateWorkspaceWithResponse Create a team with the caller as its owner
+//
+// Onboarding's "Do you teach on your own, or run a team?" creates one
+// either way: a solo tutor gets a team of one, which hides every team
+// feature until someone else joins.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces (the `CreateWorkspace` operationId).
+func (c *ClientWithResponses) CreateWorkspaceWithResponse(ctx context.Context, body CreateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkspaceResponse, error) {
+	rsp, err := c.CreateWorkspace(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkspaceResponse(rsp)
+}
+
+// GetWorkspaceWithResponse Get a team the caller belongs to
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId} (the `GetWorkspace` operationId).
+func (c *ClientWithResponses) GetWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*GetWorkspaceResponse, error) {
+	rsp, err := c.GetWorkspace(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkspaceResponse(rsp)
+}
+
+// UpdateWorkspaceWithBodyWithResponse Rename a team or change its timezone
+//
+// Needs `manage_team`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+func (c *ClientWithResponses) UpdateWorkspaceWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error) {
+	rsp, err := c.UpdateWorkspaceWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWorkspaceResponse(rsp)
+}
+
+// UpdateWorkspaceWithResponse Rename a team or change its timezone
+//
+// Needs `manage_team`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
+func (c *ClientWithResponses) UpdateWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error) {
+	rsp, err := c.UpdateWorkspace(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWorkspaceResponse(rsp)
+}
+
+// ListMembersWithResponse List the team's members and pending invitations
+//
+// Needs `manage_team`. A team has tens of members at most, so the
+// whole list comes in one page; `nextCursor` is never set.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members (the `ListMembers` operationId).
+func (c *ClientWithResponses) ListMembersWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListMembersResponse, error) {
+	rsp, err := c.ListMembers(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMembersResponse(rsp)
+}
+
+// AddMemberWithBodyWithResponse Add a teacher by email
+//
+// Needs `manage_team`. The member is `invited` until someone signs in
+// with that verified email address, which makes them `active`.
+// Refused with 409 if the email already belongs to a member.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+func (c *ClientWithResponses) AddMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddMemberResponse, error) {
+	rsp, err := c.AddMemberWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddMemberResponse(rsp)
+}
+
+// AddMemberWithResponse Add a teacher by email
+//
+// Needs `manage_team`. The member is `invited` until someone signs in
+// with that verified email address, which makes them `active`.
+// Refused with 409 if the email already belongs to a member.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members (the `AddMember` operationId).
+func (c *ClientWithResponses) AddMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, body AddMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*AddMemberResponse, error) {
+	rsp, err := c.AddMember(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAddMemberResponse(rsp)
+}
+
+// RemoveMemberWithResponse Remove a member or withdraw an invitation
+//
+// Needs `manage_team`. The member's past lessons and receipts keep
+// pointing at them. Refused with 409 for the team's last owner.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId} (the `RemoveMember` operationId).
+func (c *ClientWithResponses) RemoveMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*RemoveMemberResponse, error) {
+	rsp, err := c.RemoveMember(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveMemberResponse(rsp)
+}
+
+// UpdateMemberWithBodyWithResponse Change a member's role
+//
+// Needs `manage_team`. Refused with 409 if it would leave the team
+// without an owner.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+func (c *ClientWithResponses) UpdateMemberWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error) {
+	rsp, err := c.UpdateMemberWithBody(ctx, workspaceId, memberId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMemberResponse(rsp)
+}
+
+// UpdateMemberWithResponse Change a member's role
+//
+// Needs `manage_team`. Refused with 409 if it would leave the team
+// without an owner.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
+func (c *ClientWithResponses) UpdateMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error) {
+	rsp, err := c.UpdateMember(ctx, workspaceId, memberId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMemberResponse(rsp)
 }
 
 // ParseGetLivezResponse parses an HTTP response from a GetLivezWithResponse call
@@ -1427,6 +2934,408 @@ func ParseGetVersionResponse(rsp *http.Response) (*GetVersionResponse, error) {
 	return response, nil
 }
 
+// ParseCreateWorkspaceResponse parses an HTTP response from a CreateWorkspaceWithResponse call
+func ParseCreateWorkspaceResponse(rsp *http.Response) (*CreateWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Membership
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkspaceResponse parses an HTTP response from a GetWorkspaceWithResponse call
+func ParseGetWorkspaceResponse(rsp *http.Response) (*GetWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Workspace
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateWorkspaceResponse parses an HTTP response from a UpdateWorkspaceWithResponse call
+func ParseUpdateWorkspaceResponse(rsp *http.Response) (*UpdateWorkspaceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateWorkspaceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Workspace
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMembersResponse parses an HTTP response from a ListMembersWithResponse call
+func ParseListMembersResponse(rsp *http.Response) (*ListMembersResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMembersResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest MemberList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAddMemberResponse parses an HTTP response from a AddMemberWithResponse call
+func ParseAddMemberResponse(rsp *http.Response) (*AddMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AddMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Member
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRemoveMemberResponse parses an HTTP response from a RemoveMemberWithResponse call
+func ParseRemoveMemberResponse(rsp *http.Response) (*RemoveMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMemberResponse parses an HTTP response from a UpdateMemberWithResponse call
+func ParseUpdateMemberResponse(rsp *http.Response) (*UpdateMemberResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMemberResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Member
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetLivez Report that the process is running
@@ -1447,6 +3356,27 @@ type ServerInterface interface {
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(w http.ResponseWriter, r *http.Request)
+	// CreateWorkspace Create a team with the caller as its owner
+	// (POST /v1/workspaces)
+	CreateWorkspace(w http.ResponseWriter, r *http.Request)
+	// GetWorkspace Get a team the caller belongs to
+	// (GET /v1/workspaces/{workspaceId})
+	GetWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// UpdateWorkspace Rename a team or change its timezone
+	// (PATCH /v1/workspaces/{workspaceId})
+	UpdateWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// ListMembers List the team's members and pending invitations
+	// (GET /v1/workspaces/{workspaceId}/members)
+	ListMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// AddMember Add a teacher by email
+	// (POST /v1/workspaces/{workspaceId}/members)
+	AddMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// RemoveMember Remove a member or withdraw an invitation
+	// (DELETE /v1/workspaces/{workspaceId}/members/{memberId})
+	RemoveMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// UpdateMember Change a member's role
+	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
+	UpdateMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -1533,6 +3463,194 @@ func (siw *ServerInterfaceWrapper) GetVersion(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetVersion(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateWorkspace operation middleware
+func (siw *ServerInterfaceWrapper) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateWorkspace(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetWorkspace operation middleware
+func (siw *ServerInterfaceWrapper) GetWorkspace(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetWorkspace(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateWorkspace operation middleware
+func (siw *ServerInterfaceWrapper) UpdateWorkspace(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateWorkspace(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListMembers operation middleware
+func (siw *ServerInterfaceWrapper) ListMembers(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListMembers(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddMember operation middleware
+func (siw *ServerInterfaceWrapper) AddMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddMember(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveMember operation middleware
+func (siw *ServerInterfaceWrapper) RemoveMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveMember(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMember operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMember(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMember(w, r, workspaceId, memberId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1668,6 +3786,13 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/me", wrapper.DeleteMe)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/me", wrapper.GetMe)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/me", wrapper.UpdateMe)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces", wrapper.CreateWorkspace)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}", wrapper.GetWorkspace)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}", wrapper.UpdateWorkspace)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members", wrapper.ListMembers)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members", wrapper.AddMember)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}", wrapper.RemoveMember)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}", wrapper.UpdateMember)
 
 	return m
 }
@@ -1967,6 +4092,642 @@ func (response GetVersiondefaultApplicationProblemPlusJSONResponse) VisitGetVers
 	return err
 }
 
+type CreateWorkspaceRequestObject struct {
+	Body *CreateWorkspaceJSONRequestBody
+}
+
+type CreateWorkspaceResponseObject interface {
+	VisitCreateWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type CreateWorkspace201JSONResponse Membership
+
+func (response CreateWorkspace201JSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkspace400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateWorkspace400ApplicationProblemPlusJSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkspace401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateWorkspace401ApplicationProblemPlusJSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateWorkspacedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateWorkspacedefaultApplicationProblemPlusJSONResponse) VisitCreateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspaceRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type GetWorkspaceResponseObject interface {
+	VisitGetWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type GetWorkspace200JSONResponse Workspace
+
+func (response GetWorkspace200JSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspace401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetWorkspace401ApplicationProblemPlusJSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspace404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetWorkspace404ApplicationProblemPlusJSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetWorkspacedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetWorkspacedefaultApplicationProblemPlusJSONResponse) VisitGetWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspaceRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *UpdateWorkspaceJSONRequestBody
+}
+
+type UpdateWorkspaceResponseObject interface {
+	VisitUpdateWorkspaceResponse(w http.ResponseWriter) error
+}
+
+type UpdateWorkspace200JSONResponse Workspace
+
+func (response UpdateWorkspace200JSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspace400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateWorkspace400ApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspace401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateWorkspace401ApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspace403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateWorkspace403ApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspace404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateWorkspace404ApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkspacedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateWorkspacedefaultApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMembersRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListMembersResponseObject interface {
+	VisitListMembersResponse(w http.ResponseWriter) error
+}
+
+type ListMembers200JSONResponse MemberList
+
+func (response ListMembers200JSONResponse) VisitListMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMembers401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListMembers401ApplicationProblemPlusJSONResponse) VisitListMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMembers403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListMembers403ApplicationProblemPlusJSONResponse) VisitListMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMembers404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListMembers404ApplicationProblemPlusJSONResponse) VisitListMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListMembersdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListMembersdefaultApplicationProblemPlusJSONResponse) VisitListMembersResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMemberRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *AddMemberJSONRequestBody
+}
+
+type AddMemberResponseObject interface {
+	VisitAddMemberResponse(w http.ResponseWriter) error
+}
+
+type AddMember201JSONResponse Member
+
+func (response AddMember201JSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMember400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response AddMember400ApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMember401ApplicationProblemPlusJSONResponse Problem
+
+func (response AddMember401ApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMember403ApplicationProblemPlusJSONResponse Problem
+
+func (response AddMember403ApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMember404ApplicationProblemPlusJSONResponse Problem
+
+func (response AddMember404ApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMember409ApplicationProblemPlusJSONResponse Problem
+
+func (response AddMember409ApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddMemberdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response AddMemberdefaultApplicationProblemPlusJSONResponse) VisitAddMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveMemberRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type RemoveMemberResponseObject interface {
+	VisitRemoveMemberResponse(w http.ResponseWriter) error
+}
+
+type RemoveMember204Response struct {
+}
+
+func (response RemoveMember204Response) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveMember401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveMember401ApplicationProblemPlusJSONResponse) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveMember403ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveMember403ApplicationProblemPlusJSONResponse) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveMember404ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveMember404ApplicationProblemPlusJSONResponse) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveMember409ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveMember409ApplicationProblemPlusJSONResponse) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveMemberdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RemoveMemberdefaultApplicationProblemPlusJSONResponse) VisitRemoveMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemberRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+	Body        *UpdateMemberJSONRequestBody
+}
+
+type UpdateMemberResponseObject interface {
+	VisitUpdateMemberResponse(w http.ResponseWriter) error
+}
+
+type UpdateMember200JSONResponse Member
+
+func (response UpdateMember200JSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMember400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateMember400ApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMember401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateMember401ApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMember403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateMember403ApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMember404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateMember404ApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMember409ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateMember409ApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMemberdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateMemberdefaultApplicationProblemPlusJSONResponse) VisitUpdateMemberResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetLivez Report that the process is running
@@ -1987,6 +4748,27 @@ type StrictServerInterface interface {
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(ctx context.Context, request GetVersionRequestObject) (GetVersionResponseObject, error)
+	// CreateWorkspace Create a team with the caller as its owner
+	// (POST /v1/workspaces)
+	CreateWorkspace(ctx context.Context, request CreateWorkspaceRequestObject) (CreateWorkspaceResponseObject, error)
+	// GetWorkspace Get a team the caller belongs to
+	// (GET /v1/workspaces/{workspaceId})
+	GetWorkspace(ctx context.Context, request GetWorkspaceRequestObject) (GetWorkspaceResponseObject, error)
+	// UpdateWorkspace Rename a team or change its timezone
+	// (PATCH /v1/workspaces/{workspaceId})
+	UpdateWorkspace(ctx context.Context, request UpdateWorkspaceRequestObject) (UpdateWorkspaceResponseObject, error)
+	// ListMembers List the team's members and pending invitations
+	// (GET /v1/workspaces/{workspaceId}/members)
+	ListMembers(ctx context.Context, request ListMembersRequestObject) (ListMembersResponseObject, error)
+	// AddMember Add a teacher by email
+	// (POST /v1/workspaces/{workspaceId}/members)
+	AddMember(ctx context.Context, request AddMemberRequestObject) (AddMemberResponseObject, error)
+	// RemoveMember Remove a member or withdraw an invitation
+	// (DELETE /v1/workspaces/{workspaceId}/members/{memberId})
+	RemoveMember(ctx context.Context, request RemoveMemberRequestObject) (RemoveMemberResponseObject, error)
+	// UpdateMember Change a member's role
+	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
+	UpdateMember(ctx context.Context, request UpdateMemberRequestObject) (UpdateMemberResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -2179,55 +4961,284 @@ func (sh *strictHandler) GetVersion(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CreateWorkspace operation middleware
+func (sh *strictHandler) CreateWorkspace(w http.ResponseWriter, r *http.Request) {
+	var request CreateWorkspaceRequestObject
+
+	var body CreateWorkspaceJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateWorkspace(ctx, request.(CreateWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateWorkspace")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateWorkspaceResponseObject); ok {
+		if err := validResponse.VisitCreateWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetWorkspace operation middleware
+func (sh *strictHandler) GetWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request GetWorkspaceRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetWorkspace(ctx, request.(GetWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetWorkspace")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetWorkspaceResponseObject); ok {
+		if err := validResponse.VisitGetWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateWorkspace operation middleware
+func (sh *strictHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request UpdateWorkspaceRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body UpdateWorkspaceJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateWorkspace(ctx, request.(UpdateWorkspaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateWorkspace")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateWorkspaceResponseObject); ok {
+		if err := validResponse.VisitUpdateWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListMembers operation middleware
+func (sh *strictHandler) ListMembers(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListMembersRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListMembers(ctx, request.(ListMembersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListMembers")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListMembersResponseObject); ok {
+		if err := validResponse.VisitListMembersResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddMember operation middleware
+func (sh *strictHandler) AddMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request AddMemberRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body AddMemberJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddMember(ctx, request.(AddMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddMemberResponseObject); ok {
+		if err := validResponse.VisitAddMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveMember operation middleware
+func (sh *strictHandler) RemoveMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request RemoveMemberRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveMember(ctx, request.(RemoveMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveMemberResponseObject); ok {
+		if err := validResponse.VisitRemoveMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMember operation middleware
+func (sh *strictHandler) UpdateMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request UpdateMemberRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	var body UpdateMemberJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMember(ctx, request.(UpdateMemberRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMember")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMemberResponseObject); ok {
+		if err := validResponse.VisitUpdateMemberResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"xFldc9u20v4rO3jfmbRzGEmO02mjXvk4Teo2SXNsp7moPDFErETUJMADLKWwHf33MwuAlGTRsdPpx51I",
-	"Aov9eHb3wep3kduqtgYNeTH9XTj0tTUew8NbZ+clVvwzt4bQEP+UdV3qXJK2ZlzHFf/61VvD33xeYCX5",
-	"1/87XIip+L/xVv44fvXjTu5ms8mEQp87XbM4MRWXBYLD/zboCRZSl6hGwO/mVrXgZethXbQjwRuTND7s",
-	"VNZyrktNLT/tS/zJIDi7BrsAKhBkQ4V1+regP1SSnP4I2oCyuR9LlxeaMKfG4ahSI5EJNE0lpr+Ilcb1",
-	"B7s2H0r03hovsviKUFYfSFdIcl6iyEQljVxieL992m5yKL3Xy1057KESCW+JR6Vp59UHTVj5rUhPjQpR",
-	"y7a67bxLq2rZVuHNVSaorVFMhSenzVJsMvE9ypIKdlntbI2OdIx7XmB+44ddiYZcCzU6UFijUWjyFsIG",
-	"DtV3VU0tLKyDUq/QoPfsw6j5PaCIypyyJLHplZXOyZafPUlqHijkIq5lkDCWtEPFIUwiss6+rUvs/FfM",
-	"aeuSqMWBXxSS1OWhX94XbcBWkNvD9g2u0AEnjtTGg8fcIQV/HATCyApZLH6UDAUxFUqSnEuPQ6v/BFeE",
-	"A3tJdzvioj+qywN7IzLBJrIyQ6B6jYeOq7Cao/OFrgdQ9d0KXQucL8GJNTpvDcyxtGbpgWyHqjkurEOw",
-	"Zm6lU9osHwyt1/3xQ8hqPLr7JLzjNbedGDZme8YNeXLn9MNM6wqXxgHPvC8kARXad06pZAvKcrkKb9ln",
-	"IzgtNesKvuAq56DQCmeGceds6WHhbBWXl9oTSKPAJGRWtXRcHEsEBoQfzcxDXbpTcQdcqhXvX1hXSRJT",
-	"0TRaDQGZT3547M559SYTa+tufC3ze7e+7xfejlxQZysnaZLth+PTsTxPuu9H7CIW4OBldi7/ZBejR7dC",
-	"Fd7n0rkWjIXd06BF2m03dm0CuAhlXoRfqbaLTETBg8m307H3FTsxcP7iFJ49/eprSE17i5y5kyYvwBq4",
-	"ZonXWUJIeKGpxGuwbmauY/27zmBd6LwIlnGpr9HWJQbbGKB5Ic0SI5YeWj8lwZqdtXbWLHt82zxvnEOT",
-	"42DV1MaTNPlAGHZZRC2pAOITamdVk6OKZSY5YRCXceuZOpT8n8YSRu3WBRpwWFtH2izvFbqt2oe6fn95",
-	"+RbiAsitCub2veDp5Gm2zSVt6PjJVr42hEuuTZkIkRqIPBcGR+CbqpKujTxIe7jRRvHDjs79keKNJVjY",
-	"xgymbXwxcE6gQKAZpnqh0QV03H9Y48y0RmPaafo8NZYe33H8rUwOXzvbP9nQLjgD3c/ovI5c9VYltlWl",
-	"aTg8S00Qv4coh1x2sJYe5o0uKZTYjEvvTDTmxti1mYl9E48XT/Ij+WzIm6utRkMgLlF6hLQoHaJwNRPB",
-	"uRJKm8sy6KH2j5yMjkaTe/3XnZ51Dhhy3btaScLXeB7zYoAYaV+Xsn2TaMyhHdxeQoMyQHanzT+KTczv",
-	"q/5cGo0l/GiLQGQ/vkKzZJ56NJlkotKmf77Pul29Bg1Lrf+T1hxEDKtUxfqkjG+GStRDGuFQc+ok3mfB",
-	"+91meDshIz9g/787i5enmbhEWc3EtyEGJ2/T674Vjg5q9gNbeSRBp7YxAzl0kpNeIcQ1fgRRM64H1mDg",
-	"KxEGsEDJV699OHzzoOp3SKF/tAW8bDRJB9yWtR2sZbrC36zBwY55dvLmBLoVAcMjeBXvZ6H5RUD3bCwt",
-	"3MfyiddyfKHNUtbW4cOCn9h5r9u+ew9hwN0F88Zpai+Y+8TILbRDvkKcqUt7g6HAzFE6dC86b/7w/lJk",
-	"B6h5kfbBSUMFnD0H4u2pliPw5RXVY21SCrO5gXGxRvGArZUFUR2v+dos7HBtCExV5gRzpDWiCae85X4A",
-	"eSAogVnEohvR/NKmR/DUzD1/nxne9Vw66jc5hCUadJJQ7bDghS7x20RSQBMUyDRGO08Zn2xmxjXMe6S/",
-	"4f3Xo5mZmVNrVmhYaQ9fDI0KMpgJTqfemMD0rOp10NbMxJdTFvYY4pUnMBP8mGMd+0oRrlyhR6IH7buq",
-	"jwoao9DB9Xh1xPo8Bs7ixz63NSpw6G3jcvThzr2zdNyntR//3v8+U5vxaDSKcr5zzroI5p4eXt814LmG",
-	"taYCZNfoI1mM+ugKPcmq3so6Pj5+xrnx7vJ0BK+twZZNShkLeSCeddlw9ODs4id4+uTo65kBSJSvjUSI",
-	"hf9w8dMbSFWpjTeVcEouKyxPpcdvgWkzrGTZpE/eyBv8kEufeGjiRiLC6uTtmdhpvKlVbjJhazSy1tyw",
-	"R5PRceDaVIRsGrNzf+NfSxwocRdNniOqyAoDeU58MEfvIZcmIjYwvRGcUXcHC5OImelnKRp9Bt6ChG4C",
-	"ALYhuURQFj0YSxxvYpxjBJFV0UR2T4gZ01bxEulVUDjbH+k9mUw+Mc77vDFeGh/dMcXrbNceXGNMuK/v",
-	"Viox/eUqE4mViqk4D0w6MnUa3M9xlEvPZTKmirhigWOHUrUPDE0Q3buWZfMFK8CZM1aTh2gef0uaJKBw",
-	"idGR8inAjzXm5EfwYzNHZ5DQgydbe3C2ifcBDmJtVbSIJyYeNN0Rq/Nowj8SrFiM4uyqlt6jGnEufDU5",
-	"/hsOPyFghkuBCezNzx4ClnWBVKRcSx2BU43kDQI5uVjo/C7QrI7GHVktkQb6/zlWdoV+n6wGHstACfws",
-	"/jLKp1zcToJ6npDNTDeCDasd5qhr8hEVVewpfEYFN4g11FabAJ+EPWmsaSvtUc2Mw9w6lcEcc9l4BCqs",
-	"R4hvPVSNJ67MLddYmdMIznHReFSxaj+dPONre4kzs7WIQc5P1pQthJEDkzLZDeMkQSE92ODjZNyUN7Qz",
-	"E44r2CQWEDZY9n/opLFNp0YcHRwPindDah/Xzq60QjczMs+Z1oBcELq1dMoP5cjzIOQ1HqbI02FW0YnV",
-	"PikQUf10cnQXWHu52/8neP2zz1qvcCGbkj5jz2YX19HMQZ71yHc27UC686e42mTD1Y99EWICuSzL6OUg",
-	"W8dBS+5QcnRCZ3zkE5y6f0vi0dnM3GCLCuZhzq3dYRzh7PkIXkkKGViWPqKZy2nMFG1mxhPWEYypvoed",
-	"ESspn5Ry6BOW56Hy8iDhrg73Gv/Kivka72pthxT4DyHr+O9E1kukQVhlKaLhGh5K1Dp14HZn3MxN8i7Y",
-	"1ZLy8CfSfny6oYHo52n/tqr906Jzeyax2b9JkWtw84+AowmKqX1oTD4TGkd/JzRO413ojqLTXUYPQ5/a",
-	"6M4AK1Wgg0T9uZ8y/WUB2R/v3fXPciSS3bjsD7vuPgrbsZFHHV3cjtk6P/rWE1bsxX2BA/f2X642fEyQ",
-	"6MOSfctehRGgwhWWtq7QEHwRr6+uMVNZ6+svRSYaV6b7+HQ8DkPDwnqafjP5ZiI2V71et2W/jZdRvvzv",
-	"MF0uE01NukqcLQxs4gSmY1mb7LaoFzInD3Jum+iiLhjpZr+VkFxzKGGo9kKiIF0J25HTQ3VztfnfAA==",
+	"7Fttc9s4kv4rXbyr8m4dI9mxt3aifLjyOZOsd+JMznY2HyJXBJEtEWMS4AGgFE5K//2qAfBFEmTZSeyp",
+	"3dpvEgXipfF099MPoK9RIotSChRGR6OvUckUK9Cgst8usJiiOk/pc4o6Ubw0XIpoFJ1CYX/TGS+BCzAZ",
+	"gkFWDKI44tSgZCaL4kiwAqNRVDQdxZHC/6u4wjQaGVVhHOkkw4LRCDOpCmaiUVRVnFqauqR3tVFczKPV",
+	"Ko4+SnWrS5ZgaErXzRTg5wWq2mRczKESKSrgBqaYSzHXYCSYjJm7JrvsjfI9813Ry7qUQqO15nslpzkW",
+	"9DGRwqAw9JGVZc4TRosYlq7Ff/2maUVfe2P9p8JZNIr+Y9ht19D9qodNv3bEbZvQAlAbmDGeYzoAejaV",
+	"aQ2a1RqWWT2wtvW90WCnaep2/tK9Ss9KJUtUhrulpFyXOavfWYMFNoIrIGMC0y0yYMnzHDQi7UYlDM/p",
+	"pxo0nwvggvaiYF/eopibLBodHR7GUcFF+33LvHGEBeP52ka4J4GmSua4z4wXLaAvqfVq1d/7T2tLbsa+",
+	"aYeS098wMTTUGSvZlOfc1NuW+VUgKLkEObNmYZXJpOK/282HghnFv5AzpTLRQ6aSjBtMTKVwUKRkHxRV",
+	"QVNZcFx+lkvxOUetpdBR7B6RmT8bXqBh0xytQQWbo33efeteUsg0mb/3iOySo8GN7jHlpvfoMzdY6K5L",
+	"barURpC4m1vvmW9VsrqwT24CO3SmkBlsHXwn8sQuyFmQHWiLuxh0JpeCnL1kisYEKcCP3ziEBiZSUJgg",
+	"L4229v3CaPXRKPpFZvCm4oYpuDJVyuXD0Un78LsUgcmeCjg/fXcKTQs75QG8whmrcmND1KnmbHjFxZyV",
+	"UuH63NZ/C8bJPm6twUJA/Ruy3GTbFk4yTG51GLwojKqhRAUplihSFEkN9gWKLD8XpalhJhXkfIECtbWq",
+	"w8oe53OTOaOeolU7WaYUq+m7NsxU9+zkyrXdtIPvIm7Wt9skbhbbMQ+NjzfrdvmY1dabbb9tlH2HC1RA",
+	"cZ5xoUFjotChbAspDaS7LU6ZYVOmMdT6B5hCuBjme9ptiKt2qCbyyNsojmiJNJmQG1/gtuE6phBAlc3V",
+	"LkGQEUtUWopetm5QNcWZVAhSTCVTKRfze0Ori+shZFUa1b4ePlCbTSPaF+O1xYUs6UYPESi/VC6A2fXH",
+	"a9ky59rYKGafWapyZwruwHOBHN5yAddMRN+XNfkOltWtGc5fDeCtSxNQSi4MMNP73QJ+D0+Ko98kF5ie",
+	"mpBvoXA0YYqJJRSJ4QscwOlUozCwzHiOwMWCG0zXxkqZwWcUYX8UHbiv57n3dnieXX+ISfg53emUrue3",
+	"PJQWW094gEuE3EHgF3NWKS0DkH3PtCaMThLbYGIjPQGWXoKSzbt9ka4iyJn2P+xNU27eu5fdxaL1SU38",
+	"5k88p9SyQMqpxGs0OdeSm8xOxqHyQIO1OLA0VZShxuISC7nA1DfQwBSCkMa6IKaDsehRL4c/WzfYYXcE",
+	"wTbibGfXhh5yDKzmoy1NMq6b6FCwGlLpKiyufX1zlnPLaSg8gFSQ8RTHgnKNkrmGmZKFa26DCLEc4bNR",
+	"UdLiCGqWdGi3uHthpsdrA7hxoWKvp3+b47UF2b5XW/oYdryun9bd1rZjN/ra2Wzt2JWjudbKjmta/CjU",
+	"qAhU9DxhStUgJPRHgxpNn9TLpbAJxSBLMvvJM+gojlzHQaz1isotlnn5+gxenPzlr+Dryg45U8VEkpGb",
+	"TqjHSewRYh9wk+MEpBqLieM8k5gCbZLZlZHTlyjLHO3aCKBJxsQcHZbuy5mYgaWN4EqKeYtvmSSVUigS",
+	"DDIlLrRhItlRADSFLlXzrsgvlUyrBFNHLbwRgrh0r4Zkhf+tpEE3uyVlI4WlVIa0hX2d6h0hi+b6t+vr",
+	"9+AaQCLTdYp/cnjSy2RcmOPnXf9cGJz74E07FaIWOpPKgK6KgqnaVZtcwy0XKX3pzbkdMnonDcxkJYJu",
+	"6x4ExrGFJnCCKZ9xVD4l7BusUmJUohD1yP88EtI82zH8hifbX5u135kvr8gD1T9Qae7klI1ILIuCm/D2",
+	"zLkB97vdZevLCpZMw7TiubEhNqbQO44qcSvkUoyj9SUez54nR+xFyJqLbkYhEOfINIJv5AdJcTGOrHEZ",
+	"5DJhuZ1Huj7k4eBocLjXfs3ocWOAkOk+lMSfLvCbBSAn/7RVeEftD1wS26i3XzHBMYdfZPbQQvsOleau",
+	"hd2pbv0Atch2sXsC99c5Hll1CMJle9K+SLoTA99faewXgLdSetPjvn3/2KcQm2HMsSpC7Ydzp4qOo2tk",
+	"xTh6aZF7+t4/bgnEdjl2TwLkOOaZrEQg8pxactnw0AG4mVEUpf0iluecB2bITKVw3Yl+ulfO2BYbQlrX",
+	"96tZTVHIVBMGWg7rG36XqmWt63WMdm7r5t2GAeVkTCrFTX1Fbux2bsYVkthynl7LW7RheYpMoXrdWPPv",
+	"H6+jeAs1r/17cFqZDM5fgaHX26KIChBMn3HhAx8t1wYPmpEboFtlZkzp9HsuZjIcUS2/ZwkdZZgluroY",
+	"3lMWhcTSOsvHXKpyaH4j/VfQpppavXMs6K1XTJn2JYUwR4GKGUx7tcOM5/jSUzuS7DMk8seVNjGNLMZC",
+	"VcQWmb6l9yeDsRiLMykWKGjSGv4UkrFjGEfkTu1iLD+WaTsHLsU4+vOIOnvmDnIcn8MvCZYuG2dWnLLM",
+	"AjVw3eRKTP1xz2S4OKL5PAPy4mc6kSWmoFDLSiWorTrZazps3VoPv/YOf1bDwWDg+vlZKekrw5ZUT3ad",
+	"3ExczckaeuQotpsPL1AbVpRdX8fHxy/INz5cnw3gQgqsaUneYyGxdL3MK9o9OL/6FU6eH/11LAA8Ua4d",
+	"faTO/3716zvwUal29Z0dJWEF5mdM40ugYgMWLK/8T1qwW/ycMO3Zu2eUkYPV6fvzqEdXPMFYxZEsUbCS",
+	"E80ZHA6ObYViMutNQzLu7/RpjoEQd1UlCWLquLQtOTyLTlBrSJhwiLX8eADnpqlcrWY7Fq3qzFHHoCUw",
+	"aLRSkJVhc4RUorbluyJLKwPoQCR9JU/msXtGZD96g+atnfDGWd3zw8M7zukedj7nhfYdx3PN2rkGVQlh",
+	"lc1+pIpGn27iyHP5aBRd2vrDH2IG36d9ZHNNYdK5SnRDHQ4VsrS+59bYrlvTUt9Ullo4k8dyo8Etj37z",
+	"M/FAoRDDHVFOAb+UmBg9gF+qKSqBBjVoI0sNSlauiqJNLGXqVkTasgZuduzVpVvCH7JZLhg5lb9kWpPg",
+	"uIqjvxweP8HgpwaoLjCWCaydNNwHLMsMTeZ9zWcEcjXDbhGMYrMZT3aBZnE0bCh+jiaQ/516ptcpvjv8",
+	"FWmjtdEnkWrvi50+3PKEeCya48G1YzmHisLlFBqjgFvE0mnNBB+PPSakqAuuMR0LhYlUaWwl40pT7S41",
+	"gnuqoai0ochcU4xliRnAJc4qjamL2ieHL5yqPBbdigjk9E2KvAYr1BApY82xBTOQMQ3S2tgvbkQv1GNh",
+	"h8toSa20L8n+NpO6NO0TsTOwG8hV1KZ+Viq54CmqsWBJQrQG2MygWjKV6pCPvLKdXOC2i5yEWUXTLdd+",
+	"Ag7VJ4dHu8Da9ttdPKD2Lx7UPnWHnQ94Z9XHtVtmkGcd6GZNPUg39oxuVnE4+pEt7J5AwvLcWdn2zZ08",
+	"ldjzae0I14H2cGpO8t3Q8VjcYo0pTO2JIFfb++gOTJixHpjn2qGZwqnzFC7GQhssO9m6edNhZU27dlie",
+	"2shL8suuDHeBjxkxL3BXatumwN+ErOOnRNYbNEFYxX5HrXhhQ9TSZ+C6J9JTktwFu5KZxB63r+9Po0hE",
+	"rQr5PzKtf9jubCo5q9Vq807T6g8BR2Unlq5D4/CB0Dh6SmicuVpoR9BpitHtrfdptCf7+Qi05aj/aLW5",
+	"R9uQdVF0x954ItmIjN9sun0UtmEjBw1d7MTJxo661gaLzopdrUZzKaU2oZsqzSWBA5JyXkmoZQX2YIVO",
+	"OGpZKcriVlulItYl8v8eR22UlwLHArlN6EtWj6iYk7kEUxmpYI5G+5e8ONMckDiNBts7DWPhpZqN00nM",
+	"NQIdeweT+MZdqEeKDDtuXN0rQBz9wADR3c4Ig5HypIXI9o1TgUt/kfOfIHpYczewadO7Wx0dqxMJaA8B",
+	"PfqprQ6Bf12ouCumrMPokaJK/+A1uIm9XXpo+j956vTPuutIfne660iBvYnXLk1/Co/bNRn2LzGvbnq8",
+	"YN1q72wtPuld4ZwMtiLFxmnCo3KIb4sUT4ixhlE8WUR4KDV9YixfoivDfaJSnZjbifAPjzVDH4Z36kgh",
+	"4DZHGVQmGxSa0mZ73cZAIbWxcp7JcCyWmczR3V1JZIH2Fg8lTbpI9BIm3RWlCVWtTiDUGJSM6LKUzzCP",
+	"WwK1N7NC2s3asY7Tz+j2kB1Jxy7o6762TgWkO57710MlWanVQg70mllKFKmrt1vzPEbAlfq+sO1uOxLU",
+	"9t01Gwuf1plpS/L1ir3hiQW7dUpPARN3pWxiL6JtCFHcqQu+i9wKuP1/sjA/uRD02z9xPFJS2PqTyB9C",
+	"HHflAmKG3jb/CpngieW10zR1aSOhAmhaQ3tw/225Yvi1+QPY6i4peY8LHmjS3Q3kzdFyXycmHW0sNmTh",
+	"IiDuNuezPvzYK6o2AoecyInbPT+6j6TaBQxlX08H/4aUt2QbsYiO0Jakii3pZLOL+D864Md7m7f/cnwg",
+	"G4dQvOYGlrLKUzquWWCLNJcaZGVosTvh1r+d9Mh64IMj9+ETRe6Gxf87en+nTsm6sOkvO29F73WNLnAV",
+	"5tMN+YQT6ZzrrW/YW3sXMcUF5rK0f677k7sRoioxYiWf/DmKo0rl/orLaDi0txczqc3op8OfDq3L+Wlt",
+	"/d3A3e+geN07PKagX5WGF/4Y1N6B8n/c9QeXq3izq9csMRrYlPzP9PRNf1mm68Grjds9hI4zwJ/qNacC",
+	"vX5a9TfQEzVtThP65Jc2ST/8Gpof0e3p6mb1/wMA",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

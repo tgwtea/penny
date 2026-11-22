@@ -38,19 +38,22 @@ Failure failureFromProblem(int status, Problem? problem) {
   final message = problem?.title ?? 'HTTP $status';
   return switch (problem?.type) {
     'urn:penny:problem:unauthenticated' => UnauthenticatedFailure(message),
-    'urn:penny:problem:forbidden' => ForbiddenFailure(message),
+    'urn:penny:problem:forbidden' => ForbiddenFailure(
+      message,
+      detail: problem?.detail,
+    ),
     'urn:penny:problem:not-found' => NotFoundFailure(message),
-    'urn:penny:problem:conflict' ||
-    'urn:penny:problem:precondition-failed' => ConflictFailure(message),
+    'urn:penny:problem:conflict' || 'urn:penny:problem:precondition-failed' =>
+      ConflictFailure(message, detail: problem?.detail),
     'urn:penny:problem:validation' => ValidationFailure(
       message,
       detail: problem?.detail,
     ),
     _ => switch (status) {
       401 => UnauthenticatedFailure(message),
-      403 => ForbiddenFailure(message),
+      403 => ForbiddenFailure(message, detail: problem?.detail),
       404 => NotFoundFailure(message),
-      409 || 412 => ConflictFailure(message),
+      409 || 412 => ConflictFailure(message, detail: problem?.detail),
       400 || 422 => ValidationFailure(message, detail: problem?.detail),
       _ => ServerFailure(message, requestId: problem?.requestId),
     },

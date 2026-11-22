@@ -16,16 +16,29 @@ class AuthEmulator {
   final String projectId;
 
   /// Applies the newest verification link sent to [email], as clicking it
-  /// would.
-  Future<void> clickVerificationLink(String email) async {
-    final codes = await http.get(
-      Uri.http(host, '/emulator/v1/projects/$projectId/oobCodes'),
-    );
-    final body = jsonDecode(codes.body) as Map<String, dynamic>;
-    final all = (body['oobCodes'] as List)
-        .cast<Map<String, dynamic>>()
-        .where((c) => c['email'] == email && c['requestType'] == 'VERIFY_EMAIL')
-        .toList();
+  /// would. The app shows "Check your email" as soon as the account
+  /// exists, a moment before the email is requested, so this waits for it.
+  Future<void> clickVerificationLink(
+    String email, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    var all = <Map<String, dynamic>>[];
+    while (all.isEmpty && DateTime.now().isBefore(deadline)) {
+      final codes = await http.get(
+        Uri.http(host, '/emulator/v1/projects/$projectId/oobCodes'),
+      );
+      final body = jsonDecode(codes.body) as Map<String, dynamic>;
+      all = (body['oobCodes'] as List)
+          .cast<Map<String, dynamic>>()
+          .where(
+            (c) => c['email'] == email && c['requestType'] == 'VERIFY_EMAIL',
+          )
+          .toList();
+      if (all.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    }
     if (all.isEmpty) throw StateError('no verification email for $email');
     final applied = await http.post(
       Uri.http(host, '/identitytoolkit.googleapis.com/v1/accounts:update', {

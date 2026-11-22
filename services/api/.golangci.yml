@@ -51,6 +51,20 @@ linters:
           deny:
             - pkg: github.com/tgwtea/penny/services/api/internal/identity/identitysql
               desc: only the identity module reads the users table; call identity.Service
+        workspace-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/workspace/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/workspace/workspacesql
+              desc: only the workspace module reads teams and memberships; call workspace.Service
+        audit-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/audit/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/audit/auditsql
+              desc: only the audit module writes the audit log; call audit.Recorder
         no-global-logger:
           files:
             - "$all"

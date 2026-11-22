@@ -10,6 +10,8 @@ import '../features/auth/data/http_session_repository.dart';
 import '../features/auth/data/identity_provider.dart';
 import '../features/system/application/server_info_provider.dart';
 import '../features/system/data/http_server_info_repository.dart';
+import '../features/team/application/team_controller.dart';
+import '../features/team/data/http_team_repository.dart';
 
 /// The composition root (ADR 012): the only place that knows both the demo
 /// and the HTTP repositories exist. Screens see domain interfaces only.
@@ -51,5 +53,6 @@ List<Override> httpOverrides(
     serverInfoRepositoryProvider.overrideWithValue(
       HttpServerInfoRepository(api),
     ),
+    teamRepositoryProvider.overrideWithValue(HttpTeamRepository(api)),
   ];
 }

@@ -35,7 +35,10 @@ enum PennyStatus {
   open('Open', PennyIcons.open, _Tone.neutral),
 
   /// A payment request past its due date.
-  overdue('Overdue', PennyIcons.warning, _Tone.danger);
+  overdue('Overdue', PennyIcons.warning, _Tone.danger),
+
+  /// A team member who has not signed in yet.
+  invited('Invited', PennyIcons.pending, _Tone.neutral);
 
   const PennyStatus(this.word, this.icon, this._tone);
 

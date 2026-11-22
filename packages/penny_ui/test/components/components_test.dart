@@ -358,6 +358,96 @@ void main() {
     });
   });
 
+  group('PennyOptionRow', () {
+    testWidgets('is announced as a choice and reports a tap anywhere', (
+      tester,
+    ) async {
+      var chosen = false;
+      await tester.pumpWidget(
+        pennyTestApp(
+          PennyOptionRow(
+            title: 'I run a team',
+            body: 'Add teachers.',
+            selected: false,
+            onSelected: () => chosen = true,
+          ),
+        ),
+      );
+      await tester.tap(find.text('Add teachers.'));
+      expect(chosen, isTrue);
+      expect(
+        tester.getSemantics(find.byType(PennyOptionRow)),
+        matchesSemantics(
+          isInMutuallyExclusiveGroup: true,
+          hasCheckedState: true,
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          isFocusable: true,
+          hasTapAction: true,
+          hasFocusAction: true,
+          label: 'I run a team\nAdd teachers.',
+        ),
+      );
+    });
+  });
+
+  group('PennyMenuButton', () {
+    testWidgets('runs the chosen action', (tester) async {
+      String? chosen;
+      await tester.pumpWidget(
+        pennyTestApp(
+          PennyMenuButton(
+            tooltip: 'Actions for Mei',
+            items: [
+              PennyMenuItem(
+                label: 'Make owner',
+                onSelected: () => chosen = 'owner',
+              ),
+              PennyMenuItem(
+                label: 'Remove from team',
+                destructive: true,
+                onSelected: () => chosen = 'remove',
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.tap(find.byTooltip('Actions for Mei'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from team'));
+      await tester.pumpAndSettle();
+      expect(chosen, 'remove');
+    });
+  });
+
+  group('PennySheet', () {
+    testWidgets('opens with its title and closes from the close button', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        pennyTestApp(
+          Builder(
+            builder: (context) => PennyButton(
+              label: 'Open',
+              onPressed: () => showPennySheet<void>(
+                context,
+                title: 'Add teacher',
+                builder: (_) => const Text('Form'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add teacher'), findsOneWidget);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Form'), findsNothing);
+    });
+  });
+
   group('PennySnackbar', () {
     testWidgets('offers Undo for changes', (tester) async {
       var undone = false;

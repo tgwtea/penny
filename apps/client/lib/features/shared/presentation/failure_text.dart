@@ -9,11 +9,12 @@ String failureText(Failure failure) => switch (failure) {
   NetworkFailure() =>
     'Couldn\'t reach Penny. Check your connection, then try again.',
   UnauthenticatedFailure() => 'Your sign-in has expired. Sign in again.',
-  ForbiddenFailure() =>
-    'You can\'t do this in this team. Ask the team owner if you need to.',
+  ForbiddenFailure(:final detail) =>
+    detail ??
+        'You can\'t do this in this team. Ask the team owner if you need to.',
   NotFoundFailure() => 'This no longer exists. It may have been removed.',
-  ConflictFailure() =>
-    'Someone else changed this first. Reload it, then try again.',
+  ConflictFailure(:final detail) =>
+    detail ?? 'Someone else changed this first. Reload it, then try again.',
   ValidationFailure(:final detail) =>
     detail ?? 'Check what you entered, then try again.',
   AuthFailure(:final reason) => authFailureText(reason),

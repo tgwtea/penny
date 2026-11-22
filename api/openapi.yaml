@@ -27,6 +27,8 @@ tags:
     description: Facts about the running server.
   - name: identity
     description: The signed-in person and their teams.
+  - name: teams
+    description: Teams, their members and roles. The UI says "Team"; the API says workspace.
 
 paths:
   /livez:
@@ -151,6 +153,200 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces:
+    post:
+      operationId: createWorkspace
+      tags: [teams]
+      summary: Create a team with the caller as its owner
+      description: |
+        Onboarding's "Do you teach on your own, or run a team?" creates one
+        either way: a solo tutor gets a team of one, which hides every team
+        feature until someone else joins.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWorkspaceRequest"
+      responses:
+        "201":
+          description: The caller's membership in the new team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Membership"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: getWorkspace
+      tags: [teams]
+      summary: Get a team the caller belongs to
+      responses:
+        "200":
+          description: The team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: updateWorkspace
+      tags: [teams]
+      summary: Rename a team or change its timezone
+      description: Needs `manage_team`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWorkspaceRequest"
+      responses:
+        "200":
+          description: The updated team.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/members:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listMembers
+      tags: [teams]
+      summary: List the team's members and pending invitations
+      description: |
+        Needs `manage_team`. A team has tens of members at most, so the
+        whole list comes in one page; `nextCursor` is never set.
+      responses:
+        "200":
+          description: Active members and invitations, owners first, then by name.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: addMember
+      tags: [teams]
+      summary: Add a teacher by email
+      description: |
+        Needs `manage_team`. The member is `invited` until someone signs in
+        with that verified email address, which makes them `active`.
+        Refused with 409 if the email already belongs to a member.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberRequest"
+      responses:
+        "201":
+          description: The new member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/MemberId"
+    patch:
+      operationId: updateMember
+      tags: [teams]
+      summary: Change a member's role
+      description: |
+        Needs `manage_team`. Refused with 409 if it would leave the team
+        without an owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMemberRequest"
+      responses:
+        "200":
+          description: The updated member.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: removeMember
+      tags: [teams]
+      summary: Remove a member or withdraw an invitation
+      description: |
+        Needs `manage_team`. The member's past lessons and receipts keep
+        pointing at them. Refused with 409 for the team's last owner.
+      responses:
+        "204":
+          description: The member is removed.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -158,6 +354,24 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: A Firebase Auth ID token for the signed-in person.
+
+  parameters:
+    WorkspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      description: The team. Everything under it belongs to that team.
+      schema:
+        type: string
+        format: uuid
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      description: A membership in the team.
+      schema:
+        type: string
+        format: uuid
 
   responses:
     Problem:
@@ -315,6 +529,97 @@ components:
           format: int32
           description: Active members. A team of one hides team features.
           example: 8
+
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The team's name, shown to parents on payment requests and receipts.
+          example: Koh Guitar Studio
+        timezone:
+          type: string
+          description: An IANA timezone name. Defaults to Asia/Singapore.
+          example: Asia/Singapore
+
+    UpdateWorkspaceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        timezone:
+          type: string
+          description: An IANA timezone name.
+
+    MemberStatus:
+      type: string
+      description: |
+        `invited` until someone signs in with the member's email address.
+        Removed members are not listed.
+      enum: [active, invited]
+
+    Member:
+      type: object
+      description: A person in a team, as the team list shows them.
+      required: [id, displayName, email, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: The membership ID. Lessons point at memberships.
+        displayName:
+          type: string
+          example: Mei Lin Tan
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        status:
+          $ref: "#/components/schemas/MemberStatus"
+        joinedAt:
+          type: string
+          format: date-time
+          description: When they became active. Absent while invited.
+
+    MemberList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Member"
+        nextCursor:
+          type: string
+          description: Pass as `cursor` for the next page. Absent on the last page.
+
+    AddMemberRequest:
+      type: object
+      required: [displayName, email]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Their name as the team will see it until they sign in.
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+
+    UpdateMemberRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/MembershipRole"
 
     MembershipRole:
       type: string
