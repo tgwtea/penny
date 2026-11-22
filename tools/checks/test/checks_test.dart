@@ -82,6 +82,30 @@ import '../../../core/capability.dart';
       );
     });
 
+    test('only data/ and the composition root may import Firebase', () {
+      expect(
+        boundaries(
+          'features/auth/presentation/sign_in_screen.dart',
+          "import 'package:firebase_auth/firebase_auth.dart';",
+        ),
+        [contains('only data/ may import package:firebase_auth')],
+      );
+      expect(
+        boundaries(
+          'features/auth/data/firebase_identity_provider.dart',
+          "import 'package:firebase_auth/firebase_auth.dart';",
+        ),
+        isEmpty,
+      );
+      expect(
+        boundaries(
+          'app/router.dart',
+          "import 'package:firebase_core/firebase_core.dart';",
+        ),
+        [contains('only data/ may import package:firebase_core')],
+      );
+    });
+
     test('only the composition root may import demo/', () {
       expect(
         boundaries(

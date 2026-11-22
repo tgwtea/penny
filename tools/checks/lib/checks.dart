@@ -106,8 +106,10 @@ const Map<Layer, Set<Layer>> allowedImports = {
 /// The one file allowed to import `lib/demo/`.
 const compositionRoot = 'app/backend_overrides.dart';
 
-/// Generated API types: only `data/` may import them (AGENTS.md).
-const dataOnlyPackages = {'penny_api'};
+/// Packages only `data/` and the composition root may import: the generated
+/// API types (AGENTS.md) and the identity provider's SDK (ADR 004), so that
+/// replacing either touches `data/` alone.
+const dataOnlyPackages = {'penny_api', 'firebase_auth', 'firebase_core'};
 
 /// Raw HTTP: `data/` and the composition root (`main.dart`, `app/`), which
 /// builds the shared client, may import it.
