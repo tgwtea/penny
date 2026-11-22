@@ -85,9 +85,20 @@ class LessonView {
   /// Whether more than one tutor teaches it.
   bool get isShared => tutors.length > 1;
 
+  /// Whether [viewerMembershipId] is set and is not one of its tutors, as
+  /// when an owner looks at everyone's lessons.
+  bool taughtByOthers(String? viewerMembershipId) =>
+      viewerMembershipId != null &&
+      tutors.isNotEmpty &&
+      tutors.every((t) => t.membershipId != viewerMembershipId);
+
   /// The one meta line under the names, from the viewer's point of view: the
-  /// other tutors ("Shared with Aisha"), else the place, else "Make-up".
-  /// [viewerMembershipId] is the tutor looking at it, if any.
+  /// other tutors ("Shared with Aisha"), else the place, else "Make-up". A
+  /// lesson the viewer does not teach leads with its tutor ("Mei, Studio
+  /// 2"), so a list of everyone's lessons says whose each one is.
+  ///
+  /// [viewerMembershipId] is the tutor looking at it, if any. Pass null where
+  /// the layout already names the tutor, as timetable columns do.
   String? metaLine({String? viewerMembershipId}) {
     final others = tutors
         .where((t) => t.membershipId != viewerMembershipId)
@@ -98,8 +109,12 @@ class LessonView {
       );
       return 'Shared with $names';
     }
-    if (location != null) return location;
-    if (isOnline) return 'Online';
+    final place = location ?? (isOnline ? 'Online' : null);
+    if (taughtByOthers(viewerMembershipId)) {
+      final tutor = PennyFormat.firstName(tutors.first.name);
+      return place == null ? tutor : '$tutor, $place';
+    }
+    if (place != null) return place;
     if (isMakeUp) return 'Make-up';
     return null;
   }

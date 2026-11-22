@@ -30,7 +30,8 @@ class LessonRow extends StatelessWidget {
   /// The current time; lessons that have ended fade their start time.
   final DateTime now;
 
-  /// The tutor viewing the list, so the meta line names the others.
+  /// The tutor viewing the list, so the meta line names the others, or the
+  /// tutor of a lesson they do not teach ("Mei, Studio 2").
   final String? viewerMembershipId;
 
   /// Opens the lesson.
@@ -61,6 +62,8 @@ class LessonRow extends StatelessWidget {
     final IconData metaIcon =
         lesson.isShared && meta != null && meta.startsWith('Shared')
         ? PennyIcons.shared
+        : lesson.taughtByOthers(viewerMembershipId)
+        ? PennyIcons.account
         : lesson.location != null
         ? PennyIcons.location
         : lesson.isOnline
