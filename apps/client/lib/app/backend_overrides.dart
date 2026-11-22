@@ -16,6 +16,8 @@ import '../features/notifications/application/unsubscribe_providers.dart';
 import '../features/notifications/data/http_unsubscribe_repository.dart';
 import '../features/payments/application/payment_providers.dart';
 import '../features/payments/data/http_payment_repository.dart';
+import '../features/privacy/application/privacy_providers.dart';
+import '../features/privacy/data/http_privacy_repository.dart';
 import '../features/shared/application/file_saver_provider.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/students/data/http_student_repository.dart';
@@ -92,5 +94,6 @@ List<Override> httpOverrides(
     publicPaymentRepositoryProvider.overrideWithValue(
       HttpPublicPaymentRepository(api),
     ),
+    privacyRepositoryProvider.overrideWithValue(HttpPrivacyRepository(api)),
   ];
 }

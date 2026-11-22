@@ -10,7 +10,10 @@ import 'package:penny/features/system/data/http_server_info_repository.dart';
 import 'package:penny/demo/demo_scheduling.dart';
 import 'package:penny/demo/demo_billing.dart';
 import 'package:penny/demo/demo_notifications.dart';
+import 'package:penny/demo/demo_privacy.dart';
 import 'package:penny/demo/demo_series.dart';
+import 'package:penny/features/privacy/data/http_privacy_repository.dart';
+import 'package:penny/features/students/domain/student.dart';
 import 'package:penny/features/notifications/data/http_unsubscribe_repository.dart';
 import 'package:penny/features/payments/data/http_payment_repository.dart';
 import 'package:penny/features/lessons/data/http_series_repository.dart';
@@ -25,6 +28,7 @@ import 'auth_repository_contract.dart';
 import 'server_info_repository_contract.dart';
 import 'session_repository_contract.dart';
 import 'lesson_repository_contract.dart';
+import 'privacy_repository_contract.dart';
 import 'payment_repository_contract.dart';
 import 'student_repository_contract.dart';
 import 'team_repository_contract.dart';
@@ -167,6 +171,40 @@ Future<PaymentFixture> httpPayments() async {
   );
 }
 
+Future<PrivacyFixture> demoPrivacy() async {
+  final store = DemoStore();
+  final arjun = store.schedule
+      .studentsOf(DemoStore.studioId)
+      .firstWhere((s) => s.name == 'Arjun Nair');
+  return (
+    repository: DemoPrivacyRepository(DemoSessionRepository(store: store)),
+    teamId: DemoStore.studioId,
+    studentId: arjun.id,
+    studentName: 'Arjun Nair',
+    email: DemoPersona.owner.email,
+  );
+}
+
+Future<PrivacyFixture> httpPrivacy() async {
+  final api = FakeApi()..names['daniel@example.com'] = 'Daniel Koh';
+  final owner = api.connection(
+    idToken: () async => 'token-daniel@example.com-0',
+  );
+  final teamId = await HttpTeamRepository(
+    owner,
+  ).createTeam(name: 'Koh Guitar Studio');
+  final s = await HttpStudentRepository(
+    owner,
+  ).create(teamId, const StudentDraft(name: 'Arjun Nair'));
+  return (
+    repository: HttpPrivacyRepository(owner),
+    teamId: teamId,
+    studentId: s.id,
+    studentName: 'Arjun Nair',
+    email: 'daniel@example.com',
+  );
+}
+
 void main() {
   serverInfoRepositoryContract(
     'DemoServerInfoRepository',
@@ -208,6 +246,9 @@ void main() {
 
   paymentRepositoryContract('Demo payment repositories', demoPayments);
   paymentRepositoryContract('Http payment repositories', httpPayments);
+
+  privacyRepositoryContract('DemoPrivacyRepository', demoPrivacy);
+  privacyRepositoryContract('HttpPrivacyRepository', httpPrivacy);
 
   unsubscribeRepositoryContract(
     'DemoUnsubscribeRepository',

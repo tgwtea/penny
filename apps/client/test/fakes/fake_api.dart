@@ -134,6 +134,19 @@ class FakeApi {
       case 'DELETE /v1/me':
         names.remove(email);
         return http.Response('', 204);
+      case 'GET /v1/me/export':
+        return json({
+          'exportedAt': '2026-11-19T08:20:00Z',
+          'person': {
+            'id': 'user-${email.hashCode}',
+            'email': email,
+            'displayName': _nameOf(email),
+            'createdAt': '2026-09-01T00:00:00Z',
+          },
+          'teams': const <Object?>[],
+          'actions': const <Object?>[],
+          'actionsTruncated': false,
+        });
     }
     return problem(404, 'urn:penny:problem:not-found');
   }

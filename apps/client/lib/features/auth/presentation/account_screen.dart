@@ -8,6 +8,8 @@ import '../../../core/capability.dart';
 import '../../../core/failure.dart';
 import '../../lessons/presentation/policy_form.dart';
 import '../../payments/presentation/payee_account_section.dart';
+import '../../privacy/application/privacy_providers.dart';
+import '../../privacy/presentation/data_export_button.dart';
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../../team/presentation/reminder_setting.dart';
@@ -185,6 +187,18 @@ class _AccountScreenState extends ConsumerState<AccountScreen>
               onPressed: () => context.push('/places'),
             ),
           ],
+          const PennySectionHeader(title: 'Your data'),
+          Text(
+            'A copy of what Penny holds about you: your account, what each '
+            'of your teams knows of you, and what you did in Penny.',
+            style: PennyText.body.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: PennySpace.s3),
+          DataExportButton(
+            label: 'Download my data',
+            download: (ref) =>
+                ref.read(privacyActionsProvider).downloadMyData(),
+          ),
           const SizedBox(height: PennySpace.s6),
           const PennyDivider(),
           const SizedBox(height: PennySpace.s6),

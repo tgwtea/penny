@@ -13,6 +13,8 @@ import '../../shared/application/clock.dart';
 import '../../shared/presentation/back_link.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../../shared/presentation/paths.dart';
+import '../../privacy/application/privacy_providers.dart';
+import '../../privacy/presentation/data_export_button.dart';
 import '../application/student_providers.dart';
 import '../domain/student.dart';
 import 'student_forms.dart';
@@ -286,6 +288,23 @@ class _Details extends ConsumerWidget {
           Text(student.notes, style: PennyText.body.copyWith(color: c.text)),
         ],
         if (manage) ...[
+          const PennySectionHeader(title: 'Their data'),
+          Text(
+            'If ${student.name} or their family asks what the team holds '
+            'about them, export it, read it through, and remove anything '
+            'about other people before you send it.',
+            style: PennyText.body.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: PennySpace.s3),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: DataExportButton(
+              label: 'Export student data',
+              download: (ref) => ref
+                  .read(privacyActionsProvider)
+                  .downloadStudentData(student.id),
+            ),
+          ),
           const SizedBox(height: PennySpace.s8),
           Align(
             alignment: Alignment.centerLeft,

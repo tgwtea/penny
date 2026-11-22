@@ -497,6 +497,17 @@ class FakeSchedulingApi {
     }
     final contacts = s['contacts']! as List<Map<String, Object?>>;
     final goals = s['goals']! as List<Map<String, Object?>>;
+    if (p[5] == 'export') {
+      if (!owner) return _problem(403, 'forbidden');
+      return _json({
+        'exportedAt': '2026-11-19T08:20:00Z',
+        'teamName': 'Koh Guitar Studio',
+        'student': _student(s),
+        'lessons': const <Object?>[],
+        'paymentRequests': const <Object?>[],
+        'receipts': const <Object?>[],
+      });
+    }
     if (p[5] == 'contacts') {
       if (!owner) return _problem(403, 'forbidden');
       if (p.length == 6) {

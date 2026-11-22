@@ -66,6 +66,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Rosa Rivera'), findsOneWidget);
 
+      // Let the "added" snackbar go; it sits over the page's last button.
+      await tester.pump(const Duration(seconds: 7));
+      await tester.pumpAndSettle();
       final archive = find.widgetWithText(PennyButton, 'Archive student');
       await tester.ensureVisible(archive);
       await tester.tap(archive);
