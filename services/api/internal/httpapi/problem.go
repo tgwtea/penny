@@ -26,6 +26,7 @@ var (
 	problemMethodNotAllowed   = problemKind{"urn:penny:problem:method-not-allowed", "Method not allowed", http.StatusMethodNotAllowed}
 	problemConflict           = problemKind{"urn:penny:problem:conflict", "Conflict", http.StatusConflict}
 	problemPreconditionFailed = problemKind{"urn:penny:problem:precondition-failed", "Changed since you loaded it", http.StatusPreconditionFailed}
+	problemRateLimited        = problemKind{"urn:penny:problem:rate-limited", "Too many requests", http.StatusTooManyRequests}
 	problemInternal           = problemKind{"urn:penny:problem:internal", "Something went wrong on the server", http.StatusInternalServerError}
 )
 

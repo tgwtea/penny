@@ -1451,6 +1451,8 @@ paths:
                 type: string
         "404":
           $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"
 
@@ -1481,6 +1483,8 @@ paths:
                 $ref: "#/components/schemas/Unsubscribe"
         "404":
           $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"
     post:
@@ -1509,6 +1513,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/Unsubscribe"
         "404":
+          $ref: "#/components/responses/Problem"
+        "429":
           $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"
@@ -1963,6 +1969,8 @@ paths:
                 $ref: "#/components/schemas/PublicPaymentRequest"
         "404":
           $ref: "#/components/responses/Problem"
+        "429":
+          $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"
 
@@ -1988,6 +1996,8 @@ paths:
         "404":
           $ref: "#/components/responses/Problem"
         "409":
+          $ref: "#/components/responses/Problem"
+        "429":
           $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"

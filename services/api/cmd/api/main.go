@@ -86,6 +86,7 @@ func run() error {
 		ReadinessChecks: []health.Check{database.PingCheck(pool), schema.Check(pool)},
 		CORSOrigins:     cfg.CORSOrigins,
 		Metrics:         metrics.NewHTTP(registry),
+		RateLimits:      httpapi.DefaultRateLimits(cfg.TrustedProxies),
 		Services:        services,
 	})
 	if err != nil {

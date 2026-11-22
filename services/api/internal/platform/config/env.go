@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -154,6 +155,33 @@ func (r *reader) origins(key string) []string {
 			continue
 		}
 		out = append(out, origin)
+	}
+	return out
+}
+
+// prefixes reads a comma-separated list of CIDRs. A bare address is its
+// own /32 or /128.
+func (r *reader) prefixes(key string) []netip.Prefix {
+	v := r.value(key)
+	if v == "" {
+		return nil
+	}
+	var out []netip.Prefix
+	for _, raw := range strings.Split(v, ",") {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		p, err := netip.ParsePrefix(raw)
+		if err != nil {
+			addr, addrErr := netip.ParseAddr(raw)
+			if addrErr != nil {
+				r.fail(key, "entry %q must be a CIDR such as 10.42.0.0/16", raw)
+				continue
+			}
+			p = netip.PrefixFrom(addr, addr.BitLen())
+		}
+		out = append(out, p.Masked())
 	}
 	return out
 }

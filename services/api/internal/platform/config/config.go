@@ -3,6 +3,7 @@ package config
 import (
 	"log/slog"
 	"net/mail"
+	"net/netip"
 	"strings"
 	"time"
 )
@@ -40,8 +41,12 @@ type API struct {
 	// (PENNY_UNSUBSCRIBE_SECRET, required, at least 32 characters). The
 	// API checks them; the worker signs them. Both need the same value.
 	UnsubscribeSecret string
-	Firebase          Firebase
-	Log               Log
+	// TrustedProxies are the ingress's addresses, whose X-Forwarded-For
+	// names the client for rate limits (PENNY_TRUSTED_PROXIES, comma-
+	// separated CIDRs such as 10.42.0.0/16). Empty trusts no proxy.
+	TrustedProxies []netip.Prefix
+	Firebase       Firebase
+	Log            Log
 }
 
 // Mail configures how the worker sends email (ADR 014).
@@ -121,6 +126,7 @@ func LoadAPI(lookup LookupFunc) (API, error) {
 		PublicURL:         r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
 		AppURL:            r.publicURL("PENNY_APP_URL", defaultAppURL),
 		UnsubscribeSecret: r.secret("PENNY_UNSUBSCRIBE_SECRET", 32),
+		TrustedProxies:    r.prefixes("PENNY_TRUSTED_PROXIES"),
 		Firebase:          readFirebase(r),
 		Log:               readLog(r),
 	}

@@ -43,6 +43,7 @@ The binaries refuse to start without their required settings, listing every one 
 | `PENNY_MAIL_PROVIDER` | worker | `postmark` outside local development (ADR 014) |
 | `PENNY_POSTMARK_TOKEN` | worker | The Postmark server token. Sealed |
 | `PENNY_MAIL_FROM` | worker | The sender, on the domain with SPF, DKIM and DMARC set (build plan, Phase 7) |
+| `PENNY_TRUSTED_PROXIES` | api | The ingress's pod or node CIDRs, comma-separated. Public pages are rate-limited per client, and only these peers' `X-Forwarded-For` is believed; left empty, every request through the ingress counts as one client |
 
 ## Cluster prerequisites
 

@@ -66,12 +66,16 @@ func newAPITest(t *testing.T, configure ...func(*Options)) *apiTest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := NewHandler(Options{
+	opts := Options{
 		Logger:      slog.New(slog.DiscardHandler),
 		Build:       buildinfo.Info{Version: "test", Commit: "test"},
 		CORSOrigins: []string{testOrigin},
 		Services:    services,
-	})
+	}
+	for _, c := range configure {
+		c(&opts)
+	}
+	h, err := NewHandler(opts)
 	if err != nil {
 		t.Fatal(err)
 	}

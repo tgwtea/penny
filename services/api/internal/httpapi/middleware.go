@@ -171,6 +171,24 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		// Browsers ignore it over plain HTTP, so local development is
+		// unaffected; behind the ingress every request is HTTPS.
+		h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// MaxBodyBytes bounds a request body. The largest legitimate one, a
+// student with ten contacts or a long lesson note, is a few kilobytes.
+const MaxBodyBytes = 1 << 20
+
+// limitBodies refuses to read more than MaxBodyBytes of any body; decoding
+// a longer one fails as a bad request.
+func limitBodies(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, MaxBodyBytes)
+		}
 		next.ServeHTTP(w, r)
 	})
 }

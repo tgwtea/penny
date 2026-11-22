@@ -32,6 +32,8 @@ type Options struct {
 	CORSOrigins []string
 	// Metrics records request counts and latencies. Optional in tests.
 	Metrics *metrics.HTTP
+	// RateLimits limit public operations. Without limiters, none are.
+	RateLimits RateLimits
 
 	// Services are the modules handlers call (internal/app). Tests of
 	// public routes only, such as the health probes, may leave it nil.
@@ -60,7 +62,8 @@ func NewHandler(opts Options) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read operation security: %w", err)
 	}
-	middlewares := []gen.StrictMiddlewareFunc{authenticate(auth, secured)}
+	// Listed innermost first: rate limits apply before anything else runs.
+	middlewares := []gen.StrictMiddlewareFunc{authenticate(auth, secured), rateLimit(opts.RateLimits, secured, problems)}
 
 	mux := http.NewServeMux()
 	strict := gen.NewStrictHandlerWithOptions(srv, middlewares, gen.StrictHTTPServerOptions{
@@ -80,6 +83,7 @@ func NewHandler(opts Options) (http.Handler, error) {
 	if opts.Metrics != nil {
 		h = opts.Metrics.Middleware(h)
 	}
+	h = limitBodies(h)
 	h = securityHeaders(h)
 	h = cors(opts.CORSOrigins)(h)
 	h = otelhttp.NewHandler(h, "penny-api")
