@@ -6,6 +6,7 @@ import 'package:penny_ui/penny_ui.dart';
 
 import '../../../core/capability.dart';
 import '../../../core/failure.dart';
+import '../../lessons/presentation/policy_form.dart';
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../../team/presentation/team_switcher.dart';
@@ -143,6 +144,26 @@ class _AccountScreenState extends ConsumerState<AccountScreen>
               icon: PennyIcons.addPerson,
               variant: PennyButtonVariant.secondary,
               onPressed: () => context.go('/team'),
+            ),
+          ],
+          if (session is SignedIn &&
+              session.can(Capability.viewOwnLessons) &&
+              session.activeMembership != null) ...[
+            const PennySectionHeader(title: 'Your cancellation policy'),
+            PolicySummary(membershipId: session.activeMembership!.id),
+          ],
+          if (session is SignedIn && session.can(Capability.manageLessons)) ...[
+            const PennySectionHeader(title: 'Places'),
+            Text(
+              'Where lessons happen: rooms, students\' homes, online.',
+              style: PennyText.body.copyWith(color: c.textSecondary),
+            ),
+            const SizedBox(height: PennySpace.s3),
+            PennyButton(
+              label: 'Manage places',
+              icon: PennyIcons.location,
+              variant: PennyButtonVariant.secondary,
+              onPressed: () => context.push('/places'),
             ),
           ],
           const SizedBox(height: PennySpace.s6),

@@ -65,9 +65,11 @@ class AppShell extends ConsumerWidget {
       appBar: PennyTopBar(
         title: selected >= 0
             ? destinations[selected].nav.label
-            : location == Routes.account
-            ? 'Account'
-            : 'Penny',
+            : _titles.entries
+                      .where((e) => location.startsWith(e.key))
+                      .firstOrNull
+                      ?.value ??
+                  'Penny',
         personName: session.user.displayName,
         onOpenAccount: openAccount,
         trailing: const PersonaSwitcher(),
@@ -81,3 +83,10 @@ class AppShell extends ConsumerWidget {
     );
   }
 }
+
+/// Top bar titles for pages that are not navigation destinations.
+const _titles = {
+  Routes.account: 'Account',
+  '/lessons/': 'Lesson',
+  Routes.places: 'Places',
+};

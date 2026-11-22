@@ -38,6 +38,15 @@ abstract final class Routes {
   /// The team list. Owners only.
   static const team = '/team';
 
+  /// One lesson: `/lessons/:id`.
+  static const lesson = '/lessons/:id';
+
+  /// One student: `/students/:id`.
+  static const student = '/students/:id';
+
+  /// The team's saved places. Owners only.
+  static const places = '/places';
+
   /// Public payment pages, reached from a link without signing in.
   static const publicPaymentPrefix = '/pay/';
 

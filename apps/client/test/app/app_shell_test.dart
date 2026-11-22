@@ -63,7 +63,7 @@ void main() {
       await pumpApp(tester);
       await tester.tap(find.text('Students'));
       await tester.pumpAndSettle();
-      expect(find.text('No students yet'), findsOneWidget);
+      expect(find.text('Aaliyah Yusof'), findsOneWidget);
     });
   });
 
@@ -76,7 +76,7 @@ void main() {
 
       await tester.tap(find.text('Go to Today'));
       await tester.pumpAndSettle();
-      expect(find.text('No lessons today'), findsOneWidget);
+      expect(find.text('Thursday 19 November'), findsOneWidget);
     });
 
     testWidgets('as the owner shows the page', (tester) async {

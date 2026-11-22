@@ -7,6 +7,7 @@ import '../../../core/capability.dart';
 import '../../../core/failure.dart';
 import '../../auth/application/session_controller.dart';
 import '../../auth/domain/session.dart';
+import '../../lessons/presentation/policy_form.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../application/team_controller.dart';
 import '../domain/team_member.dart';
@@ -223,6 +224,18 @@ class _MemberRow extends ConsumerWidget {
                 onSelected: () => act(
                   () => controller.changeRole(member, TeamRole.teacher),
                   '${member.name} is now a teacher',
+                ),
+              ),
+            if (member.status == MemberStatus.active)
+              PennyMenuItem(
+                label: 'Cancellation policy',
+                icon: PennyIcons.policy,
+                onSelected: () => showPolicyForm(
+                  context,
+                  membershipId: member.id,
+                  whose: isYou
+                      ? 'Your'
+                      : '${PennyFormat.firstName(member.name)}\'s',
                 ),
               ),
             PennyMenuItem(
