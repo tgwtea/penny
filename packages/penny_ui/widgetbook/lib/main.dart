@@ -86,6 +86,23 @@ class PennyCatalogue extends StatelessWidget {
               'Disabled': (_) =>
                   const PennyTextField(label: 'Team name', enabled: false),
             }),
+            _component('PennyOptionRow', {
+              'Single choice': (_) => const _OptionDemo(),
+            }),
+            _component('PennyMenuButton', {
+              'Member actions': (_) => PennyMenuButton(
+                tooltip: 'Actions for Mei Lin Tan',
+                items: [
+                  PennyMenuItem(label: 'Make owner', onSelected: () {}),
+                  PennyMenuItem(
+                    label: 'Remove from team',
+                    icon: PennyIcons.delete,
+                    destructive: true,
+                    onSelected: () {},
+                  ),
+                ],
+              ),
+            }),
             _component('PennyDivider', {
               'Plain': (_) => const PennyDivider(),
               'With a word': (_) => const PennyDivider(label: 'or'),
@@ -188,6 +205,37 @@ class PennyCatalogue extends StatelessWidget {
               'Switcher': (_) => PennyDemoChip(
                 label: 'Viewing as Daniel Koh',
                 onPressed: () {},
+              ),
+            }),
+            _component('PennySheet', {
+              'Content': (_) => PennySheet(
+                title: 'Add teacher',
+                onClose: () {},
+                child: const PennyTextField(label: 'Email'),
+              ),
+              'Opened from a button': (context) => PennyButton(
+                label: 'Add teacher',
+                icon: PennyIcons.addPerson,
+                onPressed: () => showPennySheet<void>(
+                  context,
+                  title: 'Add teacher',
+                  builder: (_) => const PennyTextField(label: 'Email'),
+                ),
+              ),
+            }),
+            _component('PennyListRow', {
+              'Member': (_) => PennyListRow(
+                leading: const PennyAvatar(name: 'Mei Lin Tan'),
+                title: 'Mei Lin Tan',
+                tag: 'You',
+                subtitle: 'meilin@kohguitar.example',
+                trailing: const [Text('Teacher')],
+              ),
+              'Invited': (_) => const PennyListRow(
+                leading: PennyAvatar(name: 'Ravi Kumar'),
+                title: 'Ravi Kumar',
+                subtitle: 'ravi@example.com',
+                trailing: [StatusBadge(PennyStatus.invited)],
               ),
             }),
             _component('PennySnackbar', {
@@ -476,6 +524,39 @@ class _DateNavigatorDemoState extends State<_DateNavigatorDemo> {
       unit: widget.unit,
       today: _day,
       onChanged: (d) => setState(() => _date = d),
+    );
+  }
+}
+
+/// Two option rows that remember the choice, for the catalogue.
+class _OptionDemo extends StatefulWidget {
+  const _OptionDemo();
+
+  @override
+  State<_OptionDemo> createState() => _OptionDemoState();
+}
+
+class _OptionDemoState extends State<_OptionDemo> {
+  bool _team = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        PennyOptionRow(
+          title: 'I teach on my own',
+          body: 'Your lessons, students and payments.',
+          selected: !_team,
+          onSelected: () => setState(() => _team = false),
+        ),
+        const SizedBox(height: PennySpace.s2),
+        PennyOptionRow(
+          title: 'I run a team',
+          body: 'Add teachers and see everyone\'s timetable.',
+          selected: _team,
+          onSelected: () => setState(() => _team = true),
+        ),
+      ],
     );
   }
 }
