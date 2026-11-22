@@ -61,6 +61,71 @@ class FakeBillingApi {
     return _json(_public(r));
   }
 
+  /// Answers a parent's payment routes (ADR 025) for [linked] students.
+  http.Response? handleFamily(http.Request request, Set<String> linked) {
+    final p = request.url.pathSegments;
+    if (p.length < 5) return null;
+    bool mine(Map<String, Object?> r) => linked.contains(r['studentId']);
+    Map<String, Object?> family(Map<String, Object?> r) {
+      final receipt = r['receiptId'] == null ? null : _receipts[r['receiptId']];
+      return {
+        ..._public(r),
+        'id': r['id'],
+        'student': _summary(r)['student'],
+        'createdAt': '2026-11-19T08:20:00Z',
+        if (receipt != null)
+          'receipt': {
+            'id': receipt['id'],
+            'number': _number(receipt),
+            'voided': receipt['voided'] != null,
+          },
+      };
+    }
+
+    if (p[4] == 'payment-requests') {
+      if (p.length == 5) {
+        return _json({
+          'items': [
+            for (final r in _requests.values)
+              if (mine(r) && (r['status'] == 'open' || r['status'] == 'paid'))
+                family(r),
+          ],
+        });
+      }
+      final r = _requests[p[5]];
+      if (r == null || !mine(r) || r['status'] == 'draft') {
+        return _problem(404, 'not-found');
+      }
+      if (r['status'] == 'cancelled') {
+        return _problem(409, 'conflict', 'This payment request was withdrawn.');
+      }
+      if (r['status'] == 'open' && r['payerConfirmedAt'] == null) {
+        r['payerConfirmedAt'] = '2026-11-19T08:20:00Z';
+        if (r['payment'] != null) _close(r);
+      }
+      return _json(family(r));
+    }
+    if (p[4] == 'receipts') {
+      final list = [
+        for (final rc in _receipts.values)
+          if (mine(_requests[rc['requestId']]!)) rc,
+      ];
+      if (p.length == 5) {
+        return _json({
+          'items': [for (final rc in list) _receiptSummary(rc)],
+        });
+      }
+      final rc = list.where((rc) => rc['id'] == p[5]).firstOrNull;
+      if (rc == null) return _problem(404, 'not-found');
+      return http.Response.bytes(
+        '%PDF-1.4 receipt ${_number(rc)}'.codeUnits,
+        200,
+        headers: {'content-type': 'application/pdf'},
+      );
+    }
+    return null;
+  }
+
   /// Answers [request] if it is one of the signed-in billing routes.
   http.Response? handle(http.Request request, String email) {
     final p = request.url.pathSegments;

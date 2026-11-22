@@ -27,6 +27,14 @@ class DemoSchedule {
   /// Calendar link tokens by membership ID: only the latest works.
   final feeds = <String, String>{};
 
+  /// Contacts given a parent account (ADR 025), by contact ID, with the
+  /// demo user they are linked to once they have signed in.
+  final contactAccess = <String, String?>{};
+
+  /// Students given their own account: the address, and the demo user
+  /// linked to it once signed in.
+  final studentAccess = <String, ({String email, String? userId})>{};
+
   /// How far ahead a series' lessons exist, as the server books them
   /// (services/api/internal/scheduling, BookingHorizon).
   static const bookingHorizon = Duration(days: 12 * 7);

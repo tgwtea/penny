@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../features/auth/application/session_controller.dart';
+import '../features/family/application/family_providers.dart';
 import '../features/lessons/application/lesson_providers.dart';
 import '../features/notifications/application/unsubscribe_providers.dart';
 import '../features/payments/application/payment_providers.dart';
@@ -11,9 +12,10 @@ import '../features/system/application/server_info_provider.dart';
 import '../features/team/application/team_controller.dart';
 import '../features/timetable/application/timetable_providers.dart';
 import 'demo_billing.dart';
+import 'demo_family.dart';
+import 'demo_privacy.dart';
 import 'demo_notifications.dart';
 import 'demo_personas.dart';
-import 'demo_privacy.dart';
 import 'demo_repositories.dart';
 import 'demo_scheduling.dart';
 import 'demo_series.dart';
@@ -64,6 +66,7 @@ List<Override> demoOverrides({
     publicPaymentRepositoryProvider.overrideWithValue(
       DemoPublicPaymentRepository(session),
     ),
+    familyRepositoryProvider.overrideWithValue(DemoFamilyRepository(session)),
     privacyRepositoryProvider.overrideWithValue(DemoPrivacyRepository(session)),
   ];
 }

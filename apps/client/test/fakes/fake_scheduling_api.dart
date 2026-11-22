@@ -35,6 +35,14 @@ class FakeSchedulingApi {
   final List<({String id, String role, String name})> Function(String teamId)
   staffOf;
 
+  /// Gives [email] a family account in a team (ADR 025): null when done,
+  /// or why not (an email in use by another role). Set by FakeApi.
+  String? Function(String teamId, String role, String name, String email)?
+  inviteFamily;
+
+  /// Whether [email] has signed in to a family account of [role].
+  bool Function(String teamId, String email, String role)? activeFamily;
+
   final _series = <String, Map<String, Object?>>{};
   final _feeds = <String, String>{};
   static const _offset = Duration(hours: 8);
@@ -61,6 +69,100 @@ class FakeSchedulingApi {
   /// [membershipId]'s cancellation policy summary.
   String policySummary(String membershipId) =>
       (_policy(membershipId)['summary'] as String?) ?? '';
+
+  /// The students [email] is linked to in [teamId] as [role]: a parent
+  /// through a contact given access, a student through their own address.
+  Set<String> linkedStudents(String teamId, String email, String role) => {
+    for (final s in _students.values)
+      if (s['team'] == teamId &&
+          s['archived'] != true &&
+          (role == 'student'
+              ? s['signInEmail'] == email
+              : (s['contacts']! as List).any(
+                  (c) =>
+                      (c as Map)['canSignIn'] == true &&
+                      (c['email'] as String?)?.toLowerCase() == email,
+                )))
+        s['id']! as String,
+  };
+
+  /// Answers a family account's students and lessons routes (ADR 025).
+  http.Response? handleFamily(
+    http.Request request,
+    String teamId,
+    String role,
+    Set<String> linked,
+  ) {
+    final p = request.url.pathSegments;
+    if (p.length != 5) return null;
+    if (p[4] == 'students') {
+      final rows = [
+        for (final id in linked) _students[id]!,
+      ]..sort((a, b) => (a['name']! as String).compareTo(b['name']! as String));
+      return _json({
+        'items': [
+          for (final s in rows)
+            {'id': s['id'], 'name': s['name'], 'goals': s['goals']},
+        ],
+      });
+    }
+    if (p[4] != 'lessons') return null;
+    final q = request.url.queryParameters;
+    final from = DateTime.parse(q['from']!);
+    final to = DateTime.parse(q['to']!);
+    if (!to.isAfter(from) || to.difference(from) > const Duration(days: 62)) {
+      return _problem(400, 'validation');
+    }
+    final visible = role == 'student'
+        ? const {'student', 'contacts'}
+        : const {'contacts'};
+    final rows =
+        _lessons.values
+            .where(
+              (l) =>
+                  l['team'] == teamId &&
+                  _start(l).isBefore(to) &&
+                  _end(l).isAfter(from) &&
+                  (l['studentIds']! as List).any(linked.contains),
+            )
+            .toList()
+          ..sort((a, b) => _start(a).compareTo(_start(b)));
+    return _json({
+      'items': [
+        for (final l in rows)
+          {
+            'id': l['id'],
+            'studentIds': [
+              for (final id in (l['studentIds']! as List).cast<String>())
+                if (linked.contains(id)) id,
+            ],
+            'otherStudents': (l['studentIds']! as List)
+                .where((id) => !linked.contains(id))
+                .length,
+            'startsAt': l['startsAt'],
+            'endsAt': l['endsAt'],
+            'status': l['status'],
+            'title': ?l['title'],
+            'tutors': [
+              for (final t
+                  in (l['tutors']! as List).cast<Map<String, dynamic>>())
+                nameOf(t['membershipId'] as String),
+            ],
+            'items': [
+              for (final i
+                  in (l['items']! as List).cast<Map<String, dynamic>>())
+                if (visible.contains(i['visibility']))
+                  {
+                    'kind': i['kind'],
+                    'body': i['body'],
+                    'done': i['done'] == true,
+                    'createdAt': i['createdAt'],
+                  },
+            ],
+          },
+      ],
+    });
+  }
 
   /// Answers [request] if it is one of these routes.
   http.Response? handle(http.Request request, String email) {
@@ -508,12 +610,53 @@ class FakeSchedulingApi {
         'receipts': const <Object?>[],
       });
     }
+    if (p.length == 6 && p[5] == 'sign-in') {
+      if (!owner) return _problem(403, 'forbidden');
+      if (m == 'DELETE') {
+        s.remove('signInEmail');
+        return _json(_student(s));
+      }
+      final email = (body['email'] as String).trim().toLowerCase();
+      final why = inviteFamily?.call(
+        teamId,
+        'student',
+        s['name']! as String,
+        email,
+      );
+      if (why != null) return _problem(409, 'conflict', detail: why);
+      s['signInEmail'] = email;
+      return _json(_student(s));
+    }
+    if (p.length == 8 && p[5] == 'contacts' && p[7] == 'sign-in') {
+      if (!owner) return _problem(403, 'forbidden');
+      final c = contacts.where((c) => c['id'] == p[6]).firstOrNull;
+      if (c == null) return _problem(404, 'not-found');
+      final on = body['canSignIn'] == true;
+      if (on && c['email'] == null) {
+        return _problem(
+          400,
+          'validation',
+          detail: 'Add the contact\'s email before they can sign in.',
+        );
+      }
+      if (on && c['canSignIn'] != true) {
+        final why = inviteFamily?.call(
+          teamId,
+          'parent',
+          c['name']! as String,
+          (c['email']! as String).toLowerCase(),
+        );
+        if (why != null) return _problem(409, 'conflict', detail: why);
+      }
+      c['canSignIn'] = on;
+      return _json(_contact(c, teamId));
+    }
     if (p[5] == 'contacts') {
       if (!owner) return _problem(403, 'forbidden');
       if (p.length == 6) {
         final c = {...body, 'id': _id('contact')};
         contacts.add(c);
-        return _json(_contact(c), 201);
+        return _json(_contact(c, teamId), 201);
       }
       final i = contacts.indexWhere((c) => c['id'] == p[6]);
       if (i < 0) return _problem(404, 'not-found');
@@ -521,8 +664,22 @@ class FakeSchedulingApi {
         contacts.removeAt(i);
         return http.Response('', 204);
       }
-      contacts[i] = {...body, 'id': p[6]};
-      return _json(_contact(contacts[i]));
+      if (contacts[i]['canSignIn'] == true &&
+          body['email'] != contacts[i]['email']) {
+        return _problem(
+          409,
+          'conflict',
+          detail:
+              'This contact signs in with their email. Turn off their '
+              'sign-in before changing it.',
+        );
+      }
+      contacts[i] = {
+        ...body,
+        'id': p[6],
+        'canSignIn': contacts[i]['canSignIn'] ?? false,
+      };
+      return _json(_contact(contacts[i], teamId));
     }
     if (p[5] == 'goals') {
       if (p.length == 6) {
@@ -868,11 +1025,36 @@ class FakeSchedulingApi {
   Map<String, Object?> _student(Map<String, Object?> s) => {
     ..._studentSummary(s),
     'notes': ?s['notes'],
-    'contacts': [for (final c in s['contacts']! as List) _contact(c as Map)],
+    'contacts': [
+      for (final c in s['contacts']! as List)
+        _contact(c as Map, s['team']! as String),
+    ],
     'goals': s['goals'],
+    'signInEmail': ?s['signInEmail'],
+    'signedIn':
+        s['signInEmail'] != null &&
+        (activeFamily?.call(
+              s['team']! as String,
+              s['signInEmail']! as String,
+              'student',
+            ) ??
+            false),
   };
 
-  static Map<String, Object?> _contact(Map<dynamic, dynamic> c) => {
+  Map<String, Object?> _contact(Map<dynamic, dynamic> c, String teamId) => {
+    ..._contactFields(c),
+    'canSignIn': c['canSignIn'] == true,
+    'signedIn':
+        c['canSignIn'] == true &&
+        (activeFamily?.call(
+              teamId,
+              (c['email']! as String).toLowerCase(),
+              'parent',
+            ) ??
+            false),
+  };
+
+  static Map<String, Object?> _contactFields(Map<dynamic, dynamic> c) => {
     'id': c['id'],
     'name': c['name'],
     'email': ?c['email'],

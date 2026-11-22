@@ -77,6 +77,15 @@ class StudentActions {
   Future<void> removeContact(String studentId, String id) =>
       _changed(_repo.removeContact(_team, studentId, id));
 
+  /// Gives a contact a parent account, or takes it away.
+  Future<Contact> setContactSignIn(String studentId, String id, bool on) =>
+      _changed(_repo.setContactSignIn(_team, studentId, id, canSignIn: on));
+
+  /// Gives the student their own account at [email], or with null takes
+  /// it away.
+  Future<Student> setStudentSignIn(String studentId, String? email) =>
+      _changed(_repo.setStudentSignIn(_team, studentId, email));
+
   /// Sets a goal.
   Future<Goal> addGoal(String studentId, String title) =>
       _changed(_repo.addGoal(_team, studentId, title));

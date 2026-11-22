@@ -40,6 +40,26 @@ abstract interface class StudentRepository {
   /// Removes a contact.
   Future<void> removeContact(String teamId, String studentId, String id);
 
+  /// Gives a contact a parent account, or takes it away (ADR 025). Owners
+  /// only. Giving it emails the contact an invitation, or links them at once
+  /// when they already have a parent account in the team. A contact
+  /// without an email is a ValidationFailure; an email that belongs to a
+  /// team member is a ConflictFailure.
+  Future<Contact> setContactSignIn(
+    String teamId,
+    String studentId,
+    String contactId, {
+    required bool canSignIn,
+  });
+
+  /// Gives the student their own account at [email], or with null takes it
+  /// away. Owners only; the address is invited the same way.
+  Future<Student> setStudentSignIn(
+    String teamId,
+    String studentId,
+    String? email,
+  );
+
   /// Sets a goal.
   Future<Goal> addGoal(String teamId, String studentId, String title);
 

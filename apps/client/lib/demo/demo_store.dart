@@ -1,7 +1,9 @@
 import '../core/capability.dart';
+import '../core/failure.dart';
 import '../features/auth/domain/session.dart';
 import '../features/team/domain/team_member.dart';
 import 'demo_billing.dart';
+import 'demo_family.dart';
 import 'demo_schedule.dart';
 import 'scenarios/scenario_kit.dart';
 import 'scenarios/solo.dart';
@@ -60,6 +62,7 @@ class DemoStore {
     seedStudio(_kit(studioId));
     seedSolo(_kit(soloId));
     seedBilling(this);
+    seedFamily(this);
   }
 
   /// What "now" is in the demo.
@@ -153,18 +156,98 @@ class DemoStore {
     );
   }
 
-  /// The team's members, owners first, then by name.
+  /// The team's staff, owners first, then by name. Family accounts are not
+  /// listed (ADR 025).
   List<TeamMember> membersOf(String teamId) {
     final members =
-        [for (final m in _members[teamId] ?? <_DemoMember>[]) m.member]
-          ..sort((a, b) {
-            final byRole = a.role.index.compareTo(b.role.index);
-            return byRole != 0
-                ? byRole
-                : a.name.toLowerCase().compareTo(b.name.toLowerCase());
-          });
+        [
+          for (final m in _members[teamId] ?? <_DemoMember>[])
+            if (m.member.role == TeamRole.owner ||
+                m.member.role == TeamRole.teacher)
+              m.member,
+        ]..sort((a, b) {
+          final byRole = a.role.index.compareTo(b.role.index);
+          return byRole != 0
+              ? byRole
+              : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
     return members;
   }
+
+  /// Whether anyone in the team, staff or family, has [email].
+  bool hasEmail(String teamId, String email) => (_members[teamId] ?? const [])
+      .any((m) => m.member.email.toLowerCase() == email.toLowerCase());
+
+  /// The parent or student membership for [email], with its demo user, or
+  /// one invited for it (ADR 025). An email that belongs to staff, or to
+  /// the other family role, is refused, as the server does.
+  ({TeamMember member, String? userId}) inviteFamily(
+    String teamId,
+    TeamRole role,
+    String name,
+    String email,
+  ) {
+    for (final m in _members[teamId] ?? <_DemoMember>[]) {
+      if (m.member.email.toLowerCase() != email.toLowerCase()) continue;
+      if (m.member.role == role) return (member: m.member, userId: m.userId);
+      throw ConflictFailure(
+        'email in use',
+        detail:
+            '$email already has a ${m.member.role.label.toLowerCase()} '
+            'account in the team. Use a different email.',
+      );
+    }
+    return (member: invite(teamId, name, email, role), userId: null);
+  }
+
+  /// Ends the family membership of [userId], or the invitation for
+  /// [email], once nothing in the team gives it access.
+  void endFamilyIfUnused(
+    String teamId, {
+    String? userId,
+    required String email,
+  }) {
+    final s = schedule;
+    final students = s.studentsOf(teamId).toList();
+    final stillLinked =
+        userId != null &&
+        (students.any((st) => s.studentAccess[st.id]?.userId == userId) ||
+            students.any(
+              (st) => st.contacts.any((c) => s.contactAccess[c.id] == userId),
+            ));
+    final stillInvited =
+        students.any(
+          (st) =>
+              s.studentAccess[st.id]?.email.toLowerCase() ==
+              email.toLowerCase(),
+        ) ||
+        students.any(
+          (st) => st.contacts.any(
+            (c) =>
+                s.contactAccess.containsKey(c.id) &&
+                c.email?.toLowerCase() == email.toLowerCase(),
+          ),
+        );
+    if (stillLinked || (userId == null && stillInvited)) return;
+    _members[teamId]?.removeWhere(
+      (m) =>
+          (m.member.role == TeamRole.parent ||
+              m.member.role == TeamRole.student) &&
+          (userId != null
+              ? m.userId == userId
+              : m.member.email.toLowerCase() == email.toLowerCase()),
+    );
+  }
+
+  /// Adds an active family member signed in as [userId], for seeding.
+  void addFamily(
+    String teamId,
+    String id,
+    String userId,
+    String name,
+    String email,
+    TeamRole role,
+  ) => _member(teamId, id, userId, name, email, role);
 
   /// Adds a member, invited.
   TeamMember invite(String teamId, String name, String email, TeamRole role) {

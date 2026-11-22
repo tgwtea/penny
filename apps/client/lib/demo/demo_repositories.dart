@@ -188,7 +188,7 @@ class DemoTeamRepository implements TeamRepository {
         detail: 'Enter the teacher\'s name.',
       );
     }
-    if (_store.membersOf(teamId).any((m) => m.email.toLowerCase() == address)) {
+    if (_store.hasEmail(teamId, address)) {
       throw const ConflictFailure(
         'duplicate email',
         detail: 'Someone with this email is already in the team.',

@@ -9,6 +9,8 @@ import '../demo/demo_backend.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/http_session_repository.dart';
 import '../features/auth/data/identity_provider.dart';
+import '../features/family/application/family_providers.dart';
+import '../features/family/data/http_family_repository.dart';
 import '../features/lessons/application/lesson_providers.dart';
 import '../features/lessons/data/http_lesson_repository.dart';
 import '../features/lessons/data/http_series_repository.dart';
@@ -94,6 +96,7 @@ List<Override> httpOverrides(
     publicPaymentRepositoryProvider.overrideWithValue(
       HttpPublicPaymentRepository(api),
     ),
+    familyRepositoryProvider.overrideWithValue(HttpFamilyRepository(api)),
     privacyRepositoryProvider.overrideWithValue(HttpPrivacyRepository(api)),
   ];
 }

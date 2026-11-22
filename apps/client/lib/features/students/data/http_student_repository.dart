@@ -132,6 +132,48 @@ class HttpStudentRepository implements StudentRepository {
       );
 
   @override
+  Future<Contact> setContactSignIn(
+    String teamId,
+    String studentId,
+    String contactId, {
+    required bool canSignIn,
+  }) => _api.call((client) async {
+    final c = await api.StudentsApi(client).setContactSignIn(
+      teamId,
+      studentId,
+      contactId,
+      api.ContactSignInInput(canSignIn: canSignIn),
+    );
+    return _contact(c);
+  });
+
+  @override
+  Future<Student> setStudentSignIn(
+    String teamId,
+    String studentId,
+    String? email,
+  ) async {
+    final address = email?.trim();
+    if (address != null && !address.contains('@')) {
+      throw const ValidationFailure(
+        'email',
+        detail: 'Enter the student\'s email address.',
+      );
+    }
+    return _api.call((client) async {
+      final students = api.StudentsApi(client);
+      final s = address == null
+          ? await students.removeStudentSignIn(teamId, studentId)
+          : await students.setStudentSignIn(
+              teamId,
+              studentId,
+              api.StudentSignInInput(email: address),
+            );
+      return _student(s);
+    });
+  }
+
+  @override
   Future<Goal> addGoal(String teamId, String studentId, String title) async {
     if (title.trim().isEmpty) {
       throw const ValidationFailure('blank', detail: 'Enter the goal.');
@@ -218,6 +260,8 @@ class HttpStudentRepository implements StudentRepository {
     notes: s.notes ?? '',
     contacts: [for (final c in s.contacts) _contact(c)],
     goals: [for (final g in s.goals) _goal(g)],
+    signInEmail: s.signInEmail,
+    signedIn: s.signedIn ?? false,
   );
 
   static Contact _contact(api.Contact c) => Contact(
@@ -234,6 +278,8 @@ class HttpStudentRepository implements StudentRepository {
     receivesReminders: c.receivesReminders,
     receivesBilling: c.receivesBilling,
     receivesPaymentReminders: c.receivesPaymentReminders ?? true,
+    canSignIn: c.canSignIn ?? false,
+    signedIn: c.signedIn ?? false,
   );
 
   static Goal _goal(api.Goal g) => Goal(
