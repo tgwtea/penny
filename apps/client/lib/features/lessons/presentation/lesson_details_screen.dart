@@ -13,10 +13,12 @@ import '../../shared/presentation/paths.dart';
 import '../application/lesson_providers.dart';
 import '../domain/lesson.dart';
 import '../domain/location.dart';
+import '../domain/series.dart';
 import 'cancel_lesson_form.dart';
 import 'lesson_form.dart';
 import 'lesson_item_form.dart';
 import 'lesson_views.dart';
+import 'series_views.dart';
 
 /// One lesson (docs/design/screens.md, "Lesson details"): when and where,
 /// who teaches and who attends, what may be done with it, its tasks, goals
@@ -99,6 +101,38 @@ class _Details extends ConsumerWidget {
       );
     } on Failure catch (f) {
       if (f is ConflictFailure) ref.invalidate(lessonDetailProvider(lesson.id));
+      if (context.mounted) PennySnackbar.show(context, message: failureText(f));
+    }
+  }
+
+  /// Reschedules the lesson, or, for a lesson that repeats, first asks
+  /// whether the change is to it alone or to the series from a day on.
+  Future<void> _reschedule(BuildContext context, WidgetRef ref) async {
+    final seriesId = lesson.seriesId;
+    if (seriesId == null) {
+      return showLessonForm(context, ref, team: team, lesson: lesson);
+    }
+    final scope = await showPennyChoice<SeriesScope>(
+      context,
+      title: 'Change which lessons?',
+      choices: seriesScopeChoices,
+    );
+    if (scope == null || !context.mounted) return;
+    if (scope == SeriesScope.thisLesson) {
+      return showLessonForm(context, ref, team: team, lesson: lesson);
+    }
+    try {
+      final series = await ref.read(seriesProvider(seriesId).future);
+      if (!context.mounted) return;
+      await showLessonForm(
+        context,
+        ref,
+        team: team,
+        lesson: lesson,
+        series: series,
+        scope: scope,
+      );
+    } on Failure catch (f) {
       if (context.mounted) PennySnackbar.show(context, message: failureText(f));
     }
   }
@@ -264,8 +298,7 @@ class _Details extends ConsumerWidget {
               PennyButton(
                 label: 'Reschedule',
                 variant: PennyButtonVariant.secondary,
-                onPressed: () =>
-                    showLessonForm(context, ref, team: team, lesson: lesson),
+                onPressed: () => _reschedule(context, ref),
               ),
               PennyButton(
                 label: 'Cancel lesson',
@@ -300,6 +333,8 @@ class _Details extends ConsumerWidget {
               ),
           ],
         ),
+        if (lesson.seriesId case final seriesId?)
+          _Repeats(lesson: lesson, seriesId: seriesId, team: team),
         const PennySectionHeader(title: 'Tutors'),
         for (final t in lesson.tutors)
           PennyListRow(
@@ -387,6 +422,84 @@ class _Details extends ConsumerWidget {
         ],
         const PennySectionHeader(title: 'History'),
         _History(lessonId: lesson.id, team: team),
+      ],
+    );
+  }
+}
+
+/// The series a lesson repeats in, and stopping it.
+class _Repeats extends ConsumerWidget {
+  const _Repeats({
+    required this.lesson,
+    required this.seriesId,
+    required this.team,
+  });
+
+  final Lesson lesson;
+  final String seriesId;
+  final ActiveTeam team;
+
+  Future<void> _stop(BuildContext context, WidgetRef ref, Series s) async {
+    final day = team.time.wallClock(lesson.startsAt);
+    final ok = await showPennyConfirmation(
+      context,
+      title: 'Stop repeating after this lesson?',
+      body:
+          'Lessons after ${PennyFormat.shortDate(day)} that have not '
+          'happened are removed. Lessons with notes stay.',
+      confirmLabel: 'Stop repeating',
+      destructive: true,
+    );
+    if (!ok || !context.mounted) return;
+    try {
+      await ref
+          .read(lessonActionsProvider)
+          .endSeries(s, after: team.time.dateOf(lesson.startsAt));
+      if (context.mounted) {
+        PennySnackbar.show(context, message: 'Repeating stopped');
+      }
+    } on Failure catch (f) {
+      if (f is ConflictFailure) ref.invalidate(seriesProvider(seriesId));
+      if (context.mounted) PennySnackbar.show(context, message: failureText(f));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = PennyColors.of(context);
+    final series = ref.watch(seriesProvider(seriesId));
+    final manage = team.can(Capability.manageLessons);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PennySectionHeader(
+          title: 'Repeats',
+          action: manage && series.value != null
+              ? PennyButton(
+                  label: 'Stop repeating',
+                  variant: PennyButtonVariant.quiet,
+                  size: PennyButtonSize.compact,
+                  onPressed: () => _stop(context, ref, series.value!),
+                )
+              : null,
+        ),
+        switch (series) {
+          AsyncData(:final value) => PennyListRow(
+            leading: Icon(
+              PennyIcons.recurring,
+              size: PennyIconSize.standard,
+              color: c.textSecondary,
+            ),
+            title: seriesSummary(context, value),
+            subtitle:
+                'Booked up to ${PennyFormat.shortDate(value.bookedUntil)}',
+          ),
+          AsyncError(:final error) => Text(
+            error is Failure ? failureText(error) : 'Couldn\'t load it.',
+            style: PennyText.small.copyWith(color: c.textSecondary),
+          ),
+          _ => const PennySkeletonRow(),
+        },
       ],
     );
   }

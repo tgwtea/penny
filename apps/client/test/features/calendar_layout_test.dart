@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:penny/core/team_time.dart';
 import 'package:penny/features/lessons/domain/lesson.dart';
+import 'package:penny/features/lessons/domain/series.dart';
+import 'package:penny/features/lessons/presentation/series_views.dart';
 import 'package:penny/features/timetable/presentation/calendar_layout.dart';
 import 'package:penny_ui/penny_ui.dart';
 
@@ -67,5 +69,41 @@ void main() {
       'b',
       'a',
     ]);
+  });
+
+  test('repeat rules read as people say them', () {
+    Series s(String rule) => Series(
+      id: 's',
+      startsOn: DateTime.utc(2026, 11, 19),
+      startTime: '16:00',
+      durationMinutes: 45,
+      recurrence: rule,
+      timezone: 'Asia/Singapore',
+      tutors: const [],
+      students: const [],
+      feeCents: 0,
+      bookedUntil: DateTime.utc(2027, 2, 11),
+      version: 1,
+    );
+    expect(
+      repeatText(s(Recurrence.weekly({DateTime.thursday}))),
+      'Every Thursday',
+    );
+    expect(
+      repeatText(s(Recurrence.weekly({DateTime.monday, DateTime.thursday}))),
+      'Every Monday and Thursday',
+    );
+    expect(
+      repeatText(s(Recurrence.weekly({DateTime.friday}, interval: 2))),
+      'Every two weeks on Friday',
+    );
+    expect(repeatText(s('FREQ=DAILY')), 'Every day');
+    expect(repeatText(s('FREQ=MONTHLY;BYMONTHDAY=1')), 'Repeats');
+    expect(Recurrence.weekly({4, 1}), 'FREQ=WEEKLY;BYDAY=MO,TH');
+    final fortnightly = Recurrence.parseWeekly(
+      'FREQ=WEEKLY;INTERVAL=2;BYDAY=FR',
+    );
+    expect(fortnightly?.weekdays, {DateTime.friday});
+    expect(fortnightly?.interval, 2);
   });
 }
