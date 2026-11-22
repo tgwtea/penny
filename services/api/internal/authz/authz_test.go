@@ -25,6 +25,7 @@ func TestMatrix(t *testing.T) {
 		{ManageStudents, true, false},
 		{ViewOwnStudents, true, true},
 		{ManagePayments, true, false},
+		{ManageOwnPayments, true, true},
 	}
 	if len(tests) != len(matrix[Owner]) {
 		t.Fatalf("the test covers %d capabilities, the matrix has %d", len(tests), len(matrix[Owner]))

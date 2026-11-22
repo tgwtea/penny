@@ -69,6 +69,7 @@ const (
 	CapabilityCompleteOwnLessons Capability = "complete_own_lessons"
 	CapabilityEditOwnLessonItems Capability = "edit_own_lesson_items"
 	CapabilityManageLessons      Capability = "manage_lessons"
+	CapabilityManageOwnPayments  Capability = "manage_own_payments"
 	CapabilityManagePayments     Capability = "manage_payments"
 	CapabilityManageStudents     Capability = "manage_students"
 	CapabilityManageTeam         Capability = "manage_team"
@@ -86,6 +87,8 @@ func (e Capability) Valid() bool {
 	case CapabilityEditOwnLessonItems:
 		return true
 	case CapabilityManageLessons:
+		return true
+	case CapabilityManageOwnPayments:
 		return true
 	case CapabilityManagePayments:
 		return true
@@ -334,6 +337,72 @@ func (e MembershipRole) Valid() bool {
 	}
 }
 
+// Defines values for PaymentMethod.
+const (
+	PaymentMethodBankTransfer PaymentMethod = "bank_transfer"
+	PaymentMethodCash         PaymentMethod = "cash"
+	PaymentMethodOther        PaymentMethod = "other"
+	PaymentMethodPaynow       PaymentMethod = "paynow"
+)
+
+// Valid indicates whether the value is a known member of the PaymentMethod enum.
+func (e PaymentMethod) Valid() bool {
+	switch e {
+	case PaymentMethodBankTransfer:
+		return true
+	case PaymentMethodCash:
+		return true
+	case PaymentMethodOther:
+		return true
+	case PaymentMethodPaynow:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PaymentRequestStatus.
+const (
+	PaymentRequestStatusCancelled PaymentRequestStatus = "cancelled"
+	PaymentRequestStatusDraft     PaymentRequestStatus = "draft"
+	PaymentRequestStatusOpen      PaymentRequestStatus = "open"
+	PaymentRequestStatusPaid      PaymentRequestStatus = "paid"
+)
+
+// Valid indicates whether the value is a known member of the PaymentRequestStatus enum.
+func (e PaymentRequestStatus) Valid() bool {
+	switch e {
+	case PaymentRequestStatusCancelled:
+		return true
+	case PaymentRequestStatusDraft:
+		return true
+	case PaymentRequestStatusOpen:
+		return true
+	case PaymentRequestStatusPaid:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProxyType.
+const (
+	ProxyTypeMobile ProxyType = "mobile"
+	ProxyTypeUen    ProxyType = "uen"
+)
+
+// Valid indicates whether the value is a known member of the ProxyType enum.
+func (e ProxyType) Valid() bool {
+	switch e {
+	case ProxyTypeMobile:
+		return true
+	case ProxyTypeUen:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for TutorRole.
 const (
 	TutorRoleAssisting TutorRole = "assisting"
@@ -352,6 +421,27 @@ func (e TutorRole) Valid() bool {
 	}
 }
 
+// Defines values for WaitingFor.
+const (
+	WaitingForBoth  WaitingFor = "both"
+	WaitingForPayee WaitingFor = "payee"
+	WaitingForPayer WaitingFor = "payer"
+)
+
+// Valid indicates whether the value is a known member of the WaitingFor enum.
+func (e WaitingFor) Valid() bool {
+	switch e {
+	case WaitingForBoth:
+		return true
+	case WaitingForPayee:
+		return true
+	case WaitingForPayer:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddMemberRequest defines model for AddMemberRequest.
 type AddMemberRequest struct {
 	// DisplayName Their name as the team will see it until they sign in.
@@ -364,6 +454,28 @@ type AddMemberRequest struct {
 
 // Attendance defines model for Attendance.
 type Attendance string
+
+// BillableLesson defines model for BillableLesson.
+type BillableLesson struct {
+	// CoTaught Several tutors taught it; the lead bills and the split is arranged outside Penny.
+	CoTaught *bool              `json:"coTaught,omitempty"`
+	Currency string             `json:"currency"`
+	FeeCents int64              `json:"feeCents"`
+	LessonId openapi_types.UUID `json:"lessonId"`
+
+	// Payee A team member, as other records mention them.
+	Payee    MemberRef       `json:"payee"`
+	StartsAt time.Time       `json:"startsAt"`
+	Status   LessonStatus    `json:"status"`
+	Students []LessonStudent `json:"students"`
+	Title    *string         `json:"title,omitempty"`
+}
+
+// BillableLessonList defines model for BillableLessonList.
+type BillableLessonList struct {
+	Items      []BillableLesson `json:"items"`
+	NextCursor *string          `json:"nextCursor,omitempty"`
+}
 
 // CalendarFeed defines model for CalendarFeed.
 type CalendarFeed struct {
@@ -503,6 +615,12 @@ type EmailCategory string
 type EndSeriesRequest struct {
 	// After The last day a lesson of the series stays.
 	After openapi_types.Date `json:"after"`
+}
+
+// ExtraLine defines model for ExtraLine.
+type ExtraLine struct {
+	AmountCents int64  `json:"amountCents"`
+	Description string `json:"description"`
 }
 
 // Goal Something a student works towards over several lessons.
@@ -839,6 +957,148 @@ type Membership struct {
 // MembershipRole Student and parent are reserved and carry no capabilities yet.
 type MembershipRole string
 
+// PayeeAccount defines model for PayeeAccount.
+type PayeeAccount struct {
+	// DisplayName Shown to payers and in the QR code, at most 25 characters.
+	DisplayName  string             `json:"displayName"`
+	MembershipId openapi_types.UUID `json:"membershipId"`
+
+	// ProxyType How a PayNow account is addressed.
+	ProxyType ProxyType `json:"proxyType"`
+
+	// ProxyValue Example: +6591234567
+	ProxyValue string `json:"proxyValue"`
+
+	// SendAutomatically Send new requests at once instead of keeping them as drafts.
+	SendAutomatically bool `json:"sendAutomatically"`
+
+	// TestPayload A PayNow code with no amount, to scan in the tutor's own banking app.
+	TestPayload string     `json:"testPayload"`
+	Verified    bool       `json:"verified"`
+	VerifiedAt  *time.Time `json:"verifiedAt,omitempty"`
+}
+
+// PayeeAccountInput defines model for PayeeAccountInput.
+type PayeeAccountInput struct {
+	DisplayName string `json:"displayName"`
+
+	// ProxyType How a PayNow account is addressed.
+	ProxyType         ProxyType `json:"proxyType"`
+	ProxyValue        string    `json:"proxyValue"`
+	SendAutomatically *bool     `json:"sendAutomatically,omitempty"`
+}
+
+// PaymentInput defines model for PaymentInput.
+type PaymentInput struct {
+	AmountCents int64              `json:"amountCents"`
+	Method      PaymentMethod      `json:"method"`
+	PaidOn      openapi_types.Date `json:"paidOn"`
+}
+
+// PaymentMethod defines model for PaymentMethod.
+type PaymentMethod string
+
+// PaymentRecord defines model for PaymentRecord.
+type PaymentRecord struct {
+	AmountCents int64              `json:"amountCents"`
+	Method      PaymentMethod      `json:"method"`
+	PaidOn      openapi_types.Date `json:"paidOn"`
+	RecordedAt  time.Time          `json:"recordedAt"`
+
+	// RecordedBy Who confirmed it.
+	RecordedBy string `json:"recordedBy"`
+}
+
+// PaymentRequest defines model for PaymentRequest.
+type PaymentRequest struct {
+	AmountCents int64 `json:"amountCents"`
+
+	// CoTaught A line is a lesson several tutors taught; the payee bills it whole (ADR 018).
+	CoTaught  bool                 `json:"coTaught"`
+	CreatedAt time.Time            `json:"createdAt"`
+	Currency  string               `json:"currency"`
+	DueOn     openapi_types.Date   `json:"dueOn"`
+	Id        openapi_types.UUID   `json:"id"`
+	Lines     []PaymentRequestLine `json:"lines"`
+	Note      *string              `json:"note,omitempty"`
+
+	// Overdue Open and past its due day in the team's timezone.
+	Overdue bool `json:"overdue"`
+
+	// Payee A team member, as other records mention them.
+	Payee            MemberRef      `json:"payee"`
+	PayerConfirmedAt *time.Time     `json:"payerConfirmedAt,omitempty"`
+	Payment          *PaymentRecord `json:"payment,omitempty"`
+	Receipt          *ReceiptRef    `json:"receipt,omitempty"`
+
+	// Reference Example: PNY-7K3Q9X
+	Reference string               `json:"reference"`
+	SentAt    *time.Time           `json:"sentAt,omitempty"`
+	Status    PaymentRequestStatus `json:"status"`
+	Student   StudentRef           `json:"student"`
+
+	// WaitingFor Who still has to confirm before an open request is paid.
+	WaitingFor *WaitingFor `json:"waitingFor,omitempty"`
+}
+
+// PaymentRequestInput defines model for PaymentRequestInput.
+type PaymentRequestInput struct {
+	DueOn      openapi_types.Date    `json:"dueOn"`
+	ExtraLines *[]ExtraLine          `json:"extraLines,omitempty"`
+	LessonIds  *[]openapi_types.UUID `json:"lessonIds,omitempty"`
+	Note       *string               `json:"note,omitempty"`
+	PayeeId    openapi_types.UUID    `json:"payeeId"`
+	StudentId  openapi_types.UUID    `json:"studentId"`
+}
+
+// PaymentRequestLine defines model for PaymentRequestLine.
+type PaymentRequestLine struct {
+	AmountCents int64 `json:"amountCents"`
+
+	// Description Example: Guitar lesson, Thu 19 Nov
+	Description string              `json:"description"`
+	LessonId    *openapi_types.UUID `json:"lessonId,omitempty"`
+}
+
+// PaymentRequestList defines model for PaymentRequestList.
+type PaymentRequestList struct {
+	Items      []PaymentRequestSummary `json:"items"`
+	NextCursor *string                 `json:"nextCursor,omitempty"`
+}
+
+// PaymentRequestStatus defines model for PaymentRequestStatus.
+type PaymentRequestStatus string
+
+// PaymentRequestSummary defines model for PaymentRequestSummary.
+type PaymentRequestSummary struct {
+	AmountCents int64              `json:"amountCents"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	Currency    string             `json:"currency"`
+	DueOn       openapi_types.Date `json:"dueOn"`
+	Id          openapi_types.UUID `json:"id"`
+
+	// Overdue Open and past its due day in the team's timezone.
+	Overdue bool `json:"overdue"`
+
+	// Payee A team member, as other records mention them.
+	Payee MemberRef `json:"payee"`
+
+	// Reference Example: PNY-7K3Q9X
+	Reference string               `json:"reference"`
+	Status    PaymentRequestStatus `json:"status"`
+	Student   StudentRef           `json:"student"`
+
+	// WaitingFor Who still has to confirm before an open request is paid.
+	WaitingFor *WaitingFor `json:"waitingFor,omitempty"`
+}
+
+// PaymentRequestWithLink defines model for PaymentRequestWithLink.
+type PaymentRequestWithLink struct {
+	// Link The payment page. Shown only now; Penny keeps a hash of it.
+	Link    *string        `json:"link,omitempty"`
+	Request PaymentRequest `json:"request"`
+}
+
 // Problem An RFC 9457 problem. Clients branch on `type`, never on `title` or
 // `detail`, which are for people and may change.
 type Problem struct {
@@ -865,6 +1125,95 @@ type Problem struct {
 	//
 	// Example: urn:penny:problem:not-found
 	Type string `json:"type"`
+}
+
+// ProxyType How a PayNow account is addressed.
+type ProxyType string
+
+// PublicPaymentLine defines model for PublicPaymentLine.
+type PublicPaymentLine struct {
+	AmountCents int64  `json:"amountCents"`
+	Description string `json:"description"`
+}
+
+// PublicPaymentRequest defines model for PublicPaymentRequest.
+type PublicPaymentRequest struct {
+	AmountCents int64 `json:"amountCents"`
+
+	// CancellationPolicy The payee's cancellation policy, in their words.
+	CancellationPolicy *string             `json:"cancellationPolicy,omitempty"`
+	CoTaught           bool                `json:"coTaught"`
+	Currency           string              `json:"currency"`
+	DueOn              openapi_types.Date  `json:"dueOn"`
+	Lines              []PublicPaymentLine `json:"lines"`
+	PayeeName          string              `json:"payeeName"`
+	PayerConfirmed     bool                `json:"payerConfirmed"`
+
+	// PaynowPayload The PayNow QR code's content. Absent once paid or cancelled.
+	PaynowPayload    *string              `json:"paynowPayload,omitempty"`
+	Reference        string               `json:"reference"`
+	Status           PaymentRequestStatus `json:"status"`
+	StudentFirstName string               `json:"studentFirstName"`
+	TeamName         string               `json:"teamName"`
+}
+
+// Receipt defines model for Receipt.
+type Receipt struct {
+	AmountCents int64 `json:"amountCents"`
+
+	// ContentSha256 Hex SHA-256 of the receipt's PDF.
+	ContentSha256 string               `json:"contentSha256"`
+	Currency      string               `json:"currency"`
+	Id            openapi_types.UUID   `json:"id"`
+	IssuedAt      time.Time            `json:"issuedAt"`
+	Lines         []PaymentRequestLine `json:"lines"`
+	Method        PaymentMethod        `json:"method"`
+
+	// Number Sequential and gapless within the team.
+	//
+	// Example: R-0042
+	Number string             `json:"number"`
+	PaidOn openapi_types.Date `json:"paidOn"`
+
+	// Payee A team member, as other records mention them.
+	Payee               MemberRef           `json:"payee"`
+	ReplacedByReceiptId *openapi_types.UUID `json:"replacedByReceiptId,omitempty"`
+	ReplacesReceiptId   *openapi_types.UUID `json:"replacesReceiptId,omitempty"`
+	Request             struct {
+		Id        openapi_types.UUID `json:"id"`
+		Reference string             `json:"reference"`
+	} `json:"request"`
+	Student StudentRef `json:"student"`
+	Voided  *Voided    `json:"voided,omitempty"`
+}
+
+// ReceiptList defines model for ReceiptList.
+type ReceiptList struct {
+	Items      []ReceiptSummary `json:"items"`
+	NextCursor *string          `json:"nextCursor,omitempty"`
+}
+
+// ReceiptRef defines model for ReceiptRef.
+type ReceiptRef struct {
+	Id openapi_types.UUID `json:"id"`
+
+	// Number Example: R-0042
+	Number string `json:"number"`
+	Voided bool   `json:"voided"`
+}
+
+// ReceiptSummary defines model for ReceiptSummary.
+type ReceiptSummary struct {
+	AmountCents int64              `json:"amountCents"`
+	Currency    string             `json:"currency"`
+	Id          openapi_types.UUID `json:"id"`
+	IssuedAt    time.Time          `json:"issuedAt"`
+	Number      string             `json:"number"`
+
+	// Payee A team member, as other records mention them.
+	Payee   MemberRef  `json:"payee"`
+	Student StudentRef `json:"student"`
+	Voided  bool       `json:"voided"`
 }
 
 // Series defines model for Series.
@@ -985,6 +1334,12 @@ type StudentList struct {
 	NextCursor *string          `json:"nextCursor,omitempty"`
 }
 
+// StudentRef defines model for StudentRef.
+type StudentRef struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+}
+
 // StudentSummary defines model for StudentSummary.
 type StudentSummary struct {
 	Archived bool               `json:"archived"`
@@ -1069,6 +1424,22 @@ type User struct {
 	Id          openapi_types.UUID  `json:"id"`
 }
 
+// VoidReceiptInput defines model for VoidReceiptInput.
+type VoidReceiptInput struct {
+	Correction *PaymentInput `json:"correction,omitempty"`
+	Reason     string        `json:"reason"`
+}
+
+// Voided defines model for Voided.
+type Voided struct {
+	At     time.Time `json:"at"`
+	By     string    `json:"by"`
+	Reason string    `json:"reason"`
+}
+
+// WaitingFor Who still has to confirm before an open request is paid.
+type WaitingFor string
+
 // Workspace A team. The UI says "Team"; the API says workspace.
 type Workspace struct {
 	Id openapi_types.UUID `json:"id"`
@@ -1101,6 +1472,9 @@ type Cursor = string
 // GoalId defines model for GoalId.
 type GoalId = openapi_types.UUID
 
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
 // IfMatch defines model for IfMatch.
 type IfMatch = string
 
@@ -1119,6 +1493,15 @@ type LocationId = openapi_types.UUID
 // MemberId defines model for MemberId.
 type MemberId = openapi_types.UUID
 
+// PayToken defines model for PayToken.
+type PayToken = string
+
+// ReceiptId defines model for ReceiptId.
+type ReceiptId = openapi_types.UUID
+
+// RequestId defines model for RequestId.
+type RequestId = openapi_types.UUID
+
 // SeriesId defines model for SeriesId.
 type SeriesId = openapi_types.UUID
 
@@ -1131,6 +1514,14 @@ type WorkspaceId = openapi_types.UUID
 // UnsubscribeFormdataBody defines parameters for Unsubscribe.
 type UnsubscribeFormdataBody struct {
 	ListUnsubscribe *string `form:"List-Unsubscribe,omitempty" json:"List-Unsubscribe,omitempty"`
+}
+
+// ListBillableLessonsParams defines parameters for ListBillableLessons.
+type ListBillableLessonsParams struct {
+	StudentId *openapi_types.UUID `form:"studentId,omitempty" json:"studentId,omitempty"`
+
+	// PayeeId Only lessons this membership leads.
+	PayeeId *openapi_types.UUID `form:"payeeId,omitempty" json:"payeeId,omitempty"`
 }
 
 // ListLessonsParams defines parameters for ListLessons.
@@ -1192,6 +1583,51 @@ type ReopenLessonParams struct {
 	// since is refused with 412, so nobody overwrites a change they have
 	// not seen.
 	IfMatch IfMatch `json:"If-Match"`
+}
+
+// ListPaymentRequestsParams defines parameters for ListPaymentRequests.
+type ListPaymentRequestsParams struct {
+	Status    *PaymentRequestStatus `form:"status,omitempty" json:"status,omitempty"`
+	StudentId *openapi_types.UUID   `form:"studentId,omitempty" json:"studentId,omitempty"`
+
+	// Cursor The `nextCursor` of the previous page.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit The most items to return.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreatePaymentRequestParams defines parameters for CreatePaymentRequest.
+type CreatePaymentRequestParams struct {
+	// IdempotencyKey A unique value per intended change, such as a UUID made when the form
+	// opened. Retrying with the same key returns the first result instead of
+	// doing it twice.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// RecordPaymentParams defines parameters for RecordPayment.
+type RecordPaymentParams struct {
+	// IdempotencyKey A unique value per intended change, such as a UUID made when the form
+	// opened. Retrying with the same key returns the first result instead of
+	// doing it twice.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// ListReceiptsParams defines parameters for ListReceipts.
+type ListReceiptsParams struct {
+	// Cursor The `nextCursor` of the previous page.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit The most items to return.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// VoidReceiptParams defines parameters for VoidReceipt.
+type VoidReceiptParams struct {
+	// IdempotencyKey A unique value per intended change, such as a UUID made when the form
+	// opened. Retrying with the same key returns the first result instead of
+	// doing it twice.
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // UpdateSeriesParams defines parameters for UpdateSeries.
@@ -1283,6 +1719,18 @@ type UpdateMemberJSONRequestBody = UpdateMemberRequest
 
 // SetCancellationPolicyJSONRequestBody defines body for SetCancellationPolicy for application/json ContentType.
 type SetCancellationPolicyJSONRequestBody = CancellationPolicyInput
+
+// SetPayeeAccountJSONRequestBody defines body for SetPayeeAccount for application/json ContentType.
+type SetPayeeAccountJSONRequestBody = PayeeAccountInput
+
+// CreatePaymentRequestJSONRequestBody defines body for CreatePaymentRequest for application/json ContentType.
+type CreatePaymentRequestJSONRequestBody = PaymentRequestInput
+
+// RecordPaymentJSONRequestBody defines body for RecordPayment for application/json ContentType.
+type RecordPaymentJSONRequestBody = PaymentInput
+
+// VoidReceiptJSONRequestBody defines body for VoidReceipt for application/json ContentType.
+type VoidReceiptJSONRequestBody = VoidReceiptInput
 
 // CreateSeriesJSONRequestBody defines body for CreateSeries for application/json ContentType.
 type CreateSeriesJSONRequestBody = SeriesInput
@@ -1445,6 +1893,23 @@ type ClientInterface interface {
 	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
 	UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetPublicPaymentRequest The public payment page's data
+	//
+	// Anyone with the link. Shows the payee, what is owed and the PayNow
+	// code, and no more about the student than a first name.
+	//
+	// Corresponds with GET /v1/pay/{token} (the `GetPublicPaymentRequest` operationId).
+	GetPublicPaymentRequest(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ConfirmPaidByPayer The payer says they have paid
+	//
+	// Records the parent's confirmation and tells the payee. When the payee
+	// has confirmed the money too, the request is paid and the receipt is
+	// issued (ADR 024).
+	//
+	// Corresponds with POST /v1/pay/{token}/paid (the `ConfirmPaidByPayer` operationId).
+	ConfirmPaidByPayer(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
 	//
 	// Public: the signed link is the credential. Opening a link changes
@@ -1525,6 +1990,15 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
 	UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListBillableLessons Billable lessons not yet on a payment request
+	//
+	// Done lessons, and no-shows and late cancellations the lead tutor's
+	// policy bills, that no open or paid request covers. Owners see every
+	// payee's; teachers only lessons they lead.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
+	ListBillableLessons(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListLessons List lessons in a time range
 	//
@@ -1690,7 +2164,8 @@ type ClientInterface interface {
 	//
 	// Owners may reopen any lesson; the tutor who marked a lesson done or
 	// no-show may reopen it, which is how Undo works. Refused with 409
-	// once a receipt covers the lesson.
+	// while a payment request covers the lesson: withdraw the request, or
+	// void its receipt, first.
 	//
 	// Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
 	ReopenLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1843,6 +2318,155 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 	SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPayeeAccount Where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `GetPayeeAccount` operationId).
+	GetPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPayeeAccountWithBody Set where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner. Changing the proxy clears
+	// `verified`: the tutor scans the new test code before any parent sees it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+	SetPayeeAccountWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetPayeeAccount Set where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner. Changing the proxy clears
+	// `verified`: the tutor scans the new test code before any parent sees it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+	SetPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetPayeeAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VerifyPayeeAccount Confirm the test code showed the right recipient
+	//
+	// The tutor scanned `testPayload` in their own banking app and saw their
+	// registered name. Only verified accounts can receive payment requests.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify (the `VerifyPayeeAccount` operationId).
+	VerifyPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListPaymentRequests List payment requests
+	//
+	// Owners see every request; teachers those they are the payee of.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests (the `ListPaymentRequests` operationId).
+	ListPaymentRequests(ctx context.Context, workspaceId WorkspaceId, params *ListPaymentRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePaymentRequestWithBody Ask for payment
+	//
+	// Owners for any payee, teachers for themselves (ADR 024). The payee
+	// needs a verified PayNow account. Lesson lines take the lesson's fee and
+	// must be billable and led by the payee (ADR 018). If the payee sends
+	// automatically, the request is sent at once; otherwise it is a draft.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+	CreatePaymentRequestWithBody(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreatePaymentRequest Ask for payment
+	//
+	// Owners for any payee, teachers for themselves (ADR 024). The payee
+	// needs a verified PayNow account. Lesson lines take the lesson's fee and
+	// must be billable and led by the payee (ADR 018). If the payee sends
+	// automatically, the request is sent at once; otherwise it is a draft.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+	CreatePaymentRequest(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, body CreatePaymentRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetPaymentRequest Get a payment request with what it covers and its confirmations
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests/{requestId} (the `GetPaymentRequest` operationId).
+	GetPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CancelPaymentRequest Withdraw a request that is not paid
+	//
+	// Its link stops working and its lessons can be billed again.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel (the `CancelPaymentRequest` operationId).
+	CancelPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordPaymentWithBody Confirm the money arrived
+	//
+	// The payee, or an owner, records what their bank shows. When the parent
+	// has confirmed too, the request is paid and the receipt is issued and
+	// emailed (ADR 024).
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+	RecordPaymentWithBody(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RecordPayment Confirm the money arrived
+	//
+	// The payee, or an owner, records what their bank shows. When the parent
+	// has confirmed too, the request is paid and the receipt is issued and
+	// emailed (ADR 024).
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+	RecordPayment(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, body RecordPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SendPaymentRequest Send a draft, or send an open request again
+	//
+	// Emails the student's billing contacts a fresh link. Any earlier link
+	// stops working: Penny keeps only a hash of the current one.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send (the `SendPaymentRequest` operationId).
+	SendPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListReceipts List receipts
+	//
+	// Owners see every receipt; teachers those they issued as payee.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts (the `ListReceipts` operationId).
+	ListReceipts(ctx context.Context, workspaceId WorkspaceId, params *ListReceiptsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetReceipt Get a receipt and everything it traces back to
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId} (the `GetReceipt` operationId).
+	GetReceipt(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetReceiptPdf The receipt as a PDF
+	//
+	// Rendered the same way every time from the receipt's record; its SHA-256
+	// matches the receipt's `contentSha256`, so a copy can be shown to be
+	// unaltered.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf (the `GetReceiptPdf` operationId).
+	GetReceiptPdf(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VoidReceiptWithBody Void a receipt, optionally issuing a corrected one
+	//
+	// The payee or an owner. Receipts are never edited: a correction voids
+	// this one with a reason and issues a new one that references it.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+	VoidReceiptWithBody(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// VoidReceipt Void a receipt, optionally issuing a corrected one
+	//
+	// The payee or an owner. Receipts are never edited: a correction voids
+	// this one with a reason and issues a new one that references it.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+	VoidReceipt(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, body VoidReceiptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateSeriesWithBody Book a recurring lesson
 	//
@@ -2194,6 +2818,43 @@ func (c *Client) UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, req
 	return c.Client.Do(req)
 }
 
+// GetPublicPaymentRequest The public payment page's data
+//
+// Anyone with the link. Shows the payee, what is owed and the PayNow
+// code, and no more about the student than a first name.
+//
+// Corresponds with GET /v1/pay/{token} (the `GetPublicPaymentRequest` operationId).
+func (c *Client) GetPublicPaymentRequest(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPublicPaymentRequestRequest(c.Server, token)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ConfirmPaidByPayer The payer says they have paid
+//
+// Records the parent's confirmation and tells the payee. When the payee
+// has confirmed the money too, the request is paid and the receipt is
+// issued (ADR 024).
+//
+// Corresponds with POST /v1/pay/{token}/paid (the `ConfirmPaidByPayer` operationId).
+func (c *Client) ConfirmPaidByPayer(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmPaidByPayerRequest(c.Server, token)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
 //
 // Public: the signed link is the credential. Opening a link changes
@@ -2355,6 +3016,25 @@ func (c *Client) UpdateWorkspaceWithBody(ctx context.Context, workspaceId Worksp
 // Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
 func (c *Client) UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateWorkspaceRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListBillableLessons Billable lessons not yet on a payment request
+//
+// Done lessons, and no-shows and late cancellations the lead tutor's
+// policy bills, that no open or paid request covers. Owners see every
+// payee's; teachers only lessons they lead.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
+func (c *Client) ListBillableLessons(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListBillableLessonsRequest(c.Server, workspaceId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2699,7 +3379,8 @@ func (c *Client) MarkNoShow(ctx context.Context, workspaceId WorkspaceId, lesson
 //
 // Owners may reopen any lesson; the tutor who marked a lesson done or
 // no-show may reopen it, which is how Undo works. Refused with 409
-// once a receipt covers the lesson.
+// while a payment request covers the lesson: withdraw the request, or
+// void its receipt, first.
 //
 // Corresponds with POST /v1/workspaces/{workspaceId}/lessons/{lessonId}/reopen (the `ReopenLesson` operationId).
 func (c *Client) ReopenLesson(ctx context.Context, workspaceId WorkspaceId, lessonId LessonId, params *ReopenLessonParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3023,6 +3704,325 @@ func (c *Client) SetCancellationPolicyWithBody(ctx context.Context, workspaceId 
 // Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 func (c *Client) SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetCancellationPolicyRequest(c.Server, workspaceId, memberId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPayeeAccount Where a tutor receives PayNow
+//
+// The tutor themselves, or an owner.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `GetPayeeAccount` operationId).
+func (c *Client) GetPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPayeeAccountRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPayeeAccountWithBody Set where a tutor receives PayNow
+//
+// The tutor themselves, or an owner. Changing the proxy clears
+// `verified`: the tutor scans the new test code before any parent sees it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+func (c *Client) SetPayeeAccountWithBody(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPayeeAccountRequestWithBody(c.Server, workspaceId, memberId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetPayeeAccount Set where a tutor receives PayNow
+//
+// The tutor themselves, or an owner. Changing the proxy clears
+// `verified`: the tutor scans the new test code before any parent sees it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+func (c *Client) SetPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetPayeeAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetPayeeAccountRequest(c.Server, workspaceId, memberId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VerifyPayeeAccount Confirm the test code showed the right recipient
+//
+// The tutor scanned `testPayload` in their own banking app and saw their
+// registered name. Only verified accounts can receive payment requests.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify (the `VerifyPayeeAccount` operationId).
+func (c *Client) VerifyPayeeAccount(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVerifyPayeeAccountRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListPaymentRequests List payment requests
+//
+// Owners see every request; teachers those they are the payee of.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests (the `ListPaymentRequests` operationId).
+func (c *Client) ListPaymentRequests(ctx context.Context, workspaceId WorkspaceId, params *ListPaymentRequestsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListPaymentRequestsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePaymentRequestWithBody Ask for payment
+//
+// Owners for any payee, teachers for themselves (ADR 024). The payee
+// needs a verified PayNow account. Lesson lines take the lesson's fee and
+// must be billable and led by the payee (ADR 018). If the payee sends
+// automatically, the request is sent at once; otherwise it is a draft.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+func (c *Client) CreatePaymentRequestWithBody(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePaymentRequestRequestWithBody(c.Server, workspaceId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreatePaymentRequest Ask for payment
+//
+// Owners for any payee, teachers for themselves (ADR 024). The payee
+// needs a verified PayNow account. Lesson lines take the lesson's fee and
+// must be billable and led by the payee (ADR 018). If the payee sends
+// automatically, the request is sent at once; otherwise it is a draft.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+func (c *Client) CreatePaymentRequest(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, body CreatePaymentRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreatePaymentRequestRequest(c.Server, workspaceId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetPaymentRequest Get a payment request with what it covers and its confirmations
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests/{requestId} (the `GetPaymentRequest` operationId).
+func (c *Client) GetPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetPaymentRequestRequest(c.Server, workspaceId, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CancelPaymentRequest Withdraw a request that is not paid
+//
+// Its link stops working and its lessons can be billed again.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel (the `CancelPaymentRequest` operationId).
+func (c *Client) CancelPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCancelPaymentRequestRequest(c.Server, workspaceId, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecordPaymentWithBody Confirm the money arrived
+//
+// The payee, or an owner, records what their bank shows. When the parent
+// has confirmed too, the request is paid and the receipt is issued and
+// emailed (ADR 024).
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+func (c *Client) RecordPaymentWithBody(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordPaymentRequestWithBody(c.Server, workspaceId, requestId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RecordPayment Confirm the money arrived
+//
+// The payee, or an owner, records what their bank shows. When the parent
+// has confirmed too, the request is paid and the receipt is issued and
+// emailed (ADR 024).
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+func (c *Client) RecordPayment(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, body RecordPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecordPaymentRequest(c.Server, workspaceId, requestId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SendPaymentRequest Send a draft, or send an open request again
+//
+// Emails the student's billing contacts a fresh link. Any earlier link
+// stops working: Penny keeps only a hash of the current one.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send (the `SendPaymentRequest` operationId).
+func (c *Client) SendPaymentRequest(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSendPaymentRequestRequest(c.Server, workspaceId, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListReceipts List receipts
+//
+// Owners see every receipt; teachers those they issued as payee.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts (the `ListReceipts` operationId).
+func (c *Client) ListReceipts(ctx context.Context, workspaceId WorkspaceId, params *ListReceiptsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListReceiptsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetReceipt Get a receipt and everything it traces back to
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId} (the `GetReceipt` operationId).
+func (c *Client) GetReceipt(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReceiptRequest(c.Server, workspaceId, receiptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetReceiptPdf The receipt as a PDF
+//
+// Rendered the same way every time from the receipt's record; its SHA-256
+// matches the receipt's `contentSha256`, so a copy can be shown to be
+// unaltered.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf (the `GetReceiptPdf` operationId).
+func (c *Client) GetReceiptPdf(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetReceiptPdfRequest(c.Server, workspaceId, receiptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VoidReceiptWithBody Void a receipt, optionally issuing a corrected one
+//
+// The payee or an owner. Receipts are never edited: a correction voids
+// this one with a reason and issues a new one that references it.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+func (c *Client) VoidReceiptWithBody(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVoidReceiptRequestWithBody(c.Server, workspaceId, receiptId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// VoidReceipt Void a receipt, optionally issuing a corrected one
+//
+// The payee or an owner. Receipts are never edited: a correction voids
+// this one with a reason and issues a new one that references it.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+func (c *Client) VoidReceipt(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, body VoidReceiptJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewVoidReceiptRequest(c.Server, workspaceId, receiptId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3664,6 +4664,74 @@ func NewUpdateMeRequestWithBody(server string, contentType string, body io.Reade
 	return req, nil
 }
 
+// NewGetPublicPaymentRequestRequest constructs an http.Request for the GetPublicPaymentRequest method
+func NewGetPublicPaymentRequestRequest(server string, token PayToken) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "token", token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/pay/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewConfirmPaidByPayerRequest constructs an http.Request for the ConfirmPaidByPayer method
+func NewConfirmPaidByPayerRequest(server string, token PayToken) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "token", token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/pay/%s/paid", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDescribeUnsubscribeRequest constructs an http.Request for the DescribeUnsubscribe method
 func NewDescribeUnsubscribeRequest(server string, token string) (*http.Request, error) {
 	var err error
@@ -3889,6 +4957,79 @@ func NewUpdateWorkspaceRequestWithBody(server string, workspaceId WorkspaceId, c
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListBillableLessonsRequest constructs an http.Request for the ListBillableLessons method
+func NewListBillableLessonsRequest(server string, workspaceId WorkspaceId, params *ListBillableLessonsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/billable-lessons", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.StudentId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "studentId", *params.StudentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.PayeeId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "payeeId", *params.PayeeId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -5136,6 +6277,711 @@ func NewSetCancellationPolicyRequestWithBody(server string, workspaceId Workspac
 	return req, nil
 }
 
+// NewGetPayeeAccountRequest constructs an http.Request for the GetPayeeAccount method
+func NewGetPayeeAccountRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/payee-account", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetPayeeAccountRequest calls the generic SetPayeeAccount builder with application/json body
+func NewSetPayeeAccountRequest(server string, workspaceId WorkspaceId, memberId MemberId, body SetPayeeAccountJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetPayeeAccountRequestWithBody(server, workspaceId, memberId, "application/json", bodyReader)
+}
+
+// NewSetPayeeAccountRequestWithBody constructs an http.Request for the SetPayeeAccount method, with any body, and a specified content type
+func NewSetPayeeAccountRequestWithBody(server string, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/payee-account", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewVerifyPayeeAccountRequest constructs an http.Request for the VerifyPayeeAccount method
+func NewVerifyPayeeAccountRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/payee-account/verify", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListPaymentRequestsRequest constructs an http.Request for the ListPaymentRequests method
+func NewListPaymentRequestsRequest(server string, workspaceId WorkspaceId, params *ListPaymentRequestsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.StudentId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "studentId", *params.StudentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreatePaymentRequestRequest calls the generic CreatePaymentRequest builder with application/json body
+func NewCreatePaymentRequestRequest(server string, workspaceId WorkspaceId, params *CreatePaymentRequestParams, body CreatePaymentRequestJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreatePaymentRequestRequestWithBody(server, workspaceId, params, "application/json", bodyReader)
+}
+
+// NewCreatePaymentRequestRequestWithBody constructs an http.Request for the CreatePaymentRequest method, with any body, and a specified content type
+func NewCreatePaymentRequestRequestWithBody(server string, workspaceId WorkspaceId, params *CreatePaymentRequestParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewGetPaymentRequestRequest constructs an http.Request for the GetPaymentRequest method
+func NewGetPaymentRequestRequest(server string, workspaceId WorkspaceId, requestId RequestId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCancelPaymentRequestRequest constructs an http.Request for the CancelPaymentRequest method
+func NewCancelPaymentRequestRequest(server string, workspaceId WorkspaceId, requestId RequestId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests/%s/cancel", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewRecordPaymentRequest calls the generic RecordPayment builder with application/json body
+func NewRecordPaymentRequest(server string, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, body RecordPaymentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRecordPaymentRequestWithBody(server, workspaceId, requestId, params, "application/json", bodyReader)
+}
+
+// NewRecordPaymentRequestWithBody constructs an http.Request for the RecordPayment method, with any body, and a specified content type
+func NewRecordPaymentRequestWithBody(server string, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests/%s/payment", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewSendPaymentRequestRequest constructs an http.Request for the SendPaymentRequest method
+func NewSendPaymentRequestRequest(server string, workspaceId WorkspaceId, requestId RequestId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/payment-requests/%s/send", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListReceiptsRequest constructs an http.Request for the ListReceipts method
+func NewListReceiptsRequest(server string, workspaceId WorkspaceId, params *ListReceiptsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/receipts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int32"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReceiptRequest constructs an http.Request for the GetReceipt method
+func NewGetReceiptRequest(server string, workspaceId WorkspaceId, receiptId ReceiptId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "receiptId", receiptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/receipts/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetReceiptPdfRequest constructs an http.Request for the GetReceiptPdf method
+func NewGetReceiptPdfRequest(server string, workspaceId WorkspaceId, receiptId ReceiptId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "receiptId", receiptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/receipts/%s/pdf", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewVoidReceiptRequest calls the generic VoidReceipt builder with application/json body
+func NewVoidReceiptRequest(server string, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, body VoidReceiptJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewVoidReceiptRequestWithBody(server, workspaceId, receiptId, params, "application/json", bodyReader)
+}
+
+// NewVoidReceiptRequestWithBody constructs an http.Request for the VoidReceipt method, with any body, and a specified content type
+func NewVoidReceiptRequestWithBody(server string, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "receiptId", receiptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/receipts/%s/void", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewCreateSeriesRequest calls the generic CreateSeries builder with application/json body
 func NewCreateSeriesRequest(server string, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -6078,6 +7924,27 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
 	UpdateMeWithResponse(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error)
 
+	// GetPublicPaymentRequestWithResponse The public payment page's data
+	//
+	// Anyone with the link. Shows the payee, what is owed and the PayNow
+	// code, and no more about the student than a first name.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/pay/{token} (the `GetPublicPaymentRequest` operationId).
+	GetPublicPaymentRequestWithResponse(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*GetPublicPaymentRequestResponse, error)
+
+	// ConfirmPaidByPayerWithResponse The payer says they have paid
+	//
+	// Records the parent's confirmation and tells the payee. When the payee
+	// has confirmed the money too, the request is paid and the receipt is
+	// issued (ADR 024).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/pay/{token}/paid (the `ConfirmPaidByPayer` operationId).
+	ConfirmPaidByPayerWithResponse(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*ConfirmPaidByPayerResponse, error)
+
 	// DescribeUnsubscribeWithResponse Say what an unsubscribe link would stop, without stopping it
 	//
 	// Public: the signed link is the credential. Opening a link changes
@@ -6164,6 +8031,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId} (the `UpdateWorkspace` operationId).
 	UpdateWorkspaceWithResponse(ctx context.Context, workspaceId WorkspaceId, body UpdateWorkspaceJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWorkspaceResponse, error)
+
+	// ListBillableLessonsWithResponse Billable lessons not yet on a payment request
+	//
+	// Done lessons, and no-shows and late cancellations the lead tutor's
+	// policy bills, that no open or paid request covers. Owners see every
+	// payee's; teachers only lessons they lead.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
+	ListBillableLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*ListBillableLessonsResponse, error)
 
 	// ListLessonsWithResponse List lessons in a time range
 	//
@@ -6339,7 +8217,8 @@ type ClientWithResponsesInterface interface {
 	//
 	// Owners may reopen any lesson; the tutor who marked a lesson done or
 	// no-show may reopen it, which is how Undo works. Refused with 409
-	// once a receipt covers the lesson.
+	// while a payment request covers the lesson: withdraw the request, or
+	// void its receipt, first.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
@@ -6508,6 +8387,173 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 	SetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error)
+
+	// GetPayeeAccountWithResponse Where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `GetPayeeAccount` operationId).
+	GetPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*GetPayeeAccountResponse, error)
+
+	// SetPayeeAccountWithBodyWithResponse Set where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner. Changing the proxy clears
+	// `verified`: the tutor scans the new test code before any parent sees it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+	SetPayeeAccountWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPayeeAccountResponse, error)
+
+	// SetPayeeAccountWithResponse Set where a tutor receives PayNow
+	//
+	// The tutor themselves, or an owner. Changing the proxy clears
+	// `verified`: the tutor scans the new test code before any parent sees it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+	SetPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetPayeeAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPayeeAccountResponse, error)
+
+	// VerifyPayeeAccountWithResponse Confirm the test code showed the right recipient
+	//
+	// The tutor scanned `testPayload` in their own banking app and saw their
+	// registered name. Only verified accounts can receive payment requests.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify (the `VerifyPayeeAccount` operationId).
+	VerifyPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*VerifyPayeeAccountResponse, error)
+
+	// ListPaymentRequestsWithResponse List payment requests
+	//
+	// Owners see every request; teachers those they are the payee of.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests (the `ListPaymentRequests` operationId).
+	ListPaymentRequestsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListPaymentRequestsParams, reqEditors ...RequestEditorFn) (*ListPaymentRequestsResponse, error)
+
+	// CreatePaymentRequestWithBodyWithResponse Ask for payment
+	//
+	// Owners for any payee, teachers for themselves (ADR 024). The payee
+	// needs a verified PayNow account. Lesson lines take the lesson's fee and
+	// must be billable and led by the payee (ADR 018). If the payee sends
+	// automatically, the request is sent at once; otherwise it is a draft.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+	CreatePaymentRequestWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePaymentRequestResponse, error)
+
+	// CreatePaymentRequestWithResponse Ask for payment
+	//
+	// Owners for any payee, teachers for themselves (ADR 024). The payee
+	// needs a verified PayNow account. Lesson lines take the lesson's fee and
+	// must be billable and led by the payee (ADR 018). If the payee sends
+	// automatically, the request is sent at once; otherwise it is a draft.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+	CreatePaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, body CreatePaymentRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePaymentRequestResponse, error)
+
+	// GetPaymentRequestWithResponse Get a payment request with what it covers and its confirmations
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests/{requestId} (the `GetPaymentRequest` operationId).
+	GetPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*GetPaymentRequestResponse, error)
+
+	// CancelPaymentRequestWithResponse Withdraw a request that is not paid
+	//
+	// Its link stops working and its lessons can be billed again.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel (the `CancelPaymentRequest` operationId).
+	CancelPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*CancelPaymentRequestResponse, error)
+
+	// RecordPaymentWithBodyWithResponse Confirm the money arrived
+	//
+	// The payee, or an owner, records what their bank shows. When the parent
+	// has confirmed too, the request is paid and the receipt is issued and
+	// emailed (ADR 024).
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+	RecordPaymentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordPaymentResponse, error)
+
+	// RecordPaymentWithResponse Confirm the money arrived
+	//
+	// The payee, or an owner, records what their bank shows. When the parent
+	// has confirmed too, the request is paid and the receipt is issued and
+	// emailed (ADR 024).
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+	RecordPaymentWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, body RecordPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordPaymentResponse, error)
+
+	// SendPaymentRequestWithResponse Send a draft, or send an open request again
+	//
+	// Emails the student's billing contacts a fresh link. Any earlier link
+	// stops working: Penny keeps only a hash of the current one.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send (the `SendPaymentRequest` operationId).
+	SendPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*SendPaymentRequestResponse, error)
+
+	// ListReceiptsWithResponse List receipts
+	//
+	// Owners see every receipt; teachers those they issued as payee.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts (the `ListReceipts` operationId).
+	ListReceiptsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListReceiptsParams, reqEditors ...RequestEditorFn) (*ListReceiptsResponse, error)
+
+	// GetReceiptWithResponse Get a receipt and everything it traces back to
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId} (the `GetReceipt` operationId).
+	GetReceiptWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetReceiptResponse, error)
+
+	// GetReceiptPdfWithResponse The receipt as a PDF
+	//
+	// Rendered the same way every time from the receipt's record; its SHA-256
+	// matches the receipt's `contentSha256`, so a copy can be shown to be
+	// unaltered.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf (the `GetReceiptPdf` operationId).
+	GetReceiptPdfWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetReceiptPdfResponse, error)
+
+	// VoidReceiptWithBodyWithResponse Void a receipt, optionally issuing a corrected one
+	//
+	// The payee or an owner. Receipts are never edited: a correction voids
+	// this one with a reason and issues a new one that references it.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+	VoidReceiptWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VoidReceiptResponse, error)
+
+	// VoidReceiptWithResponse Void a receipt, optionally issuing a corrected one
+	//
+	// The payee or an owner. Receipts are never edited: a correction voids
+	// this one with a reason and issues a new one that references it.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+	VoidReceiptWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, body VoidReceiptJSONRequestBody, reqEditors ...RequestEditorFn) (*VoidReceiptResponse, error)
 
 	// CreateSeriesWithBodyWithResponse Book a recurring lesson
 	//
@@ -7055,6 +9101,123 @@ func (r UpdateMeResponse) ContentType() string {
 	return ""
 }
 
+type GetPublicPaymentRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PublicPaymentRequest
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPublicPaymentRequestResponse) GetJSON200() *PublicPaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetPublicPaymentRequestResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetPublicPaymentRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPublicPaymentRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPublicPaymentRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPublicPaymentRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPublicPaymentRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ConfirmPaidByPayerResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PublicPaymentRequest
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ConfirmPaidByPayerResponse) GetJSON200() *PublicPaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ConfirmPaidByPayerResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ConfirmPaidByPayerResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ConfirmPaidByPayerResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ConfirmPaidByPayerResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ConfirmPaidByPayerResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ConfirmPaidByPayerResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ConfirmPaidByPayerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DescribeUnsubscribeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7407,6 +9570,75 @@ func (r UpdateWorkspaceResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateWorkspaceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListBillableLessonsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *BillableLessonList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListBillableLessonsResponse) GetJSON200() *BillableLessonList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListBillableLessonsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListBillableLessonsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListBillableLessonsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListBillableLessonsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListBillableLessonsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListBillableLessonsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListBillableLessonsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListBillableLessonsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9188,6 +11420,952 @@ func (r SetCancellationPolicyResponse) ContentType() string {
 	return ""
 }
 
+type GetPayeeAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayeeAccount
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPayeeAccountResponse) GetJSON200() *PayeeAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetPayeeAccountResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetPayeeAccountResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetPayeeAccountResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetPayeeAccountResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPayeeAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPayeeAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPayeeAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPayeeAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetPayeeAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayeeAccount
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetPayeeAccountResponse) GetJSON200() *PayeeAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetPayeeAccountResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetPayeeAccountResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SetPayeeAccountResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SetPayeeAccountResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SetPayeeAccountResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetPayeeAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetPayeeAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetPayeeAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetPayeeAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VerifyPayeeAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PayeeAccount
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VerifyPayeeAccountResponse) GetJSON200() *PayeeAccount {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r VerifyPayeeAccountResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r VerifyPayeeAccountResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VerifyPayeeAccountResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VerifyPayeeAccountResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VerifyPayeeAccountResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VerifyPayeeAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VerifyPayeeAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VerifyPayeeAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListPaymentRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PaymentRequestList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListPaymentRequestsResponse) GetJSON200() *PaymentRequestList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListPaymentRequestsResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListPaymentRequestsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListPaymentRequestsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListPaymentRequestsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListPaymentRequestsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListPaymentRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListPaymentRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListPaymentRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPaymentRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreatePaymentRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *PaymentRequestWithLink
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreatePaymentRequestResponse) GetJSON201() *PaymentRequestWithLink {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreatePaymentRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreatePaymentRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreatePaymentRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreatePaymentRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreatePaymentRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetPaymentRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PaymentRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetPaymentRequestResponse) GetJSON200() *PaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetPaymentRequestResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetPaymentRequestResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetPaymentRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetPaymentRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetPaymentRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetPaymentRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPaymentRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CancelPaymentRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PaymentRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CancelPaymentRequestResponse) GetJSON200() *PaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CancelPaymentRequestResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CancelPaymentRequestResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CancelPaymentRequestResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r CancelPaymentRequestResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CancelPaymentRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CancelPaymentRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CancelPaymentRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CancelPaymentRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CancelPaymentRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RecordPaymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PaymentRequest
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RecordPaymentResponse) GetJSON200() *PaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RecordPaymentResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RecordPaymentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RecordPaymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecordPaymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecordPaymentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SendPaymentRequestResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *PaymentRequestWithLink
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SendPaymentRequestResponse) GetJSON200() *PaymentRequestWithLink {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SendPaymentRequestResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SendPaymentRequestResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SendPaymentRequestResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SendPaymentRequestResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SendPaymentRequestResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SendPaymentRequestResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SendPaymentRequestResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SendPaymentRequestResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SendPaymentRequestResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListReceiptsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReceiptList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListReceiptsResponse) GetJSON200() *ReceiptList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListReceiptsResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListReceiptsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListReceiptsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ListReceiptsResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListReceiptsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListReceiptsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListReceiptsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListReceiptsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListReceiptsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetReceiptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Receipt
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetReceiptResponse) GetJSON200() *Receipt {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetReceiptResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetReceiptResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetReceiptResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReceiptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReceiptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReceiptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReceiptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetReceiptPdfResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetReceiptPdfResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetReceiptPdfResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetReceiptPdfResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetReceiptPdfResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetReceiptPdfResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetReceiptPdfResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetReceiptPdfResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type VoidReceiptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Receipt
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r VoidReceiptResponse) GetJSON200() *Receipt {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r VoidReceiptResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r VoidReceiptResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r VoidReceiptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r VoidReceiptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r VoidReceiptResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateSeriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -10336,6 +13514,39 @@ func (c *ClientWithResponses) UpdateMeWithResponse(ctx context.Context, body Upd
 	return ParseUpdateMeResponse(rsp)
 }
 
+// GetPublicPaymentRequestWithResponse The public payment page's data
+//
+// Anyone with the link. Shows the payee, what is owed and the PayNow
+// code, and no more about the student than a first name.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/pay/{token} (the `GetPublicPaymentRequest` operationId).
+func (c *ClientWithResponses) GetPublicPaymentRequestWithResponse(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*GetPublicPaymentRequestResponse, error) {
+	rsp, err := c.GetPublicPaymentRequest(ctx, token, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPublicPaymentRequestResponse(rsp)
+}
+
+// ConfirmPaidByPayerWithResponse The payer says they have paid
+//
+// Records the parent's confirmation and tells the payee. When the payee
+// has confirmed the money too, the request is paid and the receipt is
+// issued (ADR 024).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/pay/{token}/paid (the `ConfirmPaidByPayer` operationId).
+func (c *ClientWithResponses) ConfirmPaidByPayerWithResponse(ctx context.Context, token PayToken, reqEditors ...RequestEditorFn) (*ConfirmPaidByPayerResponse, error) {
+	rsp, err := c.ConfirmPaidByPayer(ctx, token, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmPaidByPayerResponse(rsp)
+}
+
 // DescribeUnsubscribeWithResponse Say what an unsubscribe link would stop, without stopping it
 //
 // Public: the signed link is the credential. Opening a link changes
@@ -10475,6 +13686,23 @@ func (c *ClientWithResponses) UpdateWorkspaceWithResponse(ctx context.Context, w
 		return nil, err
 	}
 	return ParseUpdateWorkspaceResponse(rsp)
+}
+
+// ListBillableLessonsWithResponse Billable lessons not yet on a payment request
+//
+// Done lessons, and no-shows and late cancellations the lead tutor's
+// policy bills, that no open or paid request covers. Owners see every
+// payee's; teachers only lessons they lead.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
+func (c *ClientWithResponses) ListBillableLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*ListBillableLessonsResponse, error) {
+	rsp, err := c.ListBillableLessons(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListBillableLessonsResponse(rsp)
 }
 
 // ListLessonsWithResponse List lessons in a time range
@@ -10753,7 +13981,8 @@ func (c *ClientWithResponses) MarkNoShowWithResponse(ctx context.Context, worksp
 //
 // Owners may reopen any lesson; the tutor who marked a lesson done or
 // no-show may reopen it, which is how Undo works. Refused with 409
-// once a receipt covers the lesson.
+// while a payment request covers the lesson: withdraw the request, or
+// void its receipt, first.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -11029,6 +14258,275 @@ func (c *ClientWithResponses) SetCancellationPolicyWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseSetCancellationPolicyResponse(rsp)
+}
+
+// GetPayeeAccountWithResponse Where a tutor receives PayNow
+//
+// The tutor themselves, or an owner.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `GetPayeeAccount` operationId).
+func (c *ClientWithResponses) GetPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*GetPayeeAccountResponse, error) {
+	rsp, err := c.GetPayeeAccount(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPayeeAccountResponse(rsp)
+}
+
+// SetPayeeAccountWithBodyWithResponse Set where a tutor receives PayNow
+//
+// The tutor themselves, or an owner. Changing the proxy clears
+// `verified`: the tutor scans the new test code before any parent sees it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+func (c *ClientWithResponses) SetPayeeAccountWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetPayeeAccountResponse, error) {
+	rsp, err := c.SetPayeeAccountWithBody(ctx, workspaceId, memberId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPayeeAccountResponse(rsp)
+}
+
+// SetPayeeAccountWithResponse Set where a tutor receives PayNow
+//
+// The tutor themselves, or an owner. Changing the proxy clears
+// `verified`: the tutor scans the new test code before any parent sees it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account (the `SetPayeeAccount` operationId).
+func (c *ClientWithResponses) SetPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetPayeeAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*SetPayeeAccountResponse, error) {
+	rsp, err := c.SetPayeeAccount(ctx, workspaceId, memberId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetPayeeAccountResponse(rsp)
+}
+
+// VerifyPayeeAccountWithResponse Confirm the test code showed the right recipient
+//
+// The tutor scanned `testPayload` in their own banking app and saw their
+// registered name. Only verified accounts can receive payment requests.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify (the `VerifyPayeeAccount` operationId).
+func (c *ClientWithResponses) VerifyPayeeAccountWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*VerifyPayeeAccountResponse, error) {
+	rsp, err := c.VerifyPayeeAccount(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVerifyPayeeAccountResponse(rsp)
+}
+
+// ListPaymentRequestsWithResponse List payment requests
+//
+// Owners see every request; teachers those they are the payee of.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests (the `ListPaymentRequests` operationId).
+func (c *ClientWithResponses) ListPaymentRequestsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListPaymentRequestsParams, reqEditors ...RequestEditorFn) (*ListPaymentRequestsResponse, error) {
+	rsp, err := c.ListPaymentRequests(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListPaymentRequestsResponse(rsp)
+}
+
+// CreatePaymentRequestWithBodyWithResponse Ask for payment
+//
+// Owners for any payee, teachers for themselves (ADR 024). The payee
+// needs a verified PayNow account. Lesson lines take the lesson's fee and
+// must be billable and led by the payee (ADR 018). If the payee sends
+// automatically, the request is sent at once; otherwise it is a draft.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+func (c *ClientWithResponses) CreatePaymentRequestWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreatePaymentRequestResponse, error) {
+	rsp, err := c.CreatePaymentRequestWithBody(ctx, workspaceId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePaymentRequestResponse(rsp)
+}
+
+// CreatePaymentRequestWithResponse Ask for payment
+//
+// Owners for any payee, teachers for themselves (ADR 024). The payee
+// needs a verified PayNow account. Lesson lines take the lesson's fee and
+// must be billable and led by the payee (ADR 018). If the payee sends
+// automatically, the request is sent at once; otherwise it is a draft.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests (the `CreatePaymentRequest` operationId).
+func (c *ClientWithResponses) CreatePaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, params *CreatePaymentRequestParams, body CreatePaymentRequestJSONRequestBody, reqEditors ...RequestEditorFn) (*CreatePaymentRequestResponse, error) {
+	rsp, err := c.CreatePaymentRequest(ctx, workspaceId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreatePaymentRequestResponse(rsp)
+}
+
+// GetPaymentRequestWithResponse Get a payment request with what it covers and its confirmations
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/payment-requests/{requestId} (the `GetPaymentRequest` operationId).
+func (c *ClientWithResponses) GetPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*GetPaymentRequestResponse, error) {
+	rsp, err := c.GetPaymentRequest(ctx, workspaceId, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetPaymentRequestResponse(rsp)
+}
+
+// CancelPaymentRequestWithResponse Withdraw a request that is not paid
+//
+// Its link stops working and its lessons can be billed again.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel (the `CancelPaymentRequest` operationId).
+func (c *ClientWithResponses) CancelPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*CancelPaymentRequestResponse, error) {
+	rsp, err := c.CancelPaymentRequest(ctx, workspaceId, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCancelPaymentRequestResponse(rsp)
+}
+
+// RecordPaymentWithBodyWithResponse Confirm the money arrived
+//
+// The payee, or an owner, records what their bank shows. When the parent
+// has confirmed too, the request is paid and the receipt is issued and
+// emailed (ADR 024).
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+func (c *ClientWithResponses) RecordPaymentWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RecordPaymentResponse, error) {
+	rsp, err := c.RecordPaymentWithBody(ctx, workspaceId, requestId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordPaymentResponse(rsp)
+}
+
+// RecordPaymentWithResponse Confirm the money arrived
+//
+// The payee, or an owner, records what their bank shows. When the parent
+// has confirmed too, the request is paid and the receipt is issued and
+// emailed (ADR 024).
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment (the `RecordPayment` operationId).
+func (c *ClientWithResponses) RecordPaymentWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, params *RecordPaymentParams, body RecordPaymentJSONRequestBody, reqEditors ...RequestEditorFn) (*RecordPaymentResponse, error) {
+	rsp, err := c.RecordPayment(ctx, workspaceId, requestId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecordPaymentResponse(rsp)
+}
+
+// SendPaymentRequestWithResponse Send a draft, or send an open request again
+//
+// Emails the student's billing contacts a fresh link. Any earlier link
+// stops working: Penny keeps only a hash of the current one.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send (the `SendPaymentRequest` operationId).
+func (c *ClientWithResponses) SendPaymentRequestWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*SendPaymentRequestResponse, error) {
+	rsp, err := c.SendPaymentRequest(ctx, workspaceId, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSendPaymentRequestResponse(rsp)
+}
+
+// ListReceiptsWithResponse List receipts
+//
+// Owners see every receipt; teachers those they issued as payee.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts (the `ListReceipts` operationId).
+func (c *ClientWithResponses) ListReceiptsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListReceiptsParams, reqEditors ...RequestEditorFn) (*ListReceiptsResponse, error) {
+	rsp, err := c.ListReceipts(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListReceiptsResponse(rsp)
+}
+
+// GetReceiptWithResponse Get a receipt and everything it traces back to
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId} (the `GetReceipt` operationId).
+func (c *ClientWithResponses) GetReceiptWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetReceiptResponse, error) {
+	rsp, err := c.GetReceipt(ctx, workspaceId, receiptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReceiptResponse(rsp)
+}
+
+// GetReceiptPdfWithResponse The receipt as a PDF
+//
+// Rendered the same way every time from the receipt's record; its SHA-256
+// matches the receipt's `contentSha256`, so a copy can be shown to be
+// unaltered.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf (the `GetReceiptPdf` operationId).
+func (c *ClientWithResponses) GetReceiptPdfWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetReceiptPdfResponse, error) {
+	rsp, err := c.GetReceiptPdf(ctx, workspaceId, receiptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetReceiptPdfResponse(rsp)
+}
+
+// VoidReceiptWithBodyWithResponse Void a receipt, optionally issuing a corrected one
+//
+// The payee or an owner. Receipts are never edited: a correction voids
+// this one with a reason and issues a new one that references it.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+func (c *ClientWithResponses) VoidReceiptWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*VoidReceiptResponse, error) {
+	rsp, err := c.VoidReceiptWithBody(ctx, workspaceId, receiptId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVoidReceiptResponse(rsp)
+}
+
+// VoidReceiptWithResponse Void a receipt, optionally issuing a corrected one
+//
+// The payee or an owner. Receipts are never edited: a correction voids
+// this one with a reason and issues a new one that references it.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void (the `VoidReceipt` operationId).
+func (c *ClientWithResponses) VoidReceiptWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, params *VoidReceiptParams, body VoidReceiptJSONRequestBody, reqEditors ...RequestEditorFn) (*VoidReceiptResponse, error) {
+	rsp, err := c.VoidReceipt(ctx, workspaceId, receiptId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseVoidReceiptResponse(rsp)
 }
 
 // CreateSeriesWithBodyWithResponse Book a recurring lesson
@@ -11627,6 +15125,93 @@ func ParseUpdateMeResponse(rsp *http.Response) (*UpdateMeResponse, error) {
 	return response, nil
 }
 
+// ParseGetPublicPaymentRequestResponse parses an HTTP response from a GetPublicPaymentRequestWithResponse call
+func ParseGetPublicPaymentRequestResponse(rsp *http.Response) (*GetPublicPaymentRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPublicPaymentRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PublicPaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseConfirmPaidByPayerResponse parses an HTTP response from a ConfirmPaidByPayerWithResponse call
+func ParseConfirmPaidByPayerResponse(rsp *http.Response) (*ConfirmPaidByPayerResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ConfirmPaidByPayerResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PublicPaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseDescribeUnsubscribeResponse parses an HTTP response from a DescribeUnsubscribeWithResponse call
 func ParseDescribeUnsubscribeResponse(rsp *http.Response) (*DescribeUnsubscribeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -11861,6 +15446,60 @@ func ParseUpdateWorkspaceResponse(rsp *http.Response) (*UpdateWorkspaceResponse,
 			return nil, err
 		}
 		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListBillableLessonsResponse parses an HTTP response from a ListBillableLessonsWithResponse call
+func ParseListBillableLessonsResponse(rsp *http.Response) (*ListBillableLessonsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListBillableLessonsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest BillableLessonList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
@@ -13322,6 +16961,757 @@ func ParseSetCancellationPolicyResponse(rsp *http.Response) (*SetCancellationPol
 	return response, nil
 }
 
+// ParseGetPayeeAccountResponse parses an HTTP response from a GetPayeeAccountWithResponse call
+func ParseGetPayeeAccountResponse(rsp *http.Response) (*GetPayeeAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPayeeAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayeeAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetPayeeAccountResponse parses an HTTP response from a SetPayeeAccountWithResponse call
+func ParseSetPayeeAccountResponse(rsp *http.Response) (*SetPayeeAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetPayeeAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayeeAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVerifyPayeeAccountResponse parses an HTTP response from a VerifyPayeeAccountWithResponse call
+func ParseVerifyPayeeAccountResponse(rsp *http.Response) (*VerifyPayeeAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VerifyPayeeAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PayeeAccount
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListPaymentRequestsResponse parses an HTTP response from a ListPaymentRequestsWithResponse call
+func ParseListPaymentRequestsResponse(rsp *http.Response) (*ListPaymentRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListPaymentRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaymentRequestList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreatePaymentRequestResponse parses an HTTP response from a CreatePaymentRequestWithResponse call
+func ParseCreatePaymentRequestResponse(rsp *http.Response) (*CreatePaymentRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreatePaymentRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest PaymentRequestWithLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetPaymentRequestResponse parses an HTTP response from a GetPaymentRequestWithResponse call
+func ParseGetPaymentRequestResponse(rsp *http.Response) (*GetPaymentRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetPaymentRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCancelPaymentRequestResponse parses an HTTP response from a CancelPaymentRequestWithResponse call
+func ParseCancelPaymentRequestResponse(rsp *http.Response) (*CancelPaymentRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CancelPaymentRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRecordPaymentResponse parses an HTTP response from a RecordPaymentWithResponse call
+func ParseRecordPaymentResponse(rsp *http.Response) (*RecordPaymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecordPaymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSendPaymentRequestResponse parses an HTTP response from a SendPaymentRequestWithResponse call
+func ParseSendPaymentRequestResponse(rsp *http.Response) (*SendPaymentRequestResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SendPaymentRequestResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PaymentRequestWithLink
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListReceiptsResponse parses an HTTP response from a ListReceiptsWithResponse call
+func ParseListReceiptsResponse(rsp *http.Response) (*ListReceiptsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListReceiptsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReceiptList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetReceiptResponse parses an HTTP response from a GetReceiptWithResponse call
+func ParseGetReceiptResponse(rsp *http.Response) (*GetReceiptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReceiptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Receipt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetReceiptPdfResponse parses an HTTP response from a GetReceiptPdfWithResponse call
+func ParseGetReceiptPdfResponse(rsp *http.Response) (*GetReceiptPdfResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetReceiptPdfResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseVoidReceiptResponse parses an HTTP response from a VoidReceiptWithResponse call
+func ParseVoidReceiptResponse(rsp *http.Response) (*VoidReceiptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &VoidReceiptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Receipt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateSeriesResponse parses an HTTP response from a CreateSeriesWithResponse call
 func ParseCreateSeriesResponse(rsp *http.Response) (*CreateSeriesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -14171,6 +18561,12 @@ type ServerInterface interface {
 	// UpdateMe Change the signed-in person's name
 	// (PATCH /v1/me)
 	UpdateMe(w http.ResponseWriter, r *http.Request)
+	// GetPublicPaymentRequest The public payment page's data
+	// (GET /v1/pay/{token})
+	GetPublicPaymentRequest(w http.ResponseWriter, r *http.Request, token PayToken)
+	// ConfirmPaidByPayer The payer says they have paid
+	// (POST /v1/pay/{token}/paid)
+	ConfirmPaidByPayer(w http.ResponseWriter, r *http.Request, token PayToken)
 	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
 	// (GET /v1/unsubscribe/{token})
 	DescribeUnsubscribe(w http.ResponseWriter, r *http.Request, token string)
@@ -14189,6 +18585,9 @@ type ServerInterface interface {
 	// UpdateWorkspace Rename a team or change its timezone
 	// (PATCH /v1/workspaces/{workspaceId})
 	UpdateWorkspace(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// ListBillableLessons Billable lessons not yet on a payment request
+	// (GET /v1/workspaces/{workspaceId}/billable-lessons)
+	ListBillableLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListBillableLessonsParams)
 	// ListLessons List lessons in a time range
 	// (GET /v1/workspaces/{workspaceId}/lessons)
 	ListLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListLessonsParams)
@@ -14261,6 +18660,45 @@ type ServerInterface interface {
 	// SetCancellationPolicy Set a tutor's cancellation policy
 	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	SetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// GetPayeeAccount Where a tutor receives PayNow
+	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account)
+	GetPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// SetPayeeAccount Set where a tutor receives PayNow
+	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account)
+	SetPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// VerifyPayeeAccount Confirm the test code showed the right recipient
+	// (POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify)
+	VerifyPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// ListPaymentRequests List payment requests
+	// (GET /v1/workspaces/{workspaceId}/payment-requests)
+	ListPaymentRequests(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListPaymentRequestsParams)
+	// CreatePaymentRequest Ask for payment
+	// (POST /v1/workspaces/{workspaceId}/payment-requests)
+	CreatePaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params CreatePaymentRequestParams)
+	// GetPaymentRequest Get a payment request with what it covers and its confirmations
+	// (GET /v1/workspaces/{workspaceId}/payment-requests/{requestId})
+	GetPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId)
+	// CancelPaymentRequest Withdraw a request that is not paid
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel)
+	CancelPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId)
+	// RecordPayment Confirm the money arrived
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment)
+	RecordPayment(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId, params RecordPaymentParams)
+	// SendPaymentRequest Send a draft, or send an open request again
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send)
+	SendPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId)
+	// ListReceipts List receipts
+	// (GET /v1/workspaces/{workspaceId}/receipts)
+	ListReceipts(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListReceiptsParams)
+	// GetReceipt Get a receipt and everything it traces back to
+	// (GET /v1/workspaces/{workspaceId}/receipts/{receiptId})
+	GetReceipt(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId)
+	// GetReceiptPdf The receipt as a PDF
+	// (GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf)
+	GetReceiptPdf(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId)
+	// VoidReceipt Void a receipt, optionally issuing a corrected one
+	// (POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void)
+	VoidReceipt(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId, params VoidReceiptParams)
 	// CreateSeries Book a recurring lesson
 	// (POST /v1/workspaces/{workspaceId}/series)
 	CreateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
@@ -14410,6 +18848,58 @@ func (siw *ServerInterfaceWrapper) UpdateMe(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// GetPublicPaymentRequest operation middleware
+func (siw *ServerInterfaceWrapper) GetPublicPaymentRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token PayToken
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", r.PathValue("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPublicPaymentRequest(w, r, token)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmPaidByPayer operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmPaidByPayer(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token PayToken
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", r.PathValue("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmPaidByPayer(w, r, token)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DescribeUnsubscribe operation middleware
 func (siw *ServerInterfaceWrapper) DescribeUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
@@ -14533,6 +19023,61 @@ func (siw *ServerInterfaceWrapper) UpdateWorkspace(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateWorkspace(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListBillableLessons operation middleware
+func (siw *ServerInterfaceWrapper) ListBillableLessons(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListBillableLessonsParams
+
+	// ------------- Optional query parameter "studentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "studentId", r.URL.Query(), &params.StudentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "studentId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "payeeId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "payeeId", r.URL.Query(), &params.PayeeId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "payeeId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "payeeId", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListBillableLessons(w, r, workspaceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15567,6 +20112,602 @@ func (siw *ServerInterfaceWrapper) SetCancellationPolicy(w http.ResponseWriter, 
 	handler.ServeHTTP(w, r)
 }
 
+// GetPayeeAccount operation middleware
+func (siw *ServerInterfaceWrapper) GetPayeeAccount(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPayeeAccount(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetPayeeAccount operation middleware
+func (siw *ServerInterfaceWrapper) SetPayeeAccount(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetPayeeAccount(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// VerifyPayeeAccount operation middleware
+func (siw *ServerInterfaceWrapper) VerifyPayeeAccount(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.VerifyPayeeAccount(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListPaymentRequests operation middleware
+func (siw *ServerInterfaceWrapper) ListPaymentRequests(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListPaymentRequestsParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "status", r.URL.Query(), &params.Status, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "studentId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "studentId", r.URL.Query(), &params.StudentId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "studentId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListPaymentRequests(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreatePaymentRequest operation middleware
+func (siw *ServerInterfaceWrapper) CreatePaymentRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreatePaymentRequestParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreatePaymentRequest(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetPaymentRequest operation middleware
+func (siw *ServerInterfaceWrapper) GetPaymentRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "requestId" -------------
+	var requestId RequestId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "requestId", r.PathValue("requestId"), &requestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "requestId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetPaymentRequest(w, r, workspaceId, requestId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CancelPaymentRequest operation middleware
+func (siw *ServerInterfaceWrapper) CancelPaymentRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "requestId" -------------
+	var requestId RequestId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "requestId", r.PathValue("requestId"), &requestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "requestId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CancelPaymentRequest(w, r, workspaceId, requestId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RecordPayment operation middleware
+func (siw *ServerInterfaceWrapper) RecordPayment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "requestId" -------------
+	var requestId RequestId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "requestId", r.PathValue("requestId"), &requestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "requestId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RecordPaymentParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RecordPayment(w, r, workspaceId, requestId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SendPaymentRequest operation middleware
+func (siw *ServerInterfaceWrapper) SendPaymentRequest(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "requestId" -------------
+	var requestId RequestId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "requestId", r.PathValue("requestId"), &requestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "requestId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SendPaymentRequest(w, r, workspaceId, requestId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListReceipts operation middleware
+func (siw *ServerInterfaceWrapper) ListReceipts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListReceiptsParams
+
+	// ------------- Optional query parameter "cursor" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "cursor", r.URL.Query(), &params.Cursor, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "cursor"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "cursor", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: "int32"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListReceipts(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetReceipt operation middleware
+func (siw *ServerInterfaceWrapper) GetReceipt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "receiptId" -------------
+	var receiptId ReceiptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "receiptId", r.PathValue("receiptId"), &receiptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "receiptId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetReceipt(w, r, workspaceId, receiptId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetReceiptPdf operation middleware
+func (siw *ServerInterfaceWrapper) GetReceiptPdf(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "receiptId" -------------
+	var receiptId ReceiptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "receiptId", r.PathValue("receiptId"), &receiptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "receiptId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetReceiptPdf(w, r, workspaceId, receiptId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// VoidReceipt operation middleware
+func (siw *ServerInterfaceWrapper) VoidReceipt(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "receiptId" -------------
+	var receiptId ReceiptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "receiptId", r.PathValue("receiptId"), &receiptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "receiptId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params VoidReceiptParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err := fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.VoidReceipt(w, r, workspaceId, receiptId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // CreateSeries operation middleware
 func (siw *ServerInterfaceWrapper) CreateSeries(w http.ResponseWriter, r *http.Request) {
 
@@ -16384,6 +21525,22 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/calendar/{token}", wrapper.GetCalendarFeed)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/unsubscribe/{token}", wrapper.DescribeUnsubscribe)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/unsubscribe/{token}", wrapper.Unsubscribe)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/payee-account", wrapper.GetPayeeAccount)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/payee-account", wrapper.SetPayeeAccount)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify", wrapper.VerifyPayeeAccount)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/billable-lessons", wrapper.ListBillableLessons)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests", wrapper.ListPaymentRequests)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests", wrapper.CreatePaymentRequest)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests/{requestId}", wrapper.GetPaymentRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests/{requestId}/send", wrapper.SendPaymentRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel", wrapper.CancelPaymentRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment", wrapper.RecordPayment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts", wrapper.ListReceipts)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}", wrapper.GetReceipt)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf", wrapper.GetReceiptPdf)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}/void", wrapper.VoidReceipt)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/pay/{token}", wrapper.GetPublicPaymentRequest)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/pay/{token}/paid", wrapper.ConfirmPaidByPayer)
 
 	return m
 }
@@ -16695,6 +21852,130 @@ type UpdateMedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateMedefaultApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPublicPaymentRequestRequestObject struct {
+	Token PayToken `json:"token"`
+}
+
+type GetPublicPaymentRequestResponseObject interface {
+	VisitGetPublicPaymentRequestResponse(w http.ResponseWriter) error
+}
+
+type GetPublicPaymentRequest200JSONResponse PublicPaymentRequest
+
+func (response GetPublicPaymentRequest200JSONResponse) VisitGetPublicPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPublicPaymentRequest404ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetPublicPaymentRequest404ApplicationProblemPlusJSONResponse) VisitGetPublicPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPublicPaymentRequestdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetPublicPaymentRequestdefaultApplicationProblemPlusJSONResponse) VisitGetPublicPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPaidByPayerRequestObject struct {
+	Token PayToken `json:"token"`
+}
+
+type ConfirmPaidByPayerResponseObject interface {
+	VisitConfirmPaidByPayerResponse(w http.ResponseWriter) error
+}
+
+type ConfirmPaidByPayer200JSONResponse PublicPaymentRequest
+
+func (response ConfirmPaidByPayer200JSONResponse) VisitConfirmPaidByPayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPaidByPayer404ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ConfirmPaidByPayer404ApplicationProblemPlusJSONResponse) VisitConfirmPaidByPayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPaidByPayer409ApplicationProblemPlusJSONResponse Problem
+
+func (response ConfirmPaidByPayer409ApplicationProblemPlusJSONResponse) VisitConfirmPaidByPayerResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmPaidByPayerdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ConfirmPaidByPayerdefaultApplicationProblemPlusJSONResponse) VisitConfirmPaidByPayerResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -17080,6 +22361,90 @@ type UpdateWorkspacedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateWorkspacedefaultApplicationProblemPlusJSONResponse) VisitUpdateWorkspaceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillableLessonsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListBillableLessonsParams
+}
+
+type ListBillableLessonsResponseObject interface {
+	VisitListBillableLessonsResponse(w http.ResponseWriter) error
+}
+
+type ListBillableLessons200JSONResponse BillableLessonList
+
+func (response ListBillableLessons200JSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillableLessons401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListBillableLessons401ApplicationProblemPlusJSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillableLessons403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBillableLessons403ApplicationProblemPlusJSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillableLessons404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListBillableLessons404ApplicationProblemPlusJSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListBillableLessonsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListBillableLessonsdefaultApplicationProblemPlusJSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -19390,6 +24755,1222 @@ func (response SetCancellationPolicydefaultApplicationProblemPlusJSONResponse) V
 	return err
 }
 
+type GetPayeeAccountRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type GetPayeeAccountResponseObject interface {
+	VisitGetPayeeAccountResponse(w http.ResponseWriter) error
+}
+
+type GetPayeeAccount200JSONResponse PayeeAccount
+
+func (response GetPayeeAccount200JSONResponse) VisitGetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPayeeAccount401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetPayeeAccount401ApplicationProblemPlusJSONResponse) VisitGetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPayeeAccount403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetPayeeAccount403ApplicationProblemPlusJSONResponse) VisitGetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPayeeAccount404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetPayeeAccount404ApplicationProblemPlusJSONResponse) VisitGetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPayeeAccountdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetPayeeAccountdefaultApplicationProblemPlusJSONResponse) VisitGetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccountRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+	Body        *SetPayeeAccountJSONRequestBody
+}
+
+type SetPayeeAccountResponseObject interface {
+	VisitSetPayeeAccountResponse(w http.ResponseWriter) error
+}
+
+type SetPayeeAccount200JSONResponse PayeeAccount
+
+func (response SetPayeeAccount200JSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccount400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SetPayeeAccount400ApplicationProblemPlusJSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccount401ApplicationProblemPlusJSONResponse Problem
+
+func (response SetPayeeAccount401ApplicationProblemPlusJSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccount403ApplicationProblemPlusJSONResponse Problem
+
+func (response SetPayeeAccount403ApplicationProblemPlusJSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccount404ApplicationProblemPlusJSONResponse Problem
+
+func (response SetPayeeAccount404ApplicationProblemPlusJSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetPayeeAccountdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SetPayeeAccountdefaultApplicationProblemPlusJSONResponse) VisitSetPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VerifyPayeeAccountRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type VerifyPayeeAccountResponseObject interface {
+	VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error
+}
+
+type VerifyPayeeAccount200JSONResponse PayeeAccount
+
+func (response VerifyPayeeAccount200JSONResponse) VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VerifyPayeeAccount401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response VerifyPayeeAccount401ApplicationProblemPlusJSONResponse) VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VerifyPayeeAccount403ApplicationProblemPlusJSONResponse Problem
+
+func (response VerifyPayeeAccount403ApplicationProblemPlusJSONResponse) VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VerifyPayeeAccount404ApplicationProblemPlusJSONResponse Problem
+
+func (response VerifyPayeeAccount404ApplicationProblemPlusJSONResponse) VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VerifyPayeeAccountdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response VerifyPayeeAccountdefaultApplicationProblemPlusJSONResponse) VisitVerifyPayeeAccountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequestsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListPaymentRequestsParams
+}
+
+type ListPaymentRequestsResponseObject interface {
+	VisitListPaymentRequestsResponse(w http.ResponseWriter) error
+}
+
+type ListPaymentRequests200JSONResponse PaymentRequestList
+
+func (response ListPaymentRequests200JSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequests400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListPaymentRequests400ApplicationProblemPlusJSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequests401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPaymentRequests401ApplicationProblemPlusJSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequests403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPaymentRequests403ApplicationProblemPlusJSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequests404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListPaymentRequests404ApplicationProblemPlusJSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListPaymentRequestsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListPaymentRequestsdefaultApplicationProblemPlusJSONResponse) VisitListPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequestRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      CreatePaymentRequestParams
+	Body        *CreatePaymentRequestJSONRequestBody
+}
+
+type CreatePaymentRequestResponseObject interface {
+	VisitCreatePaymentRequestResponse(w http.ResponseWriter) error
+}
+
+type CreatePaymentRequest201JSONResponse PaymentRequestWithLink
+
+func (response CreatePaymentRequest201JSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequest400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreatePaymentRequest400ApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequest401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePaymentRequest401ApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequest403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePaymentRequest403ApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequest404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePaymentRequest404ApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequest409ApplicationProblemPlusJSONResponse Problem
+
+func (response CreatePaymentRequest409ApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreatePaymentRequestdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreatePaymentRequestdefaultApplicationProblemPlusJSONResponse) VisitCreatePaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPaymentRequestRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RequestId   RequestId   `json:"requestId"`
+}
+
+type GetPaymentRequestResponseObject interface {
+	VisitGetPaymentRequestResponse(w http.ResponseWriter) error
+}
+
+type GetPaymentRequest200JSONResponse PaymentRequest
+
+func (response GetPaymentRequest200JSONResponse) VisitGetPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPaymentRequest401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetPaymentRequest401ApplicationProblemPlusJSONResponse) VisitGetPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPaymentRequest404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetPaymentRequest404ApplicationProblemPlusJSONResponse) VisitGetPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPaymentRequestdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetPaymentRequestdefaultApplicationProblemPlusJSONResponse) VisitGetPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequestRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RequestId   RequestId   `json:"requestId"`
+}
+
+type CancelPaymentRequestResponseObject interface {
+	VisitCancelPaymentRequestResponse(w http.ResponseWriter) error
+}
+
+type CancelPaymentRequest200JSONResponse PaymentRequest
+
+func (response CancelPaymentRequest200JSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequest401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CancelPaymentRequest401ApplicationProblemPlusJSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequest403ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelPaymentRequest403ApplicationProblemPlusJSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequest404ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelPaymentRequest404ApplicationProblemPlusJSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequest409ApplicationProblemPlusJSONResponse Problem
+
+func (response CancelPaymentRequest409ApplicationProblemPlusJSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CancelPaymentRequestdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CancelPaymentRequestdefaultApplicationProblemPlusJSONResponse) VisitCancelPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPaymentRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RequestId   RequestId   `json:"requestId"`
+	Params      RecordPaymentParams
+	Body        *RecordPaymentJSONRequestBody
+}
+
+type RecordPaymentResponseObject interface {
+	VisitRecordPaymentResponse(w http.ResponseWriter) error
+}
+
+type RecordPayment200JSONResponse PaymentRequest
+
+func (response RecordPayment200JSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPayment400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response RecordPayment400ApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPayment401ApplicationProblemPlusJSONResponse Problem
+
+func (response RecordPayment401ApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPayment403ApplicationProblemPlusJSONResponse Problem
+
+func (response RecordPayment403ApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPayment404ApplicationProblemPlusJSONResponse Problem
+
+func (response RecordPayment404ApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPayment409ApplicationProblemPlusJSONResponse Problem
+
+func (response RecordPayment409ApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RecordPaymentdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RecordPaymentdefaultApplicationProblemPlusJSONResponse) VisitRecordPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequestRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RequestId   RequestId   `json:"requestId"`
+}
+
+type SendPaymentRequestResponseObject interface {
+	VisitSendPaymentRequestResponse(w http.ResponseWriter) error
+}
+
+type SendPaymentRequest200JSONResponse PaymentRequestWithLink
+
+func (response SendPaymentRequest200JSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequest401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SendPaymentRequest401ApplicationProblemPlusJSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequest403ApplicationProblemPlusJSONResponse Problem
+
+func (response SendPaymentRequest403ApplicationProblemPlusJSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequest404ApplicationProblemPlusJSONResponse Problem
+
+func (response SendPaymentRequest404ApplicationProblemPlusJSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequest409ApplicationProblemPlusJSONResponse Problem
+
+func (response SendPaymentRequest409ApplicationProblemPlusJSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SendPaymentRequestdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SendPaymentRequestdefaultApplicationProblemPlusJSONResponse) VisitSendPaymentRequestResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceiptsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListReceiptsParams
+}
+
+type ListReceiptsResponseObject interface {
+	VisitListReceiptsResponse(w http.ResponseWriter) error
+}
+
+type ListReceipts200JSONResponse ReceiptList
+
+func (response ListReceipts200JSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceipts400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListReceipts400ApplicationProblemPlusJSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceipts401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListReceipts401ApplicationProblemPlusJSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceipts403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListReceipts403ApplicationProblemPlusJSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceipts404ApplicationProblemPlusJSONResponse Problem
+
+func (response ListReceipts404ApplicationProblemPlusJSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListReceiptsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListReceiptsdefaultApplicationProblemPlusJSONResponse) VisitListReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceiptRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	ReceiptId   ReceiptId   `json:"receiptId"`
+}
+
+type GetReceiptResponseObject interface {
+	VisitGetReceiptResponse(w http.ResponseWriter) error
+}
+
+type GetReceipt200JSONResponse Receipt
+
+func (response GetReceipt200JSONResponse) VisitGetReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceipt401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetReceipt401ApplicationProblemPlusJSONResponse) VisitGetReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceipt404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetReceipt404ApplicationProblemPlusJSONResponse) VisitGetReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceiptdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetReceiptdefaultApplicationProblemPlusJSONResponse) VisitGetReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceiptPdfRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	ReceiptId   ReceiptId   `json:"receiptId"`
+}
+
+type GetReceiptPdfResponseObject interface {
+	VisitGetReceiptPdfResponse(w http.ResponseWriter) error
+}
+
+type GetReceiptPdf200ApplicationpdfResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetReceiptPdf200ApplicationpdfResponse) VisitGetReceiptPdfResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "application/pdf")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetReceiptPdf401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetReceiptPdf401ApplicationProblemPlusJSONResponse) VisitGetReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceiptPdf404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetReceiptPdf404ApplicationProblemPlusJSONResponse) VisitGetReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetReceiptPdfdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetReceiptPdfdefaultApplicationProblemPlusJSONResponse) VisitGetReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceiptRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	ReceiptId   ReceiptId   `json:"receiptId"`
+	Params      VoidReceiptParams
+	Body        *VoidReceiptJSONRequestBody
+}
+
+type VoidReceiptResponseObject interface {
+	VisitVoidReceiptResponse(w http.ResponseWriter) error
+}
+
+type VoidReceipt200JSONResponse Receipt
+
+func (response VoidReceipt200JSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceipt400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response VoidReceipt400ApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceipt401ApplicationProblemPlusJSONResponse Problem
+
+func (response VoidReceipt401ApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceipt403ApplicationProblemPlusJSONResponse Problem
+
+func (response VoidReceipt403ApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceipt404ApplicationProblemPlusJSONResponse Problem
+
+func (response VoidReceipt404ApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceipt409ApplicationProblemPlusJSONResponse Problem
+
+func (response VoidReceipt409ApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type VoidReceiptdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response VoidReceiptdefaultApplicationProblemPlusJSONResponse) VisitVoidReceiptResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CreateSeriesRequestObject struct {
 	WorkspaceId WorkspaceId `json:"workspaceId"`
 	Body        *CreateSeriesJSONRequestBody
@@ -20746,6 +27327,12 @@ type StrictServerInterface interface {
 	// UpdateMe Change the signed-in person's name
 	// (PATCH /v1/me)
 	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
+	// GetPublicPaymentRequest The public payment page's data
+	// (GET /v1/pay/{token})
+	GetPublicPaymentRequest(ctx context.Context, request GetPublicPaymentRequestRequestObject) (GetPublicPaymentRequestResponseObject, error)
+	// ConfirmPaidByPayer The payer says they have paid
+	// (POST /v1/pay/{token}/paid)
+	ConfirmPaidByPayer(ctx context.Context, request ConfirmPaidByPayerRequestObject) (ConfirmPaidByPayerResponseObject, error)
 	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
 	// (GET /v1/unsubscribe/{token})
 	DescribeUnsubscribe(ctx context.Context, request DescribeUnsubscribeRequestObject) (DescribeUnsubscribeResponseObject, error)
@@ -20764,6 +27351,9 @@ type StrictServerInterface interface {
 	// UpdateWorkspace Rename a team or change its timezone
 	// (PATCH /v1/workspaces/{workspaceId})
 	UpdateWorkspace(ctx context.Context, request UpdateWorkspaceRequestObject) (UpdateWorkspaceResponseObject, error)
+	// ListBillableLessons Billable lessons not yet on a payment request
+	// (GET /v1/workspaces/{workspaceId}/billable-lessons)
+	ListBillableLessons(ctx context.Context, request ListBillableLessonsRequestObject) (ListBillableLessonsResponseObject, error)
 	// ListLessons List lessons in a time range
 	// (GET /v1/workspaces/{workspaceId}/lessons)
 	ListLessons(ctx context.Context, request ListLessonsRequestObject) (ListLessonsResponseObject, error)
@@ -20836,6 +27426,45 @@ type StrictServerInterface interface {
 	// SetCancellationPolicy Set a tutor's cancellation policy
 	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	SetCancellationPolicy(ctx context.Context, request SetCancellationPolicyRequestObject) (SetCancellationPolicyResponseObject, error)
+	// GetPayeeAccount Where a tutor receives PayNow
+	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/payee-account)
+	GetPayeeAccount(ctx context.Context, request GetPayeeAccountRequestObject) (GetPayeeAccountResponseObject, error)
+	// SetPayeeAccount Set where a tutor receives PayNow
+	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/payee-account)
+	SetPayeeAccount(ctx context.Context, request SetPayeeAccountRequestObject) (SetPayeeAccountResponseObject, error)
+	// VerifyPayeeAccount Confirm the test code showed the right recipient
+	// (POST /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify)
+	VerifyPayeeAccount(ctx context.Context, request VerifyPayeeAccountRequestObject) (VerifyPayeeAccountResponseObject, error)
+	// ListPaymentRequests List payment requests
+	// (GET /v1/workspaces/{workspaceId}/payment-requests)
+	ListPaymentRequests(ctx context.Context, request ListPaymentRequestsRequestObject) (ListPaymentRequestsResponseObject, error)
+	// CreatePaymentRequest Ask for payment
+	// (POST /v1/workspaces/{workspaceId}/payment-requests)
+	CreatePaymentRequest(ctx context.Context, request CreatePaymentRequestRequestObject) (CreatePaymentRequestResponseObject, error)
+	// GetPaymentRequest Get a payment request with what it covers and its confirmations
+	// (GET /v1/workspaces/{workspaceId}/payment-requests/{requestId})
+	GetPaymentRequest(ctx context.Context, request GetPaymentRequestRequestObject) (GetPaymentRequestResponseObject, error)
+	// CancelPaymentRequest Withdraw a request that is not paid
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel)
+	CancelPaymentRequest(ctx context.Context, request CancelPaymentRequestRequestObject) (CancelPaymentRequestResponseObject, error)
+	// RecordPayment Confirm the money arrived
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment)
+	RecordPayment(ctx context.Context, request RecordPaymentRequestObject) (RecordPaymentResponseObject, error)
+	// SendPaymentRequest Send a draft, or send an open request again
+	// (POST /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send)
+	SendPaymentRequest(ctx context.Context, request SendPaymentRequestRequestObject) (SendPaymentRequestResponseObject, error)
+	// ListReceipts List receipts
+	// (GET /v1/workspaces/{workspaceId}/receipts)
+	ListReceipts(ctx context.Context, request ListReceiptsRequestObject) (ListReceiptsResponseObject, error)
+	// GetReceipt Get a receipt and everything it traces back to
+	// (GET /v1/workspaces/{workspaceId}/receipts/{receiptId})
+	GetReceipt(ctx context.Context, request GetReceiptRequestObject) (GetReceiptResponseObject, error)
+	// GetReceiptPdf The receipt as a PDF
+	// (GET /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf)
+	GetReceiptPdf(ctx context.Context, request GetReceiptPdfRequestObject) (GetReceiptPdfResponseObject, error)
+	// VoidReceipt Void a receipt, optionally issuing a corrected one
+	// (POST /v1/workspaces/{workspaceId}/receipts/{receiptId}/void)
+	VoidReceipt(ctx context.Context, request VoidReceiptRequestObject) (VoidReceiptResponseObject, error)
 	// CreateSeries Book a recurring lesson
 	// (POST /v1/workspaces/{workspaceId}/series)
 	CreateSeries(ctx context.Context, request CreateSeriesRequestObject) (CreateSeriesResponseObject, error)
@@ -21072,6 +27701,58 @@ func (sh *strictHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetPublicPaymentRequest operation middleware
+func (sh *strictHandler) GetPublicPaymentRequest(w http.ResponseWriter, r *http.Request, token PayToken) {
+	var request GetPublicPaymentRequestRequestObject
+
+	request.Token = token
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPublicPaymentRequest(ctx, request.(GetPublicPaymentRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPublicPaymentRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPublicPaymentRequestResponseObject); ok {
+		if err := validResponse.VisitGetPublicPaymentRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmPaidByPayer operation middleware
+func (sh *strictHandler) ConfirmPaidByPayer(w http.ResponseWriter, r *http.Request, token PayToken) {
+	var request ConfirmPaidByPayerRequestObject
+
+	request.Token = token
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmPaidByPayer(ctx, request.(ConfirmPaidByPayerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmPaidByPayer")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmPaidByPayerResponseObject); ok {
+		if err := validResponse.VisitConfirmPaidByPayerResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // DescribeUnsubscribe operation middleware
 func (sh *strictHandler) DescribeUnsubscribe(w http.ResponseWriter, r *http.Request, token string) {
 	var request DescribeUnsubscribeRequestObject
@@ -21242,6 +27923,33 @@ func (sh *strictHandler) UpdateWorkspace(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateWorkspaceResponseObject); ok {
 		if err := validResponse.VisitUpdateWorkspaceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListBillableLessons operation middleware
+func (sh *strictHandler) ListBillableLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListBillableLessonsParams) {
+	var request ListBillableLessonsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListBillableLessons(ctx, request.(ListBillableLessonsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListBillableLessons")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListBillableLessonsResponseObject); ok {
+		if err := validResponse.VisitListBillableLessonsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -21979,6 +28687,387 @@ func (sh *strictHandler) SetCancellationPolicy(w http.ResponseWriter, r *http.Re
 	}
 }
 
+// GetPayeeAccount operation middleware
+func (sh *strictHandler) GetPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request GetPayeeAccountRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPayeeAccount(ctx, request.(GetPayeeAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPayeeAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPayeeAccountResponseObject); ok {
+		if err := validResponse.VisitGetPayeeAccountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetPayeeAccount operation middleware
+func (sh *strictHandler) SetPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request SetPayeeAccountRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	var body SetPayeeAccountJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetPayeeAccount(ctx, request.(SetPayeeAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetPayeeAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetPayeeAccountResponseObject); ok {
+		if err := validResponse.VisitSetPayeeAccountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// VerifyPayeeAccount operation middleware
+func (sh *strictHandler) VerifyPayeeAccount(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request VerifyPayeeAccountRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.VerifyPayeeAccount(ctx, request.(VerifyPayeeAccountRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "VerifyPayeeAccount")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(VerifyPayeeAccountResponseObject); ok {
+		if err := validResponse.VisitVerifyPayeeAccountResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListPaymentRequests operation middleware
+func (sh *strictHandler) ListPaymentRequests(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListPaymentRequestsParams) {
+	var request ListPaymentRequestsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListPaymentRequests(ctx, request.(ListPaymentRequestsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListPaymentRequests")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListPaymentRequestsResponseObject); ok {
+		if err := validResponse.VisitListPaymentRequestsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreatePaymentRequest operation middleware
+func (sh *strictHandler) CreatePaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params CreatePaymentRequestParams) {
+	var request CreatePaymentRequestRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	var body CreatePaymentRequestJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreatePaymentRequest(ctx, request.(CreatePaymentRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreatePaymentRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreatePaymentRequestResponseObject); ok {
+		if err := validResponse.VisitCreatePaymentRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetPaymentRequest operation middleware
+func (sh *strictHandler) GetPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId) {
+	var request GetPaymentRequestRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.RequestId = requestId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetPaymentRequest(ctx, request.(GetPaymentRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetPaymentRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetPaymentRequestResponseObject); ok {
+		if err := validResponse.VisitGetPaymentRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CancelPaymentRequest operation middleware
+func (sh *strictHandler) CancelPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId) {
+	var request CancelPaymentRequestRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.RequestId = requestId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CancelPaymentRequest(ctx, request.(CancelPaymentRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CancelPaymentRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CancelPaymentRequestResponseObject); ok {
+		if err := validResponse.VisitCancelPaymentRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RecordPayment operation middleware
+func (sh *strictHandler) RecordPayment(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId, params RecordPaymentParams) {
+	var request RecordPaymentRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.RequestId = requestId
+	request.Params = params
+
+	var body RecordPaymentJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RecordPayment(ctx, request.(RecordPaymentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RecordPayment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RecordPaymentResponseObject); ok {
+		if err := validResponse.VisitRecordPaymentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SendPaymentRequest operation middleware
+func (sh *strictHandler) SendPaymentRequest(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId) {
+	var request SendPaymentRequestRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.RequestId = requestId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SendPaymentRequest(ctx, request.(SendPaymentRequestRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SendPaymentRequest")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SendPaymentRequestResponseObject); ok {
+		if err := validResponse.VisitSendPaymentRequestResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListReceipts operation middleware
+func (sh *strictHandler) ListReceipts(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListReceiptsParams) {
+	var request ListReceiptsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListReceipts(ctx, request.(ListReceiptsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListReceipts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListReceiptsResponseObject); ok {
+		if err := validResponse.VisitListReceiptsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetReceipt operation middleware
+func (sh *strictHandler) GetReceipt(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId) {
+	var request GetReceiptRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.ReceiptId = receiptId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetReceipt(ctx, request.(GetReceiptRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetReceipt")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetReceiptResponseObject); ok {
+		if err := validResponse.VisitGetReceiptResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetReceiptPdf operation middleware
+func (sh *strictHandler) GetReceiptPdf(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId) {
+	var request GetReceiptPdfRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.ReceiptId = receiptId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetReceiptPdf(ctx, request.(GetReceiptPdfRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetReceiptPdf")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetReceiptPdfResponseObject); ok {
+		if err := validResponse.VisitGetReceiptPdfResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// VoidReceipt operation middleware
+func (sh *strictHandler) VoidReceipt(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId, params VoidReceiptParams) {
+	var request VoidReceiptRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.ReceiptId = receiptId
+	request.Params = params
+
+	var body VoidReceiptJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.VoidReceipt(ctx, request.(VoidReceiptRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "VoidReceipt")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(VoidReceiptResponseObject); ok {
+		if err := validResponse.VisitVoidReceiptResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CreateSeries operation middleware
 func (sh *strictHandler) CreateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
 	var request CreateSeriesRequestObject
@@ -22428,188 +29517,243 @@ func (sh *strictHandler) GetTimetable(w http.ResponseWriter, r *http.Request, wo
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"tDGoNl6NVazvePXh6v8PAA==",
+	"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",
+	"aMwYP0Ta+38DAA==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

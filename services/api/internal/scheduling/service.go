@@ -26,9 +26,10 @@ type Hooks struct {
 	// LessonChanged runs after a lesson is created, moved, cancelled,
 	// reopened or completed, with the lesson as it now is.
 	LessonChanged func(ctx context.Context, tx pgx.Tx, l Lesson) error
-	// Receipted reports whether a receipt covers the lesson, which then may
-	// no longer be reopened.
-	Receipted func(ctx context.Context, tx pgx.Tx, workspaceID, lessonID uuid.UUID) (bool, error)
+	// Billed reports whether a payment request covers the lesson, which
+	// then may not be reopened until the request is withdrawn or its
+	// receipt voided.
+	Billed func(ctx context.Context, tx pgx.Tx, workspaceID, lessonID uuid.UUID) (bool, error)
 }
 
 // Service implements the scheduling use cases.

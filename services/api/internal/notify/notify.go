@@ -1,5 +1,5 @@
 // Package notify sends Penny's emails (ADR 014): lesson reminders and team
-// invitations now, payment reminders and receipts in Phase 8.
+// invitations, payment requests, payment reminders and receipts.
 //
 // Emails go out through the Mailer interface: SMTP to Mailpit locally and
 // in CI, a transactional provider over HTTPS elsewhere. They are sent by
@@ -24,6 +24,8 @@ const (
 	Invitations      Category = "invitations"
 	Receipts         Category = "receipts"
 	PaymentRequests  Category = "payment_requests"
+	// PaymentUpdates tell a payee what happened to their requests.
+	PaymentUpdates Category = "payment_updates"
 )
 
 // Stoppable reports whether contacts may unsubscribe from c.
@@ -41,6 +43,15 @@ type Message struct {
 	// Unsubscribe is the one-click URL for List-Unsubscribe, for
 	// categories a contact may stop.
 	Unsubscribe string
+	// Attachments go with the message, such as a receipt's PDF.
+	Attachments []Attachment
+}
+
+// Attachment is a file sent with a message.
+type Attachment struct {
+	Filename    string
+	ContentType string
+	Content     []byte
 }
 
 // Address is a named email address.

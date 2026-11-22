@@ -65,6 +65,20 @@ linters:
           deny:
             - pkg: github.com/tgwtea/penny/services/api/internal/scheduling/schedulingsql
               desc: only the scheduling module reads students, locations and lessons; call scheduling.Service
+        billing-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/billing/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/billing/billingsql
+              desc: only the billing module reads payment requests and receipts; call billing.Service
+        notify-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/notify/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/notify/notifysql
+              desc: only the notify module reads the email log; call notify.Service
         audit-queries-are-private:
           files:
             - "$all"

@@ -1,0 +1,10 @@
+{{define "subject"}}{{if .Closed}}{{.Reference}} is paid{{else}}{{.StudentFirstName}}'s parent says they paid {{.Reference}}{{end}}{{end}}
+{{define "text"}}Hi {{.PayeeName}},
+
+{{if .Closed}}{{.StudentFirstName}}'s parent confirmed they paid {{.Amount}} for {{.Reference}}. You had confirmed it arrived, so the request is paid{{if .ReceiptNumber}} and receipt {{.ReceiptNumber}} is on its way to them{{end}}.{{else}}{{.StudentFirstName}}'s parent says they paid {{.Amount}} for {{.Reference}}.
+
+Check that the money arrived with the reference {{.Reference}}, then record it in Penny. The request closes and the receipt goes out when you do.{{end}}
+{{.RequestURL}}
+
+{{.TeamName}}, via Penny.
+{{end}}

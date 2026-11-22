@@ -133,3 +133,14 @@ JOIN student_contacts c ON c.workspace_id = p.workspace_id AND c.student_id = p.
 WHERE p.workspace_id = @workspace_id AND p.lesson_id = @lesson_id
   AND c.receives_reminders AND c.email IS NOT NULL
 ORDER BY lower(s.name), c.created_at, c.id;
+
+-- name: StudentNames :many
+-- Names for billing, archived students included.
+SELECT id, name, archived_at FROM students WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
+
+-- name: BillingContacts :many
+-- Who gets a student's payment requests and receipts.
+SELECT c.id, c.name, c.email, c.receives_payment_reminders FROM student_contacts c
+WHERE c.workspace_id = @workspace_id AND c.student_id = @student_id
+  AND c.receives_billing AND c.email IS NOT NULL
+ORDER BY c.created_at, c.id;

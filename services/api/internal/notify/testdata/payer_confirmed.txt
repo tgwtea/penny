@@ -1,0 +1,8 @@
+Hi Mei,
+
+Arjun's parent says they paid S$ 138.90 for PNY-7K3Q9X.
+
+Check that the money arrived with the reference PNY-7K3Q9X, then record it in Penny. The request closes and the receipt goes out when you do.
+http://localhost:5173/payments/id
+
+Koh Guitar Studio, via Penny.

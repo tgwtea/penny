@@ -32,8 +32,11 @@ enum Capability {
   /// See their own students.
   viewOwnStudents,
 
-  /// Create payment requests and confirm payments.
+  /// Create payment requests and confirm payments for any payee.
   managePayments,
+
+  /// Bill for their own lessons and confirm payments to themselves.
+  manageOwnPayments,
 }
 
 /// A person's role in a team. Shown as a word; never used to decide what

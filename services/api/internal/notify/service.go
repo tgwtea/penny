@@ -56,8 +56,11 @@ type Deps struct {
 	Pool    *pgxpool.Pool
 	Lessons Lessons
 	Teams   Teams
-	Audit   *audit.Recorder
-	Clock   clock.Clock
+	// Billing and Contacts are for billing's emails.
+	Billing  Billing
+	Contacts Contacts
+	Audit    *audit.Recorder
+	Clock    clock.Clock
 	// Mailer sends email; nil in the API, which only enqueues.
 	Mailer Mailer
 	// Queue inserts jobs; nil turns notifications off, as in tests that
@@ -188,15 +191,7 @@ func (s *Service) LessonChanged(ctx context.Context, tx pgx.Tx, l scheduling.Les
 // MemberInvited queues the invitation email, inside the transaction that
 // added the member. It is workspace's hook.
 func (s *Service) MemberInvited(ctx context.Context, tx pgx.Tx, m workspace.Member, teamName, inviterName string) error {
-	if s.d.Queue == nil {
-		return nil
-	}
-	args := InvitationArgs{WorkspaceID: m.WorkspaceID, MembershipID: m.ID, InviterName: inviterName, TeamName: teamName}
-	opts := args.InsertOpts()
-	if _, err := s.d.Queue.InsertTx(ctx, tx, args, &opts); err != nil {
-		return fmt.Errorf("queue invitation: %w", err)
-	}
-	return nil
+	return s.queue(ctx, tx, InvitationArgs{WorkspaceID: m.WorkspaceID, MembershipID: m.ID, InviterName: inviterName, TeamName: teamName})
 }
 
 // Sending, from the worker -------------------------------------------------
@@ -256,14 +251,9 @@ func (s *Service) SendLessonReminder(ctx context.Context, args LessonReminderArg
 	if err != nil || len(messages) == 0 {
 		return err
 	}
-	var firstErr error
-	for _, msg := range messages {
-		if err := s.send(ctx, args.WorkspaceID, msg, "lesson", args.LessonID, &args.StartsAt); err != nil && firstErr == nil {
-			firstErr = err
-		}
-	}
+	err = s.sendAll(ctx, args.WorkspaceID, messages, "lesson", args.LessonID, &args.StartsAt)
 	s.d.Metrics.lag(lag)
-	return firstErr
+	return err
 }
 
 // SendInvitation runs an invitation job: it tells the invited person they

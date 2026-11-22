@@ -9,6 +9,7 @@ class Penny {
   IdentityApi get identity => IdentityApi(client);
   LessonsApi get lessons => LessonsApi(client);
   NotificationsApi get notifications => NotificationsApi(client);
+  PaymentsApi get payments => PaymentsApi(client);
   StudentsApi get students => StudentsApi(client);
   SystemApi get system => SystemApi(client);
   TeamsApi get teams => TeamsApi(client);

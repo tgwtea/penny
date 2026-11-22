@@ -100,3 +100,33 @@ func forbiddenOrHidden(a Actor, tutors []uuid.UUID, reason string) error {
 	}
 	return apperr.New(apperr.ErrForbidden, reason)
 }
+
+// SeePayments allows owners, and teachers who bill their own lessons.
+func SeePayments(a Actor) error {
+	if a.Can(ManagePayments) || a.Can(ManageOwnPayments) {
+		return nil
+	}
+	return apperr.New(apperr.ErrForbidden, "You can't see payments in this team.")
+}
+
+// ManagePaymentsFor allows owners to bill for any payee, and teachers for
+// themselves (ADR 024): creating, sending and cancelling requests,
+// confirming money arrived and voiding receipts.
+func ManagePaymentsFor(a Actor, payee uuid.UUID) error {
+	if a.Can(ManagePayments) || (a.Can(ManageOwnPayments) && a.MembershipID == payee) {
+		return nil
+	}
+	if a.Can(ManageOwnPayments) {
+		return apperr.ErrNotFound
+	}
+	return apperr.New(apperr.ErrForbidden, "Only the team owner or the payee can do this.")
+}
+
+// ManagePayeeAccount allows a tutor to set their own PayNow account, and
+// owners anyone's.
+func ManagePayeeAccount(a Actor, membershipID uuid.UUID) error {
+	if a.Can(ManagePayments) || (a.Can(ManageOwnPayments) && a.MembershipID == membershipID) {
+		return nil
+	}
+	return apperr.New(apperr.ErrForbidden, "Only the tutor or the team owner can change this account.")
+}

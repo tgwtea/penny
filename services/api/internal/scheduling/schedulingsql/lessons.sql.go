@@ -66,6 +66,74 @@ func (q *Queries) AddLessonTutor(ctx context.Context, arg AddLessonTutorParams) 
 	return err
 }
 
+const billableLessons = `-- name: BillableLessons :many
+SELECT l.id, l.starts_at, l.title, l.status, l.fee_cents, l.currency, t.membership_id AS lead_id,
+       (SELECT count(*) FROM lesson_tutors t2 WHERE t2.lesson_id = l.id)::int AS tutor_count
+FROM lessons l
+JOIN lesson_tutors t ON t.lesson_id = l.id AND t.role = 'lead'
+WHERE l.workspace_id = $1 AND l.billable
+  AND ($2::uuid IS NULL OR EXISTS (
+       SELECT 1 FROM lesson_participants p WHERE p.lesson_id = l.id AND p.student_id = $2))
+  AND ($3::uuid IS NULL OR t.membership_id = $3)
+  AND ($4::uuid[] IS NULL OR l.id = ANY($4::uuid[]))
+ORDER BY l.starts_at, l.id
+LIMIT 500
+`
+
+type BillableLessonsParams struct {
+	WorkspaceID uuid.UUID
+	Student     *uuid.UUID
+	Lead        *uuid.UUID
+	Ids         []uuid.UUID
+}
+
+type BillableLessonsRow struct {
+	ID         uuid.UUID
+	StartsAt   time.Time
+	Title      string
+	Status     LessonStatus
+	FeeCents   int64
+	Currency   string
+	LeadID     uuid.UUID
+	TutorCount int32
+}
+
+// Billable lessons with their lead tutor, filtered by student, lead or IDs.
+// Billing removes those already on a live request.
+func (q *Queries) BillableLessons(ctx context.Context, arg BillableLessonsParams) ([]BillableLessonsRow, error) {
+	rows, err := q.db.Query(ctx, billableLessons,
+		arg.WorkspaceID,
+		arg.Student,
+		arg.Lead,
+		arg.Ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillableLessonsRow
+	for rows.Next() {
+		var i BillableLessonsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StartsAt,
+			&i.Title,
+			&i.Status,
+			&i.FeeCents,
+			&i.Currency,
+			&i.LeadID,
+			&i.TutorCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createLesson = `-- name: CreateLesson :one
 
 INSERT INTO lessons (

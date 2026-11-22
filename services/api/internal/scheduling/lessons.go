@@ -349,13 +349,13 @@ func (s *Service) ReopenLesson(ctx context.Context, userID, workspaceID, lessonI
 		if err := authz.ReopenLesson(a, tutors, row.MarkedBy); err != nil {
 			return "", err
 		}
-		if s.hooks.Receipted != nil {
-			receipted, err := s.hooks.Receipted(ctx, tx, row.WorkspaceID, row.ID)
+		if s.hooks.Billed != nil {
+			billed, err := s.hooks.Billed(ctx, tx, row.WorkspaceID, row.ID)
 			if err != nil {
 				return "", err
 			}
-			if receipted {
-				return "", apperr.New(apperr.ErrConflict, "A receipt covers this lesson. Void the receipt before reopening it.")
+			if billed {
+				return "", apperr.New(apperr.ErrConflict, "A payment request covers this lesson. Withdraw the request, or void its receipt, before reopening the lesson.")
 			}
 		}
 		if _, err := st.q.SetLessonStatus(ctx, statusParams(row, StatusScheduled, false, nil)); err != nil {

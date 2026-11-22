@@ -1,0 +1,13 @@
+{
+  "name": "a request to a mobile proxy with a fixed amount, expiry and reference",
+  "input": {
+    "proxyType": "mobile",
+    "proxy": "+6591234567",
+    "amountCents": 12000,
+    "editable": false,
+    "expiry": "2026-12-03",
+    "merchantName": "Mei Lin Tan",
+    "reference": "PNY-7K3Q9X"
+  },
+  "payload": "00020101021226500009SG.PAYNOW010100211+6591234567030100408202612035204000053037025406120.005802SG5911Mei Lin Tan6009Singapore62140110PNY-7K3Q9X630473AD"
+}
