@@ -32,11 +32,11 @@ cleanup() {
   for pid in "${pids[@]}"; do kill "$pid" 2>/dev/null || true; done
   wait 2>/dev/null || true
   psql_admin -c "DROP DATABASE IF EXISTS \"$db\" WITH (FORCE)" >/dev/null 2>&1 || true
-  rm -rf "$work"
   if [ "$status" -ne 0 ]; then
     echo "e2e: failed; API log follows" >&2
     cat "$work/api.log" 2>/dev/null >&2 || true
   fi
+  rm -rf "$work"
   exit "$status"
 }
 trap cleanup EXIT
