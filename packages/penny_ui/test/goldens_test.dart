@@ -139,7 +139,7 @@ void main() {
         children: [for (final s in PennyStatus.values) StatusBadge(s)],
       ),
     ]),
-    size: const Size(390, 140),
+    size: const Size(390, 180),
   );
 
   pennyGoldens(
