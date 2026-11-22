@@ -100,7 +100,7 @@ void seedStudio(ScenarioKit kit) {
     address: '12 Cairnhill Road',
     postalCode: '229651',
   );
-  kit.place(
+  final online = kit.place(
     'Online',
     kind: LocationKind.online,
     meetingUrl: 'https://meet.example.com/koh-guitar',
@@ -122,28 +122,34 @@ void seedStudio(ScenarioKit kit) {
         'lessons are charged.',
   );
 
-  // The weekly timetable: each student once a week, Monday to Saturday,
-  // each tutor on a different day per student so no tutor is booked twice.
+  // The weekly timetable, this week and next: each student once a week,
+  // Monday to Saturday, each tutor on a different day per student so no
+  // tutor is booked twice.
   final todayIndex = -kit.mondayOffset;
-  final perTutor = <String, int>{};
-  for (final (name, tutor, _) in _students) {
-    final i = perTutor.update(tutor, (n) => n + 1, ifAbsent: () => 0);
-    final tutorIndex = t.keys.toList().indexOf(tutor);
-    final day = (tutorIndex + i) % 6;
-    // Today belongs to the designs' cases; keep the rest of the day clear
-    // of Mei and Aisha, so the one clash is the one the designs show.
-    if (day == todayIndex &&
-        (_todaysCast.contains(name) || tutor == 'mei' || tutor == 'aisha')) {
-      continue;
+  for (final week in [0, 1]) {
+    final perTutor = <String, int>{};
+    for (final (name, tutor, _) in _students) {
+      final i = perTutor.update(tutor, (n) => n + 1, ifAbsent: () => 0);
+      final tutorIndex = t.keys.toList().indexOf(tutor);
+      final day = (tutorIndex + i) % 6;
+      // Today belongs to the designs' cases; keep the rest of the day clear
+      // of Mei and Aisha, so the one clash is the one the designs show.
+      if (week == 0 &&
+          day == todayIndex &&
+          (_todaysCast.contains(name) || tutor == 'mei' || tutor == 'aisha')) {
+        continue;
+      }
+      kit.lesson(
+        start: kit.at(kit.mondayOffset + 7 * week + day, 14 + (i % 5), 30),
+        minutes: 45,
+        tutors: [t[tutor]!],
+        students: [ids[name]!],
+        createdBy: t['daniel']!,
+        // Three rooms: Daniel, Mei and Aisha have one each; the others
+        // teach online, so no room holds two lessons at once.
+        placeId: tutorIndex < rooms.length ? rooms[tutorIndex] : online,
+      );
     }
-    kit.lesson(
-      start: kit.at(kit.mondayOffset + day, 14 + (i % 5), 30),
-      minutes: 45,
-      tutors: [t[tutor]!],
-      students: [ids[name]!],
-      createdBy: t['daniel']!,
-      placeId: rooms[tutorIndex % 3],
-    );
   }
 
   // Today, as the designs show it.
