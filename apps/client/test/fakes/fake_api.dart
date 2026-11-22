@@ -23,7 +23,8 @@ class FakeApi {
   final teams = <String, ({String name, List<Map<String, Object?>> members})>{};
   int _seq = 0;
 
-  /// Students, places, lessons and policies (Phase 5 routes).
+  /// Students, places, lessons, policies, series, the timetable and
+  /// calendar links (Phase 5 and 6 routes).
   late final scheduling = FakeSchedulingApi(
     memberOf: (teamId, email) {
       final team = teams[teamId];
@@ -43,6 +44,16 @@ class FakeApi {
       }
       return '';
     },
+    staffOf: (teamId) => [
+      for (final m in teams[teamId]?.members ?? const <Map<String, Object?>>[])
+        if (m['status'] == 'active' &&
+            (m['role'] == 'owner' || m['role'] == 'teacher'))
+          (
+            id: m['id']! as String,
+            role: m['role']! as String,
+            name: m['displayName']! as String,
+          ),
+    ],
   );
 
   /// Every request, for assertions: "GET /v1/me".

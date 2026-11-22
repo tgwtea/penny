@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/application/active_team.dart';
+import '../../timetable/application/timetable_providers.dart';
 import '../domain/lesson.dart';
 import '../domain/lesson_repository.dart';
 import '../domain/location.dart';
 import '../domain/policy.dart';
+import '../domain/series.dart';
 
 /// The lesson repository in use, set by the composition root.
 final lessonRepositoryProvider = Provider<LessonRepository>(
@@ -24,6 +26,13 @@ final locationRepositoryProvider = Provider<LocationRepository>(
 final policyRepositoryProvider = Provider<PolicyRepository>(
   (ref) => throw UnimplementedError(
     'policyRepositoryProvider is set by backendOverrides()',
+  ),
+);
+
+/// The series repository in use, set by the composition root.
+final seriesRepositoryProvider = Provider<SeriesRepository>(
+  (ref) => throw UnimplementedError(
+    'seriesRepositoryProvider is set by backendOverrides()',
   ),
 );
 
@@ -93,8 +102,16 @@ final policyProvider = FutureProvider.family<CancellationPolicy, String>((
   return ref.watch(policyRepositoryProvider).policy(team.teamId, membershipId);
 }, retry: (_, _) => null);
 
-/// Every change to lessons, places and policies goes through here, so lists,
-/// details and histories reload together and never disagree.
+/// One recurring lesson.
+final seriesProvider = FutureProvider.family<Series, String>((ref, id) async {
+  final team = ref.watch(activeTeamProvider);
+  if (team == null) throw StateError('no team');
+  return ref.watch(seriesRepositoryProvider).series(team.teamId, id);
+}, retry: (_, _) => null);
+
+/// Every change to lessons, series, places and policies goes through here,
+/// so lists, timetables, details and histories reload together and never
+/// disagree.
 final lessonActionsProvider = Provider<LessonActions>(LessonActions.new);
 
 /// The lesson use cases screens call.
@@ -168,6 +185,21 @@ class LessonActions {
   Future<void> deleteItem(String lessonId, String itemId) =>
       _changed(_lessons.deleteItem(_team, lessonId, itemId));
 
+  /// Books a recurring lesson.
+  Future<Series> createSeries(SeriesDraft draft) =>
+      _changed(_ref.read(seriesRepositoryProvider).create(_team, draft));
+
+  /// Changes a recurring lesson from a day on.
+  Future<Series> updateSeries(Series series, SeriesChanges changes) => _changed(
+    _ref.read(seriesRepositoryProvider).update(_team, series, changes),
+  );
+
+  /// Stops a recurring lesson after [after].
+  Future<Series> endSeries(Series series, {required DateTime after}) =>
+      _changed(
+        _ref.read(seriesRepositoryProvider).end(_team, series, after: after),
+      );
+
   /// Saves a place.
   Future<Location> createLocation(LocationDraft draft) =>
       _changed(_ref.read(locationRepositoryProvider).create(_team, draft));
@@ -187,6 +219,8 @@ class LessonActions {
     final result = await change;
     _ref
       ..invalidate(lessonsProvider)
+      ..invalidate(timetableProvider)
+      ..invalidate(seriesProvider)
       ..invalidate(lessonDetailProvider)
       ..invalidate(lessonHistoryProvider)
       ..invalidate(locationsProvider)

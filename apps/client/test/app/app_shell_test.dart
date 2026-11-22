@@ -133,6 +133,7 @@ void main() {
       final container = await pumpApp(tester);
       container.read(routerProvider).go('/account');
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.widgetWithText(PennyButton, 'Sign out'));
       await tester.tap(find.widgetWithText(PennyButton, 'Sign out'));
       await tester.pumpAndSettle();
       expect(find.text('Sign in to Penny'), findsOneWidget);

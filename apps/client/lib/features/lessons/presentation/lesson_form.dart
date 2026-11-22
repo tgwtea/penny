@@ -13,22 +13,39 @@ import '../../team/application/team_controller.dart';
 import '../../team/domain/team_member.dart';
 import '../application/lesson_providers.dart';
 import '../domain/lesson.dart';
+import '../domain/series.dart';
 import 'lesson_views.dart';
+import 'series_views.dart' show seriesChangeFrom;
 
 /// Opens the form to add a lesson, or to reschedule [lesson]: a sheet on
 /// phone and laptop alike (designs: "add lesson", "reschedule").
+///
+/// A new lesson starts at [startsAt] (an instant) with [leadId] leading,
+/// when given: a free slot tapped on the timetable.
 Future<void> showLessonForm(
   BuildContext context,
   WidgetRef ref, {
   required ActiveTeam team,
   Lesson? lesson,
+  DateTime? startsAt,
+  String? leadId,
+  Series? series,
+  SeriesScope scope = SeriesScope.thisLesson,
 }) async {
   final saved = await showPennySheet<String>(
     context,
-    title: lesson == null ? 'Add lesson' : 'Reschedule lesson',
+    title: lesson == null
+        ? 'Add lesson'
+        : scope == SeriesScope.thisLesson
+        ? 'Reschedule lesson'
+        : 'Change the weekly lesson',
     builder: (sheetContext) => LessonForm(
       team: team,
       lesson: lesson,
+      startsAt: startsAt,
+      leadId: leadId,
+      series: series,
+      scope: scope,
       onDone: (message) => Navigator.of(sheetContext).pop(message),
     ),
   );
@@ -45,14 +62,33 @@ class LessonForm extends ConsumerStatefulWidget {
     super.key,
     required this.team,
     this.lesson,
+    this.startsAt,
+    this.leadId,
+    this.series,
+    this.scope = SeriesScope.thisLesson,
     required this.onDone,
-  });
+  }) : assert(
+         scope == SeriesScope.thisLesson || (lesson != null && series != null),
+         'Changing a series needs the lesson opened and its series.',
+       );
 
   /// The team the lesson is in.
   final ActiveTeam team;
 
   /// The lesson to reschedule, or null to add one.
   final Lesson? lesson;
+
+  /// When a new lesson starts, if already chosen (an instant).
+  final DateTime? startsAt;
+
+  /// Who leads a new lesson, if already chosen.
+  final String? leadId;
+
+  /// The series [lesson] belongs to, when [scope] changes the series.
+  final Series? series;
+
+  /// Whether a change is to [lesson] only or to its series from a day on.
+  final SeriesScope scope;
 
   /// Called with the snackbar message once the person is done.
   final ValueChanged<String> onDone;
@@ -74,6 +110,8 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
   late final TextEditingController _title;
   late final TextEditingController _fee;
   LessonKind _kind = LessonKind.regular;
+  bool _repeats = false;
+  DateTime? _until; // a team date, UTC midnight
   String? _feeError;
   String? _leadError;
 
@@ -88,15 +126,19 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
     final l = widget.lesson;
     _editing = l;
     final now = ref.read(clockProvider)();
-    final start = l == null
-        ? time.wallClock(now).add(const Duration(hours: 1))
-        : time.wallClock(l.startsAt);
+    final chosen = widget.startsAt;
+    final start = l != null
+        ? time.wallClock(l.startsAt)
+        : chosen != null
+        ? time.wallClock(chosen)
+        : time.wallClock(now).add(const Duration(hours: 1));
     _date = DateTime.utc(start.year, start.month, start.day);
-    _time = l == null
+    _time = l == null && chosen == null
         ? TimeOfDay(hour: start.hour, minute: 0)
         : TimeOfDay(hour: start.hour, minute: start.minute);
     _minutes = l == null ? 45 : l.length.inMinutes;
-    _leadId = l?.lead?.membershipId ?? widget.team.membershipId;
+    _leadId =
+        l?.lead?.membershipId ?? widget.leadId ?? widget.team.membershipId;
     _assisting = [
       for (final t in l?.tutors ?? const <LessonTutor>[])
         if (!t.isLead) t.membershipId,
@@ -148,6 +190,9 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
     ];
     final actions = ref.read(lessonActionsProvider);
     final editing = _editing;
+    if (_repeats || widget.scope != SeriesScope.thisLesson) {
+      return _saveSeries(actions, tutors, fee);
+    }
     Lesson? saved;
     final ok = await run(() async {
       saved = editing == null
@@ -186,6 +231,57 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
       return;
     }
     widget.onDone(editing == null ? 'Lesson added' : 'Lesson rescheduled');
+  }
+
+  /// Books a weekly lesson, or changes the series from a day on.
+  Future<void> _saveSeries(
+    LessonActions actions,
+    List<TutorChoice> tutors,
+    int fee,
+  ) async {
+    final startTime = clockTime(_time.hour * 60 + _time.minute);
+    final series = widget.series;
+    final ok = await run(() async {
+      if (series == null) {
+        await actions.createSeries(
+          SeriesDraft(
+            startsOn: _date,
+            startTime: startTime,
+            durationMinutes: _minutes,
+            recurrence: Recurrence.weekly({_date.weekday}),
+            until: _until,
+            tutors: tutors,
+            studentIds: _studentIds,
+            locationId: _placeId,
+            title: _title.text,
+            feeCents: fee,
+          ),
+        );
+      } else {
+        await actions.updateSeries(
+          series,
+          SeriesChanges(
+            from: seriesChangeFrom(
+              widget.scope,
+              lesson: widget.lesson!,
+              time: widget.team.time,
+              now: ref.read(clockProvider)(),
+            ),
+            startTime: startTime,
+            durationMinutes: _minutes,
+            tutors: tutors,
+            studentIds: _studentIds,
+            locationId: _placeId,
+            title: _title.text.trim(),
+            feeCents: fee,
+          ),
+        );
+      }
+    });
+    if (!ok || !mounted) return;
+    widget.onDone(
+      series == null ? 'Weekly lesson added' : 'Weekly lesson changed',
+    );
   }
 
   @override
@@ -236,6 +332,18 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
           ),
           const SizedBox(height: PennySpace.s4),
         ],
+        if (widget.scope != SeriesScope.thisLesson) ...[
+          PennyNotice(
+            title: widget.scope == SeriesScope.thisAndFollowing
+                ? 'Changes this lesson and every one after it.'
+                : 'Changes every lesson from today on.',
+            body:
+                'Lessons that are done or cancelled stay as they were. The '
+                'day of the week stays the same: to move it, stop repeating '
+                'and book a new weekly lesson.',
+          ),
+          const SizedBox(height: PennySpace.s4),
+        ],
         Row(
           children: [
             Expanded(
@@ -243,7 +351,9 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
                 label: 'Date',
                 value: PennyFormat.shortDate(_date),
                 icon: PennyIcons.calendar,
-                onTap: _pickDate,
+                onTap: widget.scope == SeriesScope.thisLesson
+                    ? _pickDate
+                    : null,
               ),
             ),
             const SizedBox(width: PennySpace.s3),
@@ -278,6 +388,45 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
             if (m != null) setState(() => _minutes = m);
           },
         ),
+        if (widget.lesson == null &&
+            widget.team.can(Capability.manageLessons)) ...[
+          const SizedBox(height: PennySpace.s4),
+          PennySelectField(
+            label: 'Repeats',
+            value: _repeats
+                ? 'Every ${PennyFormat.weekday(_date)}'
+                : 'Does not repeat',
+            icon: PennyIcons.recurring,
+            onTap: () async {
+              final weekly = await showPennyChoice<bool>(
+                context,
+                title: 'Repeats',
+                selected: _repeats,
+                choices: [
+                  const PennyChoice(value: false, label: 'Does not repeat'),
+                  PennyChoice(
+                    value: true,
+                    label: 'Every ${PennyFormat.weekday(_date)}',
+                    description:
+                        'Each week is its own lesson, booked 12 weeks ahead.',
+                  ),
+                ],
+              );
+              if (weekly != null) setState(() => _repeats = weekly);
+            },
+          ),
+          if (_repeats) ...[
+            const SizedBox(height: PennySpace.s4),
+            PennySelectField(
+              label: 'Ends',
+              value: _until == null
+                  ? 'When you stop it'
+                  : 'After ${PennyFormat.shortDate(_until!)}',
+              icon: PennyIcons.calendar,
+              onTap: _pickUntil,
+            ),
+          ],
+        ],
         if (!teamOfOne) ...[
           const SizedBox(height: PennySpace.s4),
           PennySelectField(
@@ -384,7 +533,7 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
           tabularFigures: true,
           error: _feeError,
         ),
-        if (widget.lesson == null) ...[
+        if (widget.lesson == null && !_repeats) ...[
           const SizedBox(height: PennySpace.s4),
           PennyOptionRow(
             title: 'A regular lesson',
@@ -401,7 +550,9 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
         ],
         const SizedBox(height: PennySpace.s6),
         PennyButton(
-          label: _editing == null ? 'Add lesson' : 'Save changes',
+          label: _editing == null
+              ? (_repeats ? 'Add weekly lesson' : 'Add lesson')
+              : 'Save changes',
           size: PennyButtonSize.large,
           expand: true,
           onPressed: busy ? null : _save,
@@ -451,6 +602,36 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
     if (picked != null) {
       setState(
         () => _date = DateTime.utc(picked.year, picked.month, picked.day),
+      );
+    }
+  }
+
+  Future<void> _pickUntil() async {
+    final last = await showPennyChoice<bool>(
+      context,
+      title: 'Ends',
+      selected: _until != null,
+      choices: const [
+        PennyChoice(
+          value: false,
+          label: 'When you stop it',
+          description: 'You can stop repeating from any of its lessons.',
+        ),
+        PennyChoice(value: true, label: 'After a date'),
+      ],
+    );
+    if (last == null || !mounted) return;
+    if (!last) return setState(() => _until = null);
+    final first = DateTime(_date.year, _date.month, _date.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: first.add(const Duration(days: 7 * 11)),
+      firstDate: first,
+      lastDate: DateTime(_date.year + 2),
+    );
+    if (picked != null) {
+      setState(
+        () => _until = DateTime.utc(picked.year, picked.month, picked.day),
       );
     }
   }

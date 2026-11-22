@@ -74,6 +74,7 @@ class Timetable extends StatefulWidget {
     this.now,
     this.onTapLesson,
     this.onTapSlot,
+    this.viewerMembershipId,
   }) : assert(
          startHour >= 0 && endHour <= 24 && startHour < endHour,
          'Invalid hour range.',
@@ -102,6 +103,11 @@ class Timetable extends StatefulWidget {
   /// free slots inert (for people who may not add lessons).
   final void Function(TimetableColumn column, DateTime slotStart)? onTapSlot;
 
+  /// Who is looking, for columns that are days rather than people: their
+  /// own lessons read as usual, and other tutors' lessons name the tutor.
+  /// A person's column always reads as that person's.
+  final String? viewerMembershipId;
+
   /// The narrowest a column gets before the grid scrolls sideways.
   static const double minColumnWidth = 120;
 
@@ -114,6 +120,9 @@ class _TimetableState extends State<Timetable> {
   static const double _gutter = PennySize.timetableGutter;
   // Room above the first hour line so its label is not clipped.
   static const double _top = PennySpace.s2;
+
+  /// The free slot under the mouse, for the "Add lesson at 16:00" ghost.
+  ({String columnId, int minute})? _hover;
 
   late final ScrollController _vertical;
   final ScrollController _bodyHorizontal = ScrollController();
@@ -287,50 +296,84 @@ class _TimetableState extends State<Timetable> {
     final placed = _placeInLanes(lessons);
     const gap = 2.0;
 
+    final hover = _hover?.columnId == column.id ? _hover!.minute : null;
+    final grid = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTapUp: widget.onTapSlot == null
+          ? null
+          : (details) => _tapSlot(column, details.localPosition.dy),
+      child: Stack(
+        children: [
+          if (hover != null)
+            Positioned(
+              top: _top + (hover - widget.startHour * 60) / 60 * _hour,
+              height: _hour / 2,
+              left: gap,
+              right: gap,
+              child: IgnorePointer(
+                child: _GhostSlot(
+                  label:
+                      'Add lesson at ${PennyFormat.time(context, DateTime(2000, 1, 1, hover ~/ 60, hover % 60))}',
+                ),
+              ),
+            ),
+          for (final p in placed)
+            Positioned(
+              top: _y(p.lesson.start),
+              height: math.max(
+                LessonBlock.minHeight,
+                p.lesson.end.difference(p.lesson.start).inMinutes / 60 * _hour -
+                    gap,
+              ),
+              left: gap + p.lane * (width - gap) / p.lanes,
+              width: (width - gap) / p.lanes - gap,
+              child: LessonBlock(
+                lesson: p.lesson,
+                viewerMembershipId: column.personName == null
+                    ? widget.viewerMembershipId
+                    : column.id,
+                onTap: widget.onTapLesson == null
+                    ? null
+                    : () => widget.onTapLesson!(p.lesson),
+              ),
+            ),
+        ],
+      ),
+    );
+
     return Semantics(
       container: true,
       label: column.subtitle == null
           ? column.title
           : '${column.title}, ${column.subtitle}',
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTapUp: widget.onTapSlot == null
-            ? null
-            : (details) => _tapSlot(column, details.localPosition.dy),
-        child: Stack(
-          children: [
-            for (final p in placed)
-              Positioned(
-                top: _y(p.lesson.start),
-                height: math.max(
-                  LessonBlock.minHeight,
-                  p.lesson.end.difference(p.lesson.start).inMinutes /
-                          60 *
-                          _hour -
-                      gap,
-                ),
-                left: gap + p.lane * (width - gap) / p.lanes,
-                width: (width - gap) / p.lanes - gap,
-                child: LessonBlock(
-                  lesson: p.lesson,
-                  viewerMembershipId: column.personName == null
-                      ? null
-                      : column.id,
-                  onTap: widget.onTapLesson == null
-                      ? null
-                      : () => widget.onTapLesson!(p.lesson),
-                ),
-              ),
-          ],
-        ),
-      ),
+      child: widget.onTapSlot == null
+          ? grid
+          : MouseRegion(
+              onHover: (e) => _hoverSlot(column, e.localPosition.dy),
+              onExit: (_) => setState(() => _hover = null),
+              child: grid,
+            ),
     );
   }
 
-  void _tapSlot(TimetableColumn column, double dy) {
+  /// The 15-minute slot at [dy] in a column, in minutes after midnight, or
+  /// null outside the hour range.
+  int? _slotAt(double dy) {
     final minutes = ((dy - _top) / _hour * 60).floor();
     final slot = (minutes ~/ 15) * 15 + widget.startHour * 60;
-    if (slot < widget.startHour * 60 || slot >= widget.endHour * 60) return;
+    if (minutes < 0 || slot >= widget.endHour * 60) return null;
+    return slot;
+  }
+
+  void _hoverSlot(TimetableColumn column, double dy) {
+    final slot = _slotAt(dy);
+    final next = slot == null ? null : (columnId: column.id, minute: slot);
+    if (next != _hover) setState(() => _hover = next);
+  }
+
+  void _tapSlot(TimetableColumn column, double dy) {
+    final slot = _slotAt(dy);
+    if (slot == null) return;
     final d = column.date;
     widget.onTapSlot!(
       column,
@@ -490,6 +533,64 @@ class _HourLabels extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The dashed "Add lesson at 16:00" outline over a free slot.
+class _GhostSlot extends StatelessWidget {
+  const _GhostSlot({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = PennyColors.of(context);
+    return CustomPaint(
+      painter: _DashedOutline(color: c.borderControl),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: PennySpace.s2,
+          vertical: PennySpace.s1,
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: PennyText.caption.copyWith(color: c.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedOutline extends CustomPainter {
+  const _DashedOutline({required this.color});
+
+  final Color color;
+
+  static const double _dash = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          const Radius.circular(PennyRadius.sm),
+        ),
+      );
+    for (final metric in path.computeMetrics()) {
+      for (var d = 0.0; d < metric.length; d += _dash * 2) {
+        canvas.drawPath(metric.extractPath(d, d + _dash), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedOutline old) => old.color != color;
 }
 
 class _NowLine extends StatelessWidget {

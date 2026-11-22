@@ -10,6 +10,7 @@ import '../../features/lessons/domain/lesson.dart';
 import '../../features/lessons/domain/location.dart';
 import '../../features/lessons/domain/policy.dart';
 import '../../features/students/domain/student.dart';
+import '../demo_schedule.dart';
 import '../demo_store.dart';
 import 'scenario_kit.dart';
 
@@ -126,6 +127,7 @@ void seedStudio(ScenarioKit kit) {
   // Monday to Saturday, each tutor on a different day per student so no
   // tutor is booked twice.
   final todayIndex = -kit.mondayOffset;
+  final weekly = <String, List<DemoLesson>>{};
   for (final week in [0, 1]) {
     final perTutor = <String, int>{};
     for (final (name, tutor, _) in _students) {
@@ -139,7 +141,7 @@ void seedStudio(ScenarioKit kit) {
           (_todaysCast.contains(name) || tutor == 'mei' || tutor == 'aisha')) {
         continue;
       }
-      kit.lesson(
+      final lesson = kit.lesson(
         start: kit.at(kit.mondayOffset + 7 * week + day, 14 + (i % 5), 30),
         minutes: 45,
         tutors: [t[tutor]!],
@@ -149,6 +151,7 @@ void seedStudio(ScenarioKit kit) {
         // teach online, so no room holds two lessons at once.
         placeId: tutorIndex < rooms.length ? rooms[tutorIndex] : online,
       );
+      weekly.putIfAbsent(name, () => []).add(lesson);
     }
   }
 
@@ -312,4 +315,11 @@ void seedStudio(ScenarioKit kit) {
       createdAt: kit.at(-60, 12),
     ),
   );
+
+  // Each student's weekly lesson repeats: the two weeks above are its
+  // first occurrences, and later weeks are booked as someone looks ahead.
+  // Made last, so the IDs above stay as they were.
+  for (final lessons in weekly.values) {
+    kit.weekly(lessons);
+  }
 }

@@ -35,6 +35,25 @@ class PennyCatalogue extends StatelessWidget {
         WidgetbookFolder(
           name: 'Controls',
           children: [
+            _component('PennyChips', {
+              'Tutor switcher': (_) => _ChipsDemo(
+                scrollable: true,
+                single: true,
+                names: const [
+                  'Daniel Koh',
+                  'Mei Lin Tan',
+                  'Aisha Rahman',
+                  'Ravi Kumar',
+                  'Joshua Lim',
+                  'Siti Rahmat',
+                ],
+              ),
+              'Tutor filter': (_) => _ChipsDemo(
+                scrollable: false,
+                single: false,
+                names: const ['Mei Lin Tan', 'Aisha Rahman', 'Ravi Kumar'],
+              ),
+            }),
             _component('PennyButton', {
               'Primary': (_) => PennyButton(
                 label: 'Add lesson',
@@ -378,6 +397,25 @@ class PennyCatalogue extends StatelessWidget {
               'Now line': (_) => PennyNowLine(now: _at(16, 20)),
             }),
             _component('Timetable', {'Team day': (_) => _timetable()}),
+            _component('MonthGrid', {
+              'Laptop': (_) => SingleChildScrollView(
+                child: MonthGrid(
+                  month: _day,
+                  today: _day,
+                  lessonsOn: _monthLessons,
+                  onTapDay: (_) {},
+                ),
+              ),
+              'Phone': (_) => SingleChildScrollView(
+                child: MonthGrid(
+                  month: _day,
+                  today: _day,
+                  compact: true,
+                  lessonsOn: _monthLessons,
+                  onTapDay: (_) {},
+                ),
+              ),
+            }),
           ],
         ),
         WidgetbookFolder(
@@ -636,4 +674,68 @@ class _OptionDemoState extends State<_OptionDemo> {
       ],
     );
   }
+}
+
+List<LessonView> _monthLessons(DateTime d) {
+  if (d.month != 11) return const [];
+  return switch (d.day) {
+    17 => [_lesson(status: LessonViewStatus.done)],
+    19 => [
+      _lesson(id: 'a', hour: 14, status: LessonViewStatus.done),
+      _lesson(id: 'b', hour: 16, clash: true),
+      _lesson(id: 'c', hour: 16, clash: true),
+      _lesson(id: 'd', hour: 17, status: LessonViewStatus.cancelled),
+    ],
+    26 => [_lesson(id: 'e', hour: 15)],
+    _ => const [],
+  }.map((l) => _onDay(l, d)).toList();
+}
+
+LessonView _onDay(LessonView l, DateTime d) => LessonView(
+  id: l.id,
+  start: DateTime(d.year, d.month, d.day, l.start.hour, l.start.minute),
+  end: DateTime(d.year, d.month, d.day, l.end.hour, l.end.minute),
+  students: l.students,
+  tutors: l.tutors,
+  status: l.status,
+  hasClash: l.hasClash,
+);
+
+/// Chips with their own selection, so the catalogue's chips respond.
+class _ChipsDemo extends StatefulWidget {
+  const _ChipsDemo({
+    required this.names,
+    required this.single,
+    required this.scrollable,
+  });
+
+  final List<String> names;
+  final bool single;
+  final bool scrollable;
+
+  @override
+  State<_ChipsDemo> createState() => _ChipsDemoState();
+}
+
+class _ChipsDemoState extends State<_ChipsDemo> {
+  late Set<String> _selected = {widget.names[1]};
+
+  @override
+  Widget build(BuildContext context) => PennyChips<String>(
+    scrollable: widget.scrollable,
+    chips: [
+      for (final n in widget.names)
+        PennyChip(value: n, label: PennyFormat.firstName(n), person: n),
+    ],
+    selected: _selected,
+    onTap: (n) => setState(() {
+      if (widget.single) {
+        _selected = {n};
+      } else if (!_selected.remove(n)) {
+        _selected = {..._selected, n};
+      } else {
+        _selected = {..._selected};
+      }
+    }),
+  );
 }

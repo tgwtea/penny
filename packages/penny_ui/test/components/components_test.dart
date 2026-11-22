@@ -1,5 +1,6 @@
 // ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:penny_ui/penny_ui.dart';
 import 'package:penny_ui/testing.dart';
@@ -237,6 +238,33 @@ void main() {
       );
     });
 
+    testWidgets('day columns name the tutor of lessons the viewer does not '
+        'teach', (tester) async {
+      await tester.pumpWidget(
+        pennyTestApp(
+          Timetable(
+            columns: [
+              TimetableColumn(id: 'thu', date: _thursday, title: 'Thu 19'),
+            ],
+            entries: [
+              TimetableEntry(
+                columnId: 'thu',
+                lesson: _lesson(
+                  minutes: 90,
+                  tutors: const [_aisha],
+                  location: 'Room 2',
+                ),
+              ),
+            ],
+            startHour: 14,
+            endHour: 20,
+            viewerMembershipId: _mei.membershipId,
+          ),
+        ),
+      );
+      expect(find.text('Aisha, Room 2'), findsOneWidget);
+    });
+
     testWidgets('a shared lesson appears in each tutor column', (tester) async {
       final shared = _lesson(
         id: 's',
@@ -273,6 +301,41 @@ void main() {
       expect(start, _at(16, 30));
     });
 
+    testWidgets('hovering a free slot offers to add a lesson there', (
+      tester,
+    ) async {
+      await pumpTimetable(tester, entries: const [], onTapSlot: (_, _) {});
+      final grid = tester.getRect(find.byType(CustomPaint).last);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(
+        Offset(
+          grid.left + grid.width * 0.25,
+          grid.top + PennySpace.s2 + PennySize.timetableHour * 2.5 + 4,
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Add lesson at 16:30'), findsOneWidget);
+
+      await mouse.moveTo(Offset.zero);
+      await tester.pump();
+      expect(find.textContaining('Add lesson at'), findsNothing);
+    });
+
+    testWidgets('offers no ghost to people who may not add lessons', (
+      tester,
+    ) async {
+      await pumpTimetable(tester, entries: const []);
+      final grid = tester.getRect(find.byType(CustomPaint).last);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: grid.center);
+      await mouse.moveTo(grid.center + const Offset(1, 1));
+      await tester.pump();
+      expect(find.textContaining('Add lesson at'), findsNothing);
+    });
+
     testWidgets('shows the now line only inside the hour range', (
       tester,
     ) async {
@@ -281,6 +344,144 @@ void main() {
 
       await pumpTimetable(tester, entries: const [], now: _at(22));
       expect(find.text('22:00'), findsNothing);
+    });
+  });
+
+  group('PennyChips', () {
+    testWidgets('reports taps and marks the selected chips', (tester) async {
+      final tapped = <String>[];
+      await tester.pumpWidget(
+        pennyTestApp(
+          PennyChips<String>(
+            label: 'Tutors',
+            chips: const [
+              PennyChip(value: 'mei', label: 'Mei', person: 'Mei Lin Tan'),
+              PennyChip(value: 'aisha', label: 'Aisha'),
+            ],
+            selected: const {'mei'},
+            onTap: tapped.add,
+          ),
+        ),
+      );
+      await tester.tap(find.text('Aisha'));
+      expect(tapped, ['aisha']);
+      expect(
+        tester.getSemantics(find.text('Mei')),
+        matchesSemantics(
+          isButton: true,
+          hasSelectedState: true,
+          isSelected: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          isFocusable: true,
+          hasTapAction: true,
+          hasFocusAction: true,
+          label: 'Mei',
+        ),
+      );
+    });
+
+    testWidgets('one scrolling line never widens the page', (tester) async {
+      tester.view.physicalSize = const Size(320, 200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        pennyTestApp(
+          PennyChips<int>(
+            scrollable: true,
+            chips: [
+              for (var i = 0; i < 8; i++)
+                PennyChip(value: i, label: 'Teacher $i'),
+            ],
+            selected: const {0},
+            onTap: (_) {},
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+    });
+  });
+
+  group('MonthGrid', () {
+    LessonView at(int day, int hour, String student, {bool clash = false}) {
+      final start = DateTime(2026, 11, day, hour);
+      return LessonView(
+        id: '$day-$hour',
+        start: start,
+        end: start.add(const Duration(minutes: 45)),
+        students: [student],
+        tutors: const [_mei],
+        hasClash: clash,
+      );
+    }
+
+    final lessons = {
+      19: [
+        at(19, 14, 'Arjun Nair'),
+        at(19, 15, 'Lucas Goh'),
+        at(19, 16, 'Sofia Lim', clash: true),
+        at(19, 16, 'Ben Ong', clash: true),
+        at(19, 17, 'Rohan Menon'),
+      ],
+      20: [at(20, 10, 'Hana Ito')],
+    };
+
+    Future<void> pumpMonth(
+      WidgetTester tester, {
+      bool compact = false,
+      ValueChanged<DateTime>? onTapDay,
+    }) async {
+      tester.view.physicalSize = Size(compact ? 390 : 1000, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        pennyTestApp(
+          SingleChildScrollView(
+            child: MonthGrid(
+              month: DateTime(2026, 11),
+              today: _thursday,
+              lessonsOn: (d) => d.month == 11 ? lessons[d.day] ?? [] : [],
+              compact: compact,
+              onTapDay: onTapDay,
+            ),
+          ),
+        ),
+      );
+    }
+
+    test('covers the month in whole weeks from Monday', () {
+      final days = MonthGrid.daysFor(DateTime(2026, 11, 19));
+      expect(days.first, DateTime(2026, 10, 26));
+      expect(days.last, DateTime(2026, 12, 6));
+      expect(days.length % 7, 0);
+    });
+
+    testWidgets('lists a day\'s first lessons, then how many more', (
+      tester,
+    ) async {
+      await pumpMonth(tester);
+      expect(find.text('14:00 Arjun'), findsOneWidget);
+      expect(find.text('16:00 Sofia'), findsOneWidget);
+      expect(find.text('16:00 Ben'), findsNothing);
+      expect(find.text('+2 more'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Thursday 19 November, 5 lessons, 2 clashes'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('on phone shows counts and opens a tapped day', (tester) async {
+      DateTime? opened;
+      await pumpMonth(tester, compact: true, onTapDay: (d) => opened = d);
+      expect(find.text('14:00 Arjun'), findsNothing);
+      expect(find.byIcon(PennyIcons.warning), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Thursday 19 November, 5 lessons, 2 clashes'),
+        findsOneWidget,
+      );
+      await tester.tap(find.bySemanticsLabel(RegExp('^Friday 20 November')));
+      expect(opened, DateTime(2026, 11, 20));
     });
   });
 
