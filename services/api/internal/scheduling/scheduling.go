@@ -30,6 +30,8 @@ type Teams interface {
 	Actor(ctx context.Context, db database.DBTX, workspaceID, userID uuid.UUID) (authz.Actor, error)
 	MembersByID(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]workspace.MemberInfo, error)
 	NamesByUser(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
+	Timezone(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) (*time.Location, error)
+	Staff(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) ([]workspace.MemberInfo, error)
 }
 
 // LessonStatus is where a lesson stands.
@@ -162,6 +164,7 @@ type Lesson struct {
 	Billable          bool
 	MakeupForLessonID *uuid.UUID
 	MakeupLessonID    *uuid.UUID
+	SeriesID          *uuid.UUID
 	Cancellation      *Cancellation
 	CompletedAt       *time.Time
 	Clashes           []Clash

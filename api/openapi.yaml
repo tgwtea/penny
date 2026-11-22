@@ -1185,6 +1185,270 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces/{workspaceId}/series:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    post:
+      operationId: createSeries
+      tags: [lessons]
+      summary: Book a recurring lesson
+      description: |
+        Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+        team's timezone) plus the lesson it repeats. Every occurrence is its
+        own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+        can carry its own notes, attendance and payment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeriesInput"
+      responses:
+        "201":
+          description: The new series, its first lessons already booked.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/series/{seriesId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/SeriesId"
+    get:
+      operationId: getSeries
+      tags: [lessons]
+      summary: Get a recurring lesson
+      description: For owners, and for tutors on the series.
+      responses:
+        "200":
+          description: The series.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: updateSeries
+      tags: [lessons]
+      summary: Change a recurring lesson from a date onwards
+      description: |
+        Needs `manage_lessons`; changing tutors also needs
+        `reassign_lessons`. The change applies to scheduled lessons on and
+        after `from` ("this and following"; send today for "all future
+        lessons"). Earlier lessons, and lessons that are done or cancelled,
+        are never rewritten. To change one lesson only, change the lesson.
+        Send the series' `version` in `If-Match`.
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeriesChanges"
+      responses:
+        "200":
+          description: |
+            The series as it is from `from` on. When the change starts after
+            the series did, the series is split and this is the new one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/series/{seriesId}/end:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/SeriesId"
+      - $ref: "#/components/parameters/IfMatch"
+    post:
+      operationId: endSeries
+      tags: [lessons]
+      summary: Stop a recurring lesson after a date
+      description: |
+        Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+        lessons that are done, cancelled or have notes on them stay.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndSeriesRequest"
+      responses:
+        "200":
+          description: The ended series.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "412":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/timetable:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: getTimetable
+      tags: [lessons]
+      summary: The team timetable, one column per tutor
+      description: |
+        Needs `view_team_timetable`. Every current owner and teacher gets a
+        column, with or without lessons, so free time is visible. A lesson
+        with several tutors appears in each of their columns.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: At most 7 days after `from`.
+          schema:
+            type: string
+            format: date-time
+        - name: teacherIds
+          in: query
+          description: Only these tutors' columns.
+          style: form
+          explode: false
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: The timetable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Timetable"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/MemberId"
+    post:
+      operationId: createCalendarFeed
+      tags: [lessons]
+      summary: Make a new private calendar link for a tutor
+      description: |
+        The tutor themselves, or the team owner. Any earlier link for the
+        tutor stops working. The link is shown once; Penny keeps only a hash
+        of it.
+      responses:
+        "201":
+          description: The link to subscribe to in Google or Apple Calendar.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarFeed"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: revokeCalendarFeed
+      tags: [lessons]
+      summary: Stop a tutor's calendar link working
+      responses:
+        "204":
+          description: The link no longer works.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/calendar/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: The secret part of a calendar link.
+        schema:
+          type: string
+          maxLength: 100
+    get:
+      operationId: getCalendarFeed
+      tags: [lessons]
+      summary: A tutor's lessons as an iCalendar feed
+      description: |
+        Public: the unguessable link is the credential. Lessons from 30 days
+        ago to 180 days ahead, with students' first names and the place only,
+        never notes or contacts.
+      security: []
+      responses:
+        "200":
+          description: An RFC 5545 calendar.
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -1241,6 +1505,13 @@ components:
         format: uuid
     LessonId:
       name: lessonId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SeriesId:
+      name: seriesId
       in: path
       required: true
       schema:
@@ -2038,6 +2309,10 @@ components:
           type: string
           format: uuid
           description: The make-up booked when this lesson was cancelled.
+        seriesId:
+          type: string
+          format: uuid
+          description: The recurring lesson this occurrence belongs to.
         cancellation:
           $ref: "#/components/schemas/Cancellation"
         completedAt:
@@ -2258,6 +2533,178 @@ components:
         summary:
           type: string
           maxLength: 500
+
+    SeriesInput:
+      type: object
+      required: [startsOn, startTime, durationMinutes, recurrence, tutors, studentIds]
+      properties:
+        startsOn:
+          type: string
+          format: date
+          description: The first day, in the team's timezone.
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          description: The wall-clock start, such as "16:00".
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 5
+          maximum: 1440
+        recurrence:
+          type: string
+          maxLength: 200
+          description: An RFC 5545 rule without DTSTART, such as FREQ=WEEKLY;BYDAY=TH.
+          example: FREQ=WEEKLY;BYDAY=TH
+        until:
+          type: string
+          format: date
+          description: The last day lessons may fall on. Open-ended without.
+        tutors:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TutorInput"
+        studentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        locationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 100
+        feeCents:
+          type: integer
+          format: int64
+          minimum: 0
+
+    SeriesChanges:
+      type: object
+      required: [from]
+      properties:
+        from:
+          type: string
+          format: date
+          description: The first day the change applies to, in the team's timezone.
+        startTime:
+          type: string
+          pattern: "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        durationMinutes:
+          type: integer
+          format: int32
+          minimum: 5
+          maximum: 1440
+        tutors:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TutorInput"
+        studentIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        locationId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 100
+        feeCents:
+          type: integer
+          format: int64
+          minimum: 0
+
+    EndSeriesRequest:
+      type: object
+      required: [after]
+      properties:
+        after:
+          type: string
+          format: date
+          description: The last day a lesson of the series stays.
+
+    Series:
+      type: object
+      required: [id, startsOn, startTime, durationMinutes, recurrence, timezone, tutors, students, feeCents, currency, bookedUntil, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startsOn:
+          type: string
+          format: date
+        startTime:
+          type: string
+        durationMinutes:
+          type: integer
+          format: int32
+        recurrence:
+          type: string
+        timezone:
+          type: string
+        until:
+          type: string
+          format: date
+        tutors:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonTutor"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonStudent"
+        location:
+          $ref: "#/components/schemas/LessonLocation"
+        title:
+          type: string
+        feeCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        bookedUntil:
+          type: string
+          format: date
+          description: Lessons exist up to this day; the worker books further ahead.
+        version:
+          type: integer
+          format: int32
+
+    TimetableColumn:
+      type: object
+      required: [tutor, lessons]
+      properties:
+        tutor:
+          $ref: "#/components/schemas/MemberRef"
+        lessons:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lesson"
+
+    Timetable:
+      type: object
+      required: [timezone, columns]
+      properties:
+        timezone:
+          type: string
+          description: The team's timezone, which the columns' days follow.
+        columns:
+          type: array
+          description: Owners first, then teachers, by name.
+          items:
+            $ref: "#/components/schemas/TimetableColumn"
+
+    CalendarFeed:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          description: The private link. Treat it like a password.
 
     MembershipRole:
       type: string

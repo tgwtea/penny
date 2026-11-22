@@ -27,11 +27,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags "-s -w \
         -X github.com/tgwtea/penny/services/api/internal/platform/buildinfo.version=${VERSION} \
         -X github.com/tgwtea/penny/services/api/internal/platform/buildinfo.commit=${COMMIT}" \
-      -o /out/ ./cmd/api ./cmd/migrate
+      -o /out/ ./cmd/api ./cmd/migrate ./cmd/worker
 
 # Distroless static: no shell, no package manager, runs as an unprivileged user.
 FROM gcr.io/distroless/static-debian13:nonroot
-COPY --from=build /out/api /out/migrate /usr/local/bin/
+COPY --from=build /out/api /out/migrate /out/worker /usr/local/bin/
 USER nonroot:nonroot
 EXPOSE 8080 9090
 ENTRYPOINT ["/usr/local/bin/api"]

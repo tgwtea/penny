@@ -91,7 +91,7 @@ func toLesson(l scheduling.Lesson) gen.Lesson {
 	out := gen.Lesson{
 		Id: l.ID, StartsAt: l.StartsAt, EndsAt: l.EndsAt, Status: gen.LessonStatus(l.Status), Kind: gen.LessonKind(l.Kind),
 		Title: optional(l.Title), FeeCents: l.FeeCents, Currency: l.Currency, Billable: l.Billable,
-		MakeupForLessonId: l.MakeupForLessonID, MakeupLessonId: l.MakeupLessonID, CompletedAt: l.CompletedAt,
+		MakeupForLessonId: l.MakeupForLessonID, MakeupLessonId: l.MakeupLessonID, SeriesId: l.SeriesID, CompletedAt: l.CompletedAt,
 		Version: int32(l.Version),
 		Tutors:  make([]gen.LessonTutor, 0, len(l.Tutors)), Students: make([]gen.LessonStudent, 0, len(l.Students)),
 		Clashes: make([]gen.Clash, 0, len(l.Clashes)),

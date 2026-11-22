@@ -10,3 +10,6 @@ packages/penny_api/** linguist-generated=true
 services/api/internal/httpapi/gen/** linguist-generated=true
 *.ttf binary
 *.otf binary
+
+# iCalendar requires CRLF line endings; golden files must keep them byte for byte.
+*.ics -text

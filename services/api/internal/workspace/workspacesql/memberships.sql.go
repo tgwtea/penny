@@ -337,6 +337,47 @@ func (q *Queries) ListOwnedTeamsWithOthers(ctx context.Context, userID *uuid.UUI
 	return items, nil
 }
 
+const listStaff = `-- name: ListStaff :many
+SELECT id, user_id, display_name, role, status FROM workspace_memberships
+WHERE workspace_id = $1 AND status = 'active' AND role IN ('owner', 'teacher')
+ORDER BY role, lower(display_name), id
+`
+
+type ListStaffRow struct {
+	ID          uuid.UUID
+	UserID      *uuid.UUID
+	DisplayName string
+	Role        MembershipRole
+	Status      MembershipStatus
+}
+
+// Current owners and teachers, owners first, then by name.
+func (q *Queries) ListStaff(ctx context.Context, workspaceID uuid.UUID) ([]ListStaffRow, error) {
+	rows, err := q.db.Query(ctx, listStaff, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStaffRow
+	for rows.Next() {
+		var i ListStaffRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Role,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockWorkspaceMembers = `-- name: LockWorkspaceMembers :exec
 SELECT id FROM workspaces WHERE id = $1 FOR UPDATE
 `

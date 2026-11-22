@@ -67,7 +67,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	services, err := app.New(app.Deps{Pool: pool, Verifier: verifier, Clock: clock.System{}})
+	services, err := app.New(app.Deps{Pool: pool, Verifier: verifier, Clock: clock.System{}, PublicURL: cfg.PublicURL})
 	if err != nil {
 		return err
 	}

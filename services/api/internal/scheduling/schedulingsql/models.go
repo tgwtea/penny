@@ -663,6 +663,9 @@ type Lesson struct {
 	Version   int32
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SeriesID  *uuid.UUID
+	// The day of the series' rule this lesson is the occurrence for, even if it was moved.
+	SeriesDate *time.Time
 }
 
 type LessonItem struct {
@@ -678,6 +681,28 @@ type LessonItem struct {
 	AuthorMembership uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+}
+
+// A recurring lesson: a rule evaluated in the team's timezone, booked ahead as individual lessons.
+type LessonSeries struct {
+	ID              uuid.UUID
+	WorkspaceID     uuid.UUID
+	StartsOn        time.Time
+	StartMinute     int32
+	DurationMinutes int32
+	Timezone        string
+	Recurrence      string
+	Until           *time.Time
+	LocationID      *uuid.UUID
+	Title           string
+	FeeCents        int64
+	Currency        string
+	BookedUntil     time.Time
+	EndedAt         *time.Time
+	CreatedBy       uuid.UUID
+	Version         int32
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // A learner. Not necessarily a user; archived instead of deleted, because lessons and receipts keep pointing at them.

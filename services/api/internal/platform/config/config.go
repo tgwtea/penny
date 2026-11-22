@@ -28,7 +28,28 @@ type API struct {
 	// ShutdownTimeout bounds how long in-flight requests may take to finish
 	// after SIGTERM (PENNY_SHUTDOWN_TIMEOUT, default 20s).
 	ShutdownTimeout time.Duration
-	Firebase        Firebase
+	// PublicURL is the API's address as browsers and calendar apps reach it,
+	// such as https://api.example.com, for links the API hands out
+	// (PENNY_PUBLIC_URL, default http://localhost:8080).
+	PublicURL string
+	Firebase  Firebase
+	Log       Log
+}
+
+// Worker configures the background job binary.
+type Worker struct {
+	// AdminAddr serves /metrics and the health probes (PENNY_ADMIN_ADDR,
+	// default :9091, so it can run beside the API locally).
+	AdminAddr string
+	// DatabaseURL is the app role's connection string (PENNY_DATABASE_URL).
+	DatabaseURL string
+	// PublicURL is the API's public address, for links in emails
+	// (PENNY_PUBLIC_URL, default http://localhost:8080).
+	PublicURL string
+	// ShutdownTimeout bounds how long running jobs get to finish after
+	// SIGTERM before they are released to run again (PENNY_SHUTDOWN_TIMEOUT,
+	// default 30s).
+	ShutdownTimeout time.Duration
 	Log             Log
 }
 
@@ -64,11 +85,28 @@ func LoadAPI(lookup LookupFunc) (API, error) {
 		DatabaseURL:     r.databaseURL("PENNY_DATABASE_URL"),
 		CORSOrigins:     r.origins("PENNY_CORS_ORIGINS"),
 		ShutdownTimeout: r.duration("PENNY_SHUTDOWN_TIMEOUT", 20*time.Second),
+		PublicURL:       r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
 		Firebase:        readFirebase(r),
 		Log:             readLog(r),
 	}
 	if cfg.HTTPAddr == cfg.AdminAddr {
 		r.fail("PENNY_ADMIN_ADDR", "must differ from PENNY_HTTP_ADDR")
+	}
+	return cfg, r.err()
+}
+
+// defaultPublicURL is the API under `task run:api`.
+const defaultPublicURL = "http://localhost:8080"
+
+// LoadWorker reads the worker binary's configuration.
+func LoadWorker(lookup LookupFunc) (Worker, error) {
+	r := newReader(lookup)
+	cfg := Worker{
+		AdminAddr:       r.listenAddr("PENNY_ADMIN_ADDR", ":9091"),
+		DatabaseURL:     r.databaseURL("PENNY_DATABASE_URL"),
+		PublicURL:       r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
+		ShutdownTimeout: r.duration("PENNY_SHUTDOWN_TIMEOUT", 30*time.Second),
+		Log:             readLog(r),
 	}
 	return cfg, r.err()
 }

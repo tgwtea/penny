@@ -214,3 +214,33 @@ func TestLoadAPIFirebase(t *testing.T) {
 		}
 	})
 }
+
+func TestPublicURL(t *testing.T) {
+	cfg, err := LoadAPI(minimalAPI(map[string]string{"PENNY_PUBLIC_URL": "https://api.example.com/"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicURL != "https://api.example.com" {
+		t.Errorf("PublicURL = %q, want it without the trailing slash", cfg.PublicURL)
+	}
+	if _, err := LoadAPI(minimalAPI(map[string]string{"PENNY_PUBLIC_URL": "api.example.com/v1"})); err == nil {
+		t.Error("LoadAPI accepted a public URL without a scheme")
+	}
+	def, err := LoadAPI(minimalAPI(nil))
+	if err != nil || def.PublicURL != "http://localhost:8080" {
+		t.Errorf("default PublicURL = %q, %v", def.PublicURL, err)
+	}
+}
+
+func TestLoadWorker(t *testing.T) {
+	cfg, err := LoadWorker(env(map[string]string{"PENNY_DATABASE_URL": testDatabaseURL}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AdminAddr != ":9091" || cfg.ShutdownTimeout != 30*time.Second {
+		t.Errorf("worker defaults = %+v", cfg)
+	}
+	if _, err := LoadWorker(env(nil)); err == nil {
+		t.Error("LoadWorker without a database succeeded")
+	}
+}

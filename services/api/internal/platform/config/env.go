@@ -157,3 +157,16 @@ func (r *reader) origins(key string) []string {
 	}
 	return out
 }
+
+// publicURL reads an absolute http(s) URL with no path beyond "/", query or
+// fragment, and returns it without a trailing slash.
+func (r *reader) publicURL(key, fallback string) string {
+	v := strings.TrimRight(r.string(key, fallback), "/")
+	u, err := url.Parse(v)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		r.fail(key, "must be an address such as https://api.example.com, got %q", v)
+		return fallback
+	}
+	return v
+}
