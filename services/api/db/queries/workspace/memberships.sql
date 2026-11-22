@@ -122,3 +122,9 @@ WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
 SELECT DISTINCT ON (user_id) user_id, display_name FROM workspace_memberships
 WHERE workspace_id = @workspace_id AND user_id = ANY(@user_ids::uuid[])
 ORDER BY user_id, (status = 'active') DESC, updated_at DESC;
+
+-- name: ListStaff :many
+-- Current owners and teachers, owners first, then by name.
+SELECT id, user_id, display_name, role, status FROM workspace_memberships
+WHERE workspace_id = @workspace_id AND status = 'active' AND role IN ('owner', 'teacher')
+ORDER BY role, lower(display_name), id;

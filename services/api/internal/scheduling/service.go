@@ -38,11 +38,15 @@ type Service struct {
 	audit *audit.Recorder
 	clock clock.Clock
 	hooks Hooks
+	// publicURL is the API's address as the world sees it, for links such
+	// as calendar feeds.
+	publicURL string
 }
 
-// NewService returns the scheduling service.
-func NewService(pool *pgxpool.Pool, teams Teams, rec *audit.Recorder, c clock.Clock) *Service {
-	return &Service{pool: pool, teams: teams, audit: rec, clock: c}
+// NewService returns the scheduling service. publicURL is the API's public
+// address, such as https://api.example.com.
+func NewService(pool *pgxpool.Pool, teams Teams, rec *audit.Recorder, c clock.Clock, publicURL string) *Service {
+	return &Service{pool: pool, teams: teams, audit: rec, clock: c, publicURL: strings.TrimRight(publicURL, "/")}
 }
 
 // SetHooks installs the hooks. Call it while wiring, before serving.

@@ -1,5 +1,6 @@
 import '../core/capability.dart';
 import '../core/failure.dart';
+import '../core/team_time.dart';
 import '../features/lessons/domain/clash_rule.dart';
 import '../features/lessons/domain/lesson.dart';
 import '../features/lessons/domain/lesson_repository.dart';
@@ -45,6 +46,8 @@ class DemoLessonRepository implements LessonRepository {
       }
       tutor = a.membershipId;
     }
+    final time = TeamTime(_store.team(teamId).timezone);
+    _s.bookAhead(teamId, through: time.dateOf(to), now: _store.now());
     final rows =
         _s
             .lessonsOf(teamId)
@@ -60,7 +63,7 @@ class DemoLessonRepository implements LessonRepository {
             final byStart = x.startsAt.compareTo(y.startsAt);
             return byStart != 0 ? byStart : x.id.compareTo(y.id);
           });
-    final clashes = _clashes(teamId);
+    final clashes = _clashes(teamId, from: from, to: to);
     return [for (final l in rows) _lesson(l, clashes)];
   }
 
@@ -69,30 +72,37 @@ class DemoLessonRepository implements LessonRepository {
     final a = DemoActor.of(_session, teamId);
     final l = _find(teamId, lessonId);
     a.requireView(l.tutorIds);
-    return _lesson(l, _clashes(teamId), detail: true);
+    return lessonOf(l, detail: true);
   }
+
+  /// [l] as the API returns it, with its clashes.
+  Lesson lessonOf(DemoLesson l, {bool detail = false}) => _lesson(
+    l,
+    _clashes(l.teamId, from: l.startsAt, to: l.endsAt),
+    detail: detail,
+  );
 
   @override
   Future<Lesson> create(String teamId, LessonDraft d) async {
     final a = DemoActor.of(_session, teamId)..require(Capability.manageLessons);
     _checkTimes(d.startsAt, d.endsAt);
-    _checkPeople(teamId, d.tutors, d.studentIds);
+    checkPeople(teamId, d.tutors, d.studentIds);
     final l = DemoLesson(
       id: _s.nextId('h'),
       teamId: teamId,
       startsAt: d.startsAt,
       endsAt: d.endsAt,
-      tutors: _leadFirst(d.tutors),
+      tutors: leadFirst(d.tutors),
       studentIds: [...d.studentIds],
       kind: d.kind,
       title: d.title.trim(),
-      place: _place(teamId, d.locationId),
+      place: placeOf(teamId, d.locationId),
       feeCents: d.feeCents,
       makeupForLessonId: d.makeupForLessonId,
     );
     _s.lessons[l.id] = l;
     _record(l, a, 'lesson.created');
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -112,18 +122,18 @@ class DemoLessonRepository implements LessonRepository {
     _checkTimes(start, end);
     final tutors = c.tutors ?? l.tutors;
     final students = c.studentIds ?? l.studentIds;
-    _checkPeople(teamId, tutors, students);
+    checkPeople(teamId, tutors, students);
     l
       ..startsAt = start
       ..endsAt = end
-      ..tutors = _leadFirst(tutors)
+      ..tutors = leadFirst(tutors)
       ..studentIds = [...students]
       ..title = c.title?.trim() ?? l.title
       ..feeCents = c.feeCents ?? l.feeCents
       ..version += 1;
-    if (c.locationId != null) l.place = _place(teamId, c.locationId);
+    if (c.locationId != null) l.place = placeOf(teamId, c.locationId);
     _record(l, a, 'lesson.updated');
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -146,7 +156,7 @@ class DemoLessonRepository implements LessonRepository {
       l.attendance[s] = attendance[s] ?? Attendance.present;
     }
     _record(l, a, 'lesson.completed');
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -164,7 +174,7 @@ class DemoLessonRepository implements LessonRepository {
       l.attendance[s] = Attendance.absent;
     }
     _record(l, a, 'lesson.no_show');
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -215,7 +225,7 @@ class DemoLessonRepository implements LessonRepository {
       _s.lessons[m.id] = m;
       _record(m, a, 'lesson.created');
     }
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -238,7 +248,7 @@ class DemoLessonRepository implements LessonRepository {
       ..version += 1;
     l.attendance.clear();
     _record(l, a, 'lesson.reopened');
-    return _lesson(l, _clashes(teamId));
+    return lessonOf(l);
   }
 
   @override
@@ -391,7 +401,9 @@ class DemoLessonRepository implements LessonRepository {
     }
   }
 
-  void _checkPeople(
+  /// Checks [tutors] and [students] as the server does: one lead, current
+  /// owners and teachers, current students, nobody twice.
+  void checkPeople(
     String teamId,
     List<TutorChoice> tutors,
     List<String> students,
@@ -439,7 +451,8 @@ class DemoLessonRepository implements LessonRepository {
     }
   }
 
-  LessonPlace? _place(String teamId, String? locationId) {
+  /// The snapshot of a saved place a lesson keeps, checking it is current.
+  LessonPlace? placeOf(String teamId, String? locationId) {
     if (locationId == null) return null;
     final loc = _s.locations[locationId];
     if (loc == null || loc.teamId != teamId || loc.archived) {
@@ -457,7 +470,8 @@ class DemoLessonRepository implements LessonRepository {
     );
   }
 
-  static List<TutorChoice> _leadFirst(List<TutorChoice> tutors) => [
+  /// [tutors] with the lead first.
+  static List<TutorChoice> leadFirst(List<TutorChoice> tutors) => [
     ...tutors.where((t) => t.role == TutorRole.lead),
     ...tutors.where((t) => t.role != TutorRole.lead),
   ];
@@ -470,18 +484,26 @@ class DemoLessonRepository implements LessonRepository {
     ),
   );
 
-  /// Every clash in the team, by lesson, from the shared rule.
-  Map<String, List<ClashPair>> _clashes(String teamId) {
+  /// Every clash in the team, by lesson, from the shared rule. With a
+  /// window, only lessons overlapping it are compared: a clash needs an
+  /// overlap, and a series books many weeks of lessons.
+  Map<String, List<ClashPair>> _clashes(
+    String teamId, {
+    DateTime? from,
+    DateTime? to,
+  }) {
     final pairs = findClashes([
       for (final l in _s.lessonsOf(teamId))
-        ClashLesson(
-          id: l.id,
-          start: l.startsAt,
-          end: l.endsAt,
-          cancelled: l.status == LessonStatus.cancelled,
-          tutors: l.tutorIds,
-          students: l.studentIds,
-        ),
+        if ((from == null || l.endsAt.isAfter(from)) &&
+            (to == null || l.startsAt.isBefore(to)))
+          ClashLesson(
+            id: l.id,
+            start: l.startsAt,
+            end: l.endsAt,
+            cancelled: l.status == LessonStatus.cancelled,
+            tutors: l.tutorIds,
+            students: l.studentIds,
+          ),
     ]);
     final out = <String, List<ClashPair>>{};
     for (final p in pairs) {
@@ -529,6 +551,7 @@ class DemoLessonRepository implements LessonRepository {
       billable: l.billable,
       makeupForLessonId: l.makeupForLessonId,
       makeupLessonId: l.status == LessonStatus.cancelled ? makeup?.id : null,
+      seriesId: l.seriesId,
       cancellation: l.cancellation,
       completedAt: l.completedAt,
       clashes: [

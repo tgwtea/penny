@@ -10,6 +10,7 @@ import '../../lessons/presentation/policy_form.dart';
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../../team/presentation/team_switcher.dart';
+import '../../timetable/presentation/calendar_link.dart';
 import '../application/session_controller.dart';
 import '../domain/session.dart';
 
@@ -151,6 +152,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen>
               session.activeMembership != null) ...[
             const PennySectionHeader(title: 'Your cancellation policy'),
             PolicySummary(membershipId: session.activeMembership!.id),
+            const PennySectionHeader(title: 'Calendar link'),
+            CalendarLinkSection(membershipId: session.activeMembership!.id),
           ],
           if (session is SignedIn && session.can(Capability.manageLessons)) ...[
             const PennySectionHeader(title: 'Places'),

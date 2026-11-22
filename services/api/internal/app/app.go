@@ -24,6 +24,9 @@ type Deps struct {
 	Pool     *pgxpool.Pool
 	Verifier identity.Verifier
 	Clock    clock.Clock
+	// PublicURL is the API's address as the world reaches it, for links
+	// the API hands out (calendar feeds).
+	PublicURL string
 }
 
 // Services are every module's service, ready to use.
@@ -50,7 +53,7 @@ func New(d Deps) (*Services, error) {
 		Users:      users,
 		Account:    account.NewService(d.Pool, users, teams, rec),
 		Teams:      teams,
-		Scheduling: scheduling.NewService(d.Pool, teams, rec, d.Clock),
+		Scheduling: scheduling.NewService(d.Pool, teams, rec, d.Clock, d.PublicURL),
 		Audit:      rec,
 	}, nil
 }

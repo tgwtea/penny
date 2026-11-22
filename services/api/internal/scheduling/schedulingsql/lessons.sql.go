@@ -77,7 +77,7 @@ INSERT INTO lessons (
     $7, $8, $9, $10, $11,
     $12, $13, $14
 )
-RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at
+RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date
 `
 
 type CreateLessonParams struct {
@@ -145,12 +145,14 @@ func (q *Queries) CreateLesson(ctx context.Context, arg CreateLessonParams) (Les
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesID,
+		&i.SeriesDate,
 	)
 	return i, err
 }
 
 const getLesson = `-- name: GetLesson :one
-SELECT id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at FROM lessons WHERE workspace_id = $1 AND id = $2
+SELECT id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date FROM lessons WHERE workspace_id = $1 AND id = $2
 `
 
 type GetLessonParams struct {
@@ -190,6 +192,8 @@ func (q *Queries) GetLesson(ctx context.Context, arg GetLessonParams) (Lesson, e
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesID,
+		&i.SeriesDate,
 	)
 	return i, err
 }
@@ -277,7 +281,7 @@ func (q *Queries) ListLessonTutors(ctx context.Context, arg ListLessonTutorsPara
 }
 
 const listLessons = `-- name: ListLessons :many
-SELECT l.id, l.workspace_id, l.starts_at, l.ends_at, l.status, l.kind, l.title, l.makeup_for_lesson_id, l.location_id, l.location_kind, l.location_name, l.location_address, l.meeting_url, l.fee_cents, l.currency, l.billable, l.completed_at, l.no_show_at, l.marked_by, l.cancelled_at, l.cancelled_by, l.cancellation_party, l.cancellation_reason, l.cancellation_late, l.created_by, l.version, l.created_at, l.updated_at FROM lessons l
+SELECT l.id, l.workspace_id, l.starts_at, l.ends_at, l.status, l.kind, l.title, l.makeup_for_lesson_id, l.location_id, l.location_kind, l.location_name, l.location_address, l.meeting_url, l.fee_cents, l.currency, l.billable, l.completed_at, l.no_show_at, l.marked_by, l.cancelled_at, l.cancelled_by, l.cancellation_party, l.cancellation_reason, l.cancellation_late, l.created_by, l.version, l.created_at, l.updated_at, l.series_id, l.series_date FROM lessons l
 WHERE l.workspace_id = $1
   AND l.starts_at < $2 AND l.ends_at > $3
   AND ($4::uuid IS NULL OR EXISTS (
@@ -350,6 +354,8 @@ func (q *Queries) ListLessons(ctx context.Context, arg ListLessonsParams) ([]Les
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SeriesID,
+			&i.SeriesDate,
 		); err != nil {
 			return nil, err
 		}
@@ -362,7 +368,7 @@ func (q *Queries) ListLessons(ctx context.Context, arg ListLessonsParams) ([]Les
 }
 
 const lockLesson = `-- name: LockLesson :one
-SELECT id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at FROM lessons WHERE workspace_id = $1 AND id = $2 FOR UPDATE
+SELECT id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date FROM lessons WHERE workspace_id = $1 AND id = $2 FOR UPDATE
 `
 
 type LockLessonParams struct {
@@ -402,6 +408,8 @@ func (q *Queries) LockLesson(ctx context.Context, arg LockLessonParams) (Lesson,
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesID,
+		&i.SeriesDate,
 	)
 	return i, err
 }
@@ -488,7 +496,7 @@ SET status = $1,
     cancellation_late = $10,
     version = version + 1, updated_at = now()
 WHERE workspace_id = $11 AND id = $12
-RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at
+RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date
 `
 
 type SetLessonStatusParams struct {
@@ -553,6 +561,8 @@ func (q *Queries) SetLessonStatus(ctx context.Context, arg SetLessonStatusParams
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesID,
+		&i.SeriesDate,
 	)
 	return i, err
 }
@@ -705,7 +715,7 @@ SET starts_at = $1, ends_at = $2, title = $3, fee_cents = $4,
     location_name = $7, location_address = $8, meeting_url = $9,
     version = version + 1, updated_at = now()
 WHERE workspace_id = $10 AND id = $11
-RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at
+RETURNING id, workspace_id, starts_at, ends_at, status, kind, title, makeup_for_lesson_id, location_id, location_kind, location_name, location_address, meeting_url, fee_cents, currency, billable, completed_at, no_show_at, marked_by, cancelled_at, cancelled_by, cancellation_party, cancellation_reason, cancellation_late, created_by, version, created_at, updated_at, series_id, series_date
 `
 
 type UpdateLessonDetailsParams struct {
@@ -766,6 +776,8 @@ func (q *Queries) UpdateLessonDetails(ctx context.Context, arg UpdateLessonDetai
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SeriesID,
+		&i.SeriesDate,
 	)
 	return i, err
 }

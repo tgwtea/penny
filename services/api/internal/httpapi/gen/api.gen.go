@@ -347,6 +347,12 @@ type AddMemberRequest struct {
 // Attendance defines model for Attendance.
 type Attendance string
 
+// CalendarFeed defines model for CalendarFeed.
+type CalendarFeed struct {
+	// Url The private link. Treat it like a password.
+	Url string `json:"url"`
+}
+
 // CancelLessonRequest defines model for CancelLessonRequest.
 type CancelLessonRequest struct {
 	Makeup *MakeupTime `json:"makeup,omitempty"`
@@ -468,6 +474,12 @@ type CreateWorkspaceRequest struct {
 	Timezone *string `json:"timezone,omitempty"`
 }
 
+// EndSeriesRequest defines model for EndSeriesRequest.
+type EndSeriesRequest struct {
+	// After The last day a lesson of the series stays.
+	After openapi_types.Date `json:"after"`
+}
+
 // Goal Something a student works towards over several lessons.
 type Goal struct {
 	AchievedAt *time.Time         `json:"achievedAt,omitempty"`
@@ -569,9 +581,12 @@ type Lesson struct {
 
 	// MakeupLessonId The make-up booked when this lesson was cancelled.
 	MakeupLessonId *openapi_types.UUID `json:"makeupLessonId,omitempty"`
-	StartsAt       time.Time           `json:"startsAt"`
-	Status         LessonStatus        `json:"status"`
-	Students       []LessonStudent     `json:"students"`
+
+	// SeriesId The recurring lesson this occurrence belongs to.
+	SeriesId *openapi_types.UUID `json:"seriesId,omitempty"`
+	StartsAt time.Time           `json:"startsAt"`
+	Status   LessonStatus        `json:"status"`
+	Students []LessonStudent     `json:"students"`
 
 	// Title Example: Guitar, Grade 5
 	Title *string `json:"title,omitempty"`
@@ -827,6 +842,66 @@ type Problem struct {
 	Type string `json:"type"`
 }
 
+// Series defines model for Series.
+type Series struct {
+	// BookedUntil Lessons exist up to this day; the worker books further ahead.
+	BookedUntil     openapi_types.Date `json:"bookedUntil"`
+	Currency        string             `json:"currency"`
+	DurationMinutes int32              `json:"durationMinutes"`
+	FeeCents        int64              `json:"feeCents"`
+	Id              openapi_types.UUID `json:"id"`
+
+	// Location Where the lesson is, as it was when booked.
+	Location   *LessonLocation     `json:"location,omitempty"`
+	Recurrence string              `json:"recurrence"`
+	StartTime  string              `json:"startTime"`
+	StartsOn   openapi_types.Date  `json:"startsOn"`
+	Students   []LessonStudent     `json:"students"`
+	Timezone   string              `json:"timezone"`
+	Title      *string             `json:"title,omitempty"`
+	Tutors     []LessonTutor       `json:"tutors"`
+	Until      *openapi_types.Date `json:"until,omitempty"`
+	Version    int32               `json:"version"`
+}
+
+// SeriesChanges defines model for SeriesChanges.
+type SeriesChanges struct {
+	DurationMinutes *int32 `json:"durationMinutes,omitempty"`
+	FeeCents        *int64 `json:"feeCents,omitempty"`
+
+	// From The first day the change applies to, in the team's timezone.
+	From       openapi_types.Date    `json:"from"`
+	LocationId *openapi_types.UUID   `json:"locationId,omitempty"`
+	StartTime  *string               `json:"startTime,omitempty"`
+	StudentIds *[]openapi_types.UUID `json:"studentIds,omitempty"`
+	Title      *string               `json:"title,omitempty"`
+	Tutors     *[]TutorInput         `json:"tutors,omitempty"`
+}
+
+// SeriesInput defines model for SeriesInput.
+type SeriesInput struct {
+	DurationMinutes int32               `json:"durationMinutes"`
+	FeeCents        *int64              `json:"feeCents,omitempty"`
+	LocationId      *openapi_types.UUID `json:"locationId,omitempty"`
+
+	// Recurrence An RFC 5545 rule without DTSTART, such as FREQ=WEEKLY;BYDAY=TH.
+	//
+	// Example: FREQ=WEEKLY;BYDAY=TH
+	Recurrence string `json:"recurrence"`
+
+	// StartTime The wall-clock start, such as "16:00".
+	StartTime string `json:"startTime"`
+
+	// StartsOn The first day, in the team's timezone.
+	StartsOn   openapi_types.Date   `json:"startsOn"`
+	StudentIds []openapi_types.UUID `json:"studentIds"`
+	Title      *string              `json:"title,omitempty"`
+	Tutors     []TutorInput         `json:"tutors"`
+
+	// Until The last day lessons may fall on. Open-ended without.
+	Until *openapi_types.Date `json:"until,omitempty"`
+}
+
 // ServerVersion defines model for ServerVersion.
 type ServerVersion struct {
 	// Commit The git commit the server was built from, or "unknown".
@@ -895,6 +970,23 @@ type StudentSummary struct {
 
 	// PrimaryTeacher A team member, as other records mention them.
 	PrimaryTeacher *MemberRef `json:"primaryTeacher,omitempty"`
+}
+
+// Timetable defines model for Timetable.
+type Timetable struct {
+	// Columns Owners first, then teachers, by name.
+	Columns []TimetableColumn `json:"columns"`
+
+	// Timezone The team's timezone, which the columns' days follow.
+	Timezone string `json:"timezone"`
+}
+
+// TimetableColumn defines model for TimetableColumn.
+type TimetableColumn struct {
+	Lessons []Lesson `json:"lessons"`
+
+	// Tutor A team member, as other records mention them.
+	Tutor MemberRef `json:"tutor"`
 }
 
 // TutorInput defines model for TutorInput.
@@ -982,6 +1074,9 @@ type LocationId = openapi_types.UUID
 // MemberId defines model for MemberId.
 type MemberId = openapi_types.UUID
 
+// SeriesId defines model for SeriesId.
+type SeriesId = openapi_types.UUID
+
 // StudentId defines model for StudentId.
 type StudentId = openapi_types.UUID
 
@@ -1049,6 +1144,22 @@ type ReopenLessonParams struct {
 	IfMatch IfMatch `json:"If-Match"`
 }
 
+// UpdateSeriesParams defines parameters for UpdateSeries.
+type UpdateSeriesParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
+// EndSeriesParams defines parameters for EndSeries.
+type EndSeriesParams struct {
+	// IfMatch The lesson's `version` as last read, such as `"3"`. A lesson changed
+	// since is refused with 412, so nobody overwrites a change they have
+	// not seen.
+	IfMatch IfMatch `json:"If-Match"`
+}
+
 // ListStudentsParams defines parameters for ListStudents.
 type ListStudentsParams struct {
 	// Search Matches the start of any word of the name, ignoring case.
@@ -1065,6 +1176,17 @@ type ListStudentsParams struct {
 
 	// Limit The most items to return.
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetTimetableParams defines parameters for GetTimetable.
+type GetTimetableParams struct {
+	From time.Time `form:"from" json:"from"`
+
+	// To At most 7 days after `from`.
+	To time.Time `form:"to" json:"to"`
+
+	// TeacherIds Only these tutors' columns.
+	TeacherIds *[]openapi_types.UUID `form:"teacherIds,omitempty" json:"teacherIds,omitempty"`
 }
 
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
@@ -1108,6 +1230,15 @@ type UpdateMemberJSONRequestBody = UpdateMemberRequest
 
 // SetCancellationPolicyJSONRequestBody defines body for SetCancellationPolicy for application/json ContentType.
 type SetCancellationPolicyJSONRequestBody = CancellationPolicyInput
+
+// CreateSeriesJSONRequestBody defines body for CreateSeries for application/json ContentType.
+type CreateSeriesJSONRequestBody = SeriesInput
+
+// UpdateSeriesJSONRequestBody defines body for UpdateSeries for application/json ContentType.
+type UpdateSeriesJSONRequestBody = SeriesChanges
+
+// EndSeriesJSONRequestBody defines body for EndSeries for application/json ContentType.
+type EndSeriesJSONRequestBody = EndSeriesRequest
 
 // CreateStudentJSONRequestBody defines body for CreateStudent for application/json ContentType.
 type CreateStudentJSONRequestBody = StudentInput
@@ -1216,6 +1347,15 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /readyz (the `GetReadyz` operationId).
 	GetReadyz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCalendarFeed A tutor's lessons as an iCalendar feed
+	//
+	// Public: the unguessable link is the credential. Lessons from 30 days
+	// ago to 180 days ahead, with students' first names and the place only,
+	// never notes or contacts.
+	//
+	// Corresponds with GET /v1/calendar/{token} (the `GetCalendarFeed` operationId).
+	GetCalendarFeed(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteMe Delete the signed-in person's account
 	//
@@ -1579,6 +1719,20 @@ type ClientInterface interface {
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
 	UpdateMember(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RevokeCalendarFeed Stop a tutor's calendar link working
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `RevokeCalendarFeed` operationId).
+	RevokeCalendarFeed(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateCalendarFeed Make a new private calendar link for a tutor
+	//
+	// The tutor themselves, or the team owner. Any earlier link for the
+	// tutor stops working. The link is shown once; Penny keeps only a hash
+	// of it.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `CreateCalendarFeed` operationId).
+	CreateCalendarFeed(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetCancellationPolicy Get a tutor's cancellation policy
 	//
 	// Any member may read it; it is shown to parents too. Tutors who have
@@ -1605,6 +1759,85 @@ type ClientInterface interface {
 	//
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 	SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSeriesWithBody Book a recurring lesson
+	//
+	// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+	// team's timezone) plus the lesson it repeats. Every occurrence is its
+	// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+	// can carry its own notes, attendance and payment.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+	CreateSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateSeries Book a recurring lesson
+	//
+	// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+	// team's timezone) plus the lesson it repeats. Every occurrence is its
+	// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+	// can carry its own notes, attendance and payment.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+	CreateSeries(ctx context.Context, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSeries Get a recurring lesson
+	//
+	// For owners, and for tutors on the series.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/series/{seriesId} (the `GetSeries` operationId).
+	GetSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSeriesWithBody Change a recurring lesson from a date onwards
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. The change applies to scheduled lessons on and
+	// after `from` ("this and following"; send today for "all future
+	// lessons"). Earlier lessons, and lessons that are done or cancelled,
+	// are never rewritten. To change one lesson only, change the lesson.
+	// Send the series' `version` in `If-Match`.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+	UpdateSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateSeries Change a recurring lesson from a date onwards
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. The change applies to scheduled lessons on and
+	// after `from` ("this and following"; send today for "all future
+	// lessons"). Earlier lessons, and lessons that are done or cancelled,
+	// are never rewritten. To change one lesson only, change the lesson.
+	// Send the series' `version` in `If-Match`.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+	UpdateSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, body UpdateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EndSeriesWithBody Stop a recurring lesson after a date
+	//
+	// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+	// lessons that are done, cancelled or have notes on them stay.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+	EndSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EndSeries Stop a recurring lesson after a date
+	//
+	// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+	// lessons that are done, cancelled or have notes on them stay.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+	EndSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, body EndSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListStudents List students
 	//
@@ -1736,6 +1969,15 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
 	UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTimetable The team timetable, one column per tutor
+	//
+	// Needs `view_team_timetable`. Every current owner and teacher gets a
+	// column, with or without lessons, so free time is visible. A lesson
+	// with several tutors appears in each of their columns.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/timetable (the `GetTimetable` operationId).
+	GetTimetable(ctx context.Context, workspaceId WorkspaceId, params *GetTimetableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 // GetLivez Report that the process is running
@@ -1764,6 +2006,25 @@ func (c *Client) GetLivez(ctx context.Context, reqEditors ...RequestEditorFn) (*
 // Corresponds with GET /readyz (the `GetReadyz` operationId).
 func (c *Client) GetReadyz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetReadyzRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetCalendarFeed A tutor's lessons as an iCalendar feed
+//
+// Public: the unguessable link is the credential. Lessons from 30 days
+// ago to 180 days ahead, with students' first names and the place only,
+// never notes or contacts.
+//
+// Corresponds with GET /v1/calendar/{token} (the `GetCalendarFeed` operationId).
+func (c *Client) GetCalendarFeed(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetCalendarFeedRequest(c.Server, token)
 	if err != nil {
 		return nil, err
 	}
@@ -2536,6 +2797,40 @@ func (c *Client) UpdateMember(ctx context.Context, workspaceId WorkspaceId, memb
 	return c.Client.Do(req)
 }
 
+// RevokeCalendarFeed Stop a tutor's calendar link working
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `RevokeCalendarFeed` operationId).
+func (c *Client) RevokeCalendarFeed(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRevokeCalendarFeedRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateCalendarFeed Make a new private calendar link for a tutor
+//
+// The tutor themselves, or the team owner. Any earlier link for the
+// tutor stops working. The link is shown once; Penny keeps only a hash
+// of it.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `CreateCalendarFeed` operationId).
+func (c *Client) CreateCalendarFeed(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateCalendarFeedRequest(c.Server, workspaceId, memberId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetCancellationPolicy Get a tutor's cancellation policy
 //
 // Any member may read it; it is shown to parents too. Tutors who have
@@ -2583,6 +2878,155 @@ func (c *Client) SetCancellationPolicyWithBody(ctx context.Context, workspaceId 
 // Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 func (c *Client) SetCancellationPolicy(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetCancellationPolicyRequest(c.Server, workspaceId, memberId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSeriesWithBody Book a recurring lesson
+//
+// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+// team's timezone) plus the lesson it repeats. Every occurrence is its
+// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+// can carry its own notes, attendance and payment.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+func (c *Client) CreateSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSeriesRequestWithBody(c.Server, workspaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateSeries Book a recurring lesson
+//
+// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+// team's timezone) plus the lesson it repeats. Every occurrence is its
+// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+// can carry its own notes, attendance and payment.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+func (c *Client) CreateSeries(ctx context.Context, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateSeriesRequest(c.Server, workspaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetSeries Get a recurring lesson
+//
+// For owners, and for tutors on the series.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/series/{seriesId} (the `GetSeries` operationId).
+func (c *Client) GetSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSeriesRequest(c.Server, workspaceId, seriesId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSeriesWithBody Change a recurring lesson from a date onwards
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. The change applies to scheduled lessons on and
+// after `from` ("this and following"; send today for "all future
+// lessons"). Earlier lessons, and lessons that are done or cancelled,
+// are never rewritten. To change one lesson only, change the lesson.
+// Send the series' `version` in `If-Match`.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+func (c *Client) UpdateSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSeriesRequestWithBody(c.Server, workspaceId, seriesId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateSeries Change a recurring lesson from a date onwards
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. The change applies to scheduled lessons on and
+// after `from` ("this and following"; send today for "all future
+// lessons"). Earlier lessons, and lessons that are done or cancelled,
+// are never rewritten. To change one lesson only, change the lesson.
+// Send the series' `version` in `If-Match`.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+func (c *Client) UpdateSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, body UpdateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateSeriesRequest(c.Server, workspaceId, seriesId, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EndSeriesWithBody Stop a recurring lesson after a date
+//
+// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+// lessons that are done, cancelled or have notes on them stay.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+func (c *Client) EndSeriesWithBody(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEndSeriesRequestWithBody(c.Server, workspaceId, seriesId, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// EndSeries Stop a recurring lesson after a date
+//
+// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+// lessons that are done, cancelled or have notes on them stay.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+func (c *Client) EndSeries(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, body EndSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewEndSeriesRequest(c.Server, workspaceId, seriesId, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2874,6 +3318,25 @@ func (c *Client) UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studen
 	return c.Client.Do(req)
 }
 
+// GetTimetable The team timetable, one column per tutor
+//
+// Needs `view_team_timetable`. Every current owner and teacher gets a
+// column, with or without lessons, so free time is visible. A lesson
+// with several tutors appears in each of their columns.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/timetable (the `GetTimetable` operationId).
+func (c *Client) GetTimetable(ctx context.Context, workspaceId WorkspaceId, params *GetTimetableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTimetableRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // NewGetLivezRequest constructs an http.Request for the GetLivez method
 func NewGetLivezRequest(server string) (*http.Request, error) {
 	var err error
@@ -2911,6 +3374,40 @@ func NewGetReadyzRequest(server string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/readyz")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetCalendarFeedRequest constructs an http.Request for the GetCalendarFeed method
+func NewGetCalendarFeedRequest(server string, token string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "token", token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/calendar/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -4236,6 +4733,88 @@ func NewUpdateMemberRequestWithBody(server string, workspaceId WorkspaceId, memb
 	return req, nil
 }
 
+// NewRevokeCalendarFeedRequest constructs an http.Request for the RevokeCalendarFeed method
+func NewRevokeCalendarFeedRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/calendar-feed", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateCalendarFeedRequest constructs an http.Request for the CreateCalendarFeed method
+func NewCreateCalendarFeedRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "memberId", memberId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/members/%s/calendar-feed", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCancellationPolicyRequest constructs an http.Request for the GetCancellationPolicy method
 func NewGetCancellationPolicyRequest(server string, workspaceId WorkspaceId, memberId MemberId) (*http.Request, error) {
 	var err error
@@ -4327,6 +4906,228 @@ func NewSetCancellationPolicyRequestWithBody(server string, workspaceId Workspac
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateSeriesRequest calls the generic CreateSeries builder with application/json body
+func NewCreateSeriesRequest(server string, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateSeriesRequestWithBody(server, workspaceId, "application/json", bodyReader)
+}
+
+// NewCreateSeriesRequestWithBody constructs an http.Request for the CreateSeries method, with any body, and a specified content type
+func NewCreateSeriesRequestWithBody(server string, workspaceId WorkspaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/series", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetSeriesRequest constructs an http.Request for the GetSeries method
+func NewGetSeriesRequest(server string, workspaceId WorkspaceId, seriesId SeriesId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "seriesId", seriesId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/series/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateSeriesRequest calls the generic UpdateSeries builder with application/json body
+func NewUpdateSeriesRequest(server string, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, body UpdateSeriesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateSeriesRequestWithBody(server, workspaceId, seriesId, params, "application/json", bodyReader)
+}
+
+// NewUpdateSeriesRequestWithBody constructs an http.Request for the UpdateSeries method, with any body, and a specified content type
+func NewUpdateSeriesRequestWithBody(server string, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "seriesId", seriesId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/series/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
+
+	return req, nil
+}
+
+// NewEndSeriesRequest calls the generic EndSeries builder with application/json body
+func NewEndSeriesRequest(server string, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, body EndSeriesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewEndSeriesRequestWithBody(server, workspaceId, seriesId, params, "application/json", bodyReader)
+}
+
+// NewEndSeriesRequestWithBody constructs an http.Request for the EndSeries method, with any body, and a specified content type
+func NewEndSeriesRequestWithBody(server string, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "seriesId", seriesId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/series/%s/end", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "If-Match", params.IfMatch, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("If-Match", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -4860,6 +5661,83 @@ func NewUpdateGoalRequestWithBody(server string, workspaceId WorkspaceId, studen
 	return req, nil
 }
 
+// NewGetTimetableRequest constructs an http.Request for the GetTimetable method
+func NewGetTimetableRequest(server string, workspaceId WorkspaceId, params *GetTimetableParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/timetable", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if params.TeacherIds != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", false, "teacherIds", *params.TeacherIds, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "array", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -4923,6 +5801,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /readyz (the `GetReadyz` operationId).
 	GetReadyzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReadyzResponse, error)
+
+	// GetCalendarFeedWithResponse A tutor's lessons as an iCalendar feed
+	//
+	// Public: the unguessable link is the credential. Lessons from 30 days
+	// ago to 180 days ahead, with students' first names and the place only,
+	// never notes or contacts.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/calendar/{token} (the `GetCalendarFeed` operationId).
+	GetCalendarFeedWithResponse(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*GetCalendarFeedResponse, error)
 
 	// DeleteMeWithResponse Delete the signed-in person's account
 	//
@@ -5314,6 +6203,24 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/members/{memberId} (the `UpdateMember` operationId).
 	UpdateMemberWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body UpdateMemberJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMemberResponse, error)
 
+	// RevokeCalendarFeedWithResponse Stop a tutor's calendar link working
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `RevokeCalendarFeed` operationId).
+	RevokeCalendarFeedWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*RevokeCalendarFeedResponse, error)
+
+	// CreateCalendarFeedWithResponse Make a new private calendar link for a tutor
+	//
+	// The tutor themselves, or the team owner. Any earlier link for the
+	// tutor stops working. The link is shown once; Penny keeps only a hash
+	// of it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `CreateCalendarFeed` operationId).
+	CreateCalendarFeedWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*CreateCalendarFeedResponse, error)
+
 	// GetCancellationPolicyWithResponse Get a tutor's cancellation policy
 	//
 	// Any member may read it; it is shown to parents too. Tutors who have
@@ -5342,6 +6249,87 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy (the `SetCancellationPolicy` operationId).
 	SetCancellationPolicyWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, body SetCancellationPolicyJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCancellationPolicyResponse, error)
+
+	// CreateSeriesWithBodyWithResponse Book a recurring lesson
+	//
+	// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+	// team's timezone) plus the lesson it repeats. Every occurrence is its
+	// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+	// can carry its own notes, attendance and payment.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+	CreateSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSeriesResponse, error)
+
+	// CreateSeriesWithResponse Book a recurring lesson
+	//
+	// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+	// team's timezone) plus the lesson it repeats. Every occurrence is its
+	// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+	// can carry its own notes, attendance and payment.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+	CreateSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSeriesResponse, error)
+
+	// GetSeriesWithResponse Get a recurring lesson
+	//
+	// For owners, and for tutors on the series.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/series/{seriesId} (the `GetSeries` operationId).
+	GetSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, reqEditors ...RequestEditorFn) (*GetSeriesResponse, error)
+
+	// UpdateSeriesWithBodyWithResponse Change a recurring lesson from a date onwards
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. The change applies to scheduled lessons on and
+	// after `from` ("this and following"; send today for "all future
+	// lessons"). Earlier lessons, and lessons that are done or cancelled,
+	// are never rewritten. To change one lesson only, change the lesson.
+	// Send the series' `version` in `If-Match`.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+	UpdateSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSeriesResponse, error)
+
+	// UpdateSeriesWithResponse Change a recurring lesson from a date onwards
+	//
+	// Needs `manage_lessons`; changing tutors also needs
+	// `reassign_lessons`. The change applies to scheduled lessons on and
+	// after `from` ("this and following"; send today for "all future
+	// lessons"). Earlier lessons, and lessons that are done or cancelled,
+	// are never rewritten. To change one lesson only, change the lesson.
+	// Send the series' `version` in `If-Match`.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+	UpdateSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, body UpdateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSeriesResponse, error)
+
+	// EndSeriesWithBodyWithResponse Stop a recurring lesson after a date
+	//
+	// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+	// lessons that are done, cancelled or have notes on them stay.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+	EndSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EndSeriesResponse, error)
+
+	// EndSeriesWithResponse Stop a recurring lesson after a date
+	//
+	// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+	// lessons that are done, cancelled or have notes on them stay.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+	EndSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, body EndSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*EndSeriesResponse, error)
 
 	// ListStudentsWithResponse List students
 	//
@@ -5479,6 +6467,17 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
 	UpdateGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error)
+
+	// GetTimetableWithResponse The team timetable, one column per tutor
+	//
+	// Needs `view_team_timetable`. Every current owner and teacher gets a
+	// column, with or without lessons, so free time is visible. A lesson
+	// with several tutors appears in each of their columns.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/timetable (the `GetTimetable` operationId).
+	GetTimetableWithResponse(ctx context.Context, workspaceId WorkspaceId, params *GetTimetableParams, reqEditors ...RequestEditorFn) (*GetTimetableResponse, error)
 }
 
 type GetLivezResponse struct {
@@ -5564,6 +6563,54 @@ func (r GetReadyzResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetReadyzResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCalendarFeedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetCalendarFeedResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetCalendarFeedResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetCalendarFeedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCalendarFeedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCalendarFeedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCalendarFeedResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -7503,6 +8550,137 @@ func (r UpdateMemberResponse) ContentType() string {
 	return ""
 }
 
+type RevokeCalendarFeedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RevokeCalendarFeedResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RevokeCalendarFeedResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RevokeCalendarFeedResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RevokeCalendarFeedResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RevokeCalendarFeedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RevokeCalendarFeedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RevokeCalendarFeedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RevokeCalendarFeedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateCalendarFeedResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *CalendarFeed
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateCalendarFeedResponse) GetJSON201() *CalendarFeed {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateCalendarFeedResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateCalendarFeedResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreateCalendarFeedResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateCalendarFeedResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateCalendarFeedResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateCalendarFeedResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateCalendarFeedResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCalendarFeedResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCancellationPolicyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7635,6 +8813,310 @@ func (r SetCancellationPolicyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetCancellationPolicyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateSeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON201 the response for an HTTP 201 `application/json` response
+	JSON201 *Series
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON201 returns the response for an HTTP 201 `application/json` response
+func (r CreateSeriesResponse) GetJSON201() *Series {
+	return r.JSON201
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r CreateSeriesResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r CreateSeriesResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r CreateSeriesResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r CreateSeriesResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r CreateSeriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateSeriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateSeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateSeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateSeriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetSeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Series
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetSeriesResponse) GetJSON200() *Series {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetSeriesResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetSeriesResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetSeriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetSeriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSeriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateSeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Series
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateSeriesResponse) GetJSON200() *Series {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateSeriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateSeriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateSeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateSeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSeriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type EndSeriesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Series
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON412 the response for an HTTP 412 `application/problem+json` response
+	ApplicationproblemJSON412 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r EndSeriesResponse) GetJSON200() *Series {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON412 returns the response for an HTTP 412 `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSON412() *Problem {
+	return r.ApplicationproblemJSON412
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r EndSeriesResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r EndSeriesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r EndSeriesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EndSeriesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EndSeriesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8297,6 +9779,82 @@ func (r UpdateGoalResponse) ContentType() string {
 	return ""
 }
 
+type GetTimetableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Timetable
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetTimetableResponse) GetJSON200() *Timetable {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r GetTimetableResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetTimetableResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetTimetableResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetTimetableResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetTimetableResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetTimetableResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTimetableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTimetableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTimetableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // GetLivezWithResponse Report that the process is running
 //
 // Succeeds whenever the process can serve HTTP. It never checks
@@ -8327,6 +9885,23 @@ func (c *ClientWithResponses) GetReadyzWithResponse(ctx context.Context, reqEdit
 		return nil, err
 	}
 	return ParseGetReadyzResponse(rsp)
+}
+
+// GetCalendarFeedWithResponse A tutor's lessons as an iCalendar feed
+//
+// Public: the unguessable link is the credential. Lessons from 30 days
+// ago to 180 days ahead, with students' first names and the place only,
+// never notes or contacts.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/calendar/{token} (the `GetCalendarFeed` operationId).
+func (c *ClientWithResponses) GetCalendarFeedWithResponse(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*GetCalendarFeedResponse, error) {
+	rsp, err := c.GetCalendarFeed(ctx, token, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCalendarFeedResponse(rsp)
 }
 
 // DeleteMeWithResponse Delete the signed-in person's account
@@ -8959,6 +10534,36 @@ func (c *ClientWithResponses) UpdateMemberWithResponse(ctx context.Context, work
 	return ParseUpdateMemberResponse(rsp)
 }
 
+// RevokeCalendarFeedWithResponse Stop a tutor's calendar link working
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `RevokeCalendarFeed` operationId).
+func (c *ClientWithResponses) RevokeCalendarFeedWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*RevokeCalendarFeedResponse, error) {
+	rsp, err := c.RevokeCalendarFeed(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRevokeCalendarFeedResponse(rsp)
+}
+
+// CreateCalendarFeedWithResponse Make a new private calendar link for a tutor
+//
+// The tutor themselves, or the team owner. Any earlier link for the
+// tutor stops working. The link is shown once; Penny keeps only a hash
+// of it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed (the `CreateCalendarFeed` operationId).
+func (c *ClientWithResponses) CreateCalendarFeedWithResponse(ctx context.Context, workspaceId WorkspaceId, memberId MemberId, reqEditors ...RequestEditorFn) (*CreateCalendarFeedResponse, error) {
+	rsp, err := c.CreateCalendarFeed(ctx, workspaceId, memberId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateCalendarFeedResponse(rsp)
+}
+
 // GetCancellationPolicyWithResponse Get a tutor's cancellation policy
 //
 // Any member may read it; it is shown to parents too. Tutors who have
@@ -9004,6 +10609,129 @@ func (c *ClientWithResponses) SetCancellationPolicyWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseSetCancellationPolicyResponse(rsp)
+}
+
+// CreateSeriesWithBodyWithResponse Book a recurring lesson
+//
+// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+// team's timezone) plus the lesson it repeats. Every occurrence is its
+// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+// can carry its own notes, attendance and payment.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+func (c *ClientWithResponses) CreateSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSeriesResponse, error) {
+	rsp, err := c.CreateSeriesWithBody(ctx, workspaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSeriesResponse(rsp)
+}
+
+// CreateSeriesWithResponse Book a recurring lesson
+//
+// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+// team's timezone) plus the lesson it repeats. Every occurrence is its
+// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+// can carry its own notes, attendance and payment.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series (the `CreateSeries` operationId).
+func (c *ClientWithResponses) CreateSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, body CreateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSeriesResponse, error) {
+	rsp, err := c.CreateSeries(ctx, workspaceId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateSeriesResponse(rsp)
+}
+
+// GetSeriesWithResponse Get a recurring lesson
+//
+// For owners, and for tutors on the series.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/series/{seriesId} (the `GetSeries` operationId).
+func (c *ClientWithResponses) GetSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, reqEditors ...RequestEditorFn) (*GetSeriesResponse, error) {
+	rsp, err := c.GetSeries(ctx, workspaceId, seriesId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSeriesResponse(rsp)
+}
+
+// UpdateSeriesWithBodyWithResponse Change a recurring lesson from a date onwards
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. The change applies to scheduled lessons on and
+// after `from` ("this and following"; send today for "all future
+// lessons"). Earlier lessons, and lessons that are done or cancelled,
+// are never rewritten. To change one lesson only, change the lesson.
+// Send the series' `version` in `If-Match`.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+func (c *ClientWithResponses) UpdateSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSeriesResponse, error) {
+	rsp, err := c.UpdateSeriesWithBody(ctx, workspaceId, seriesId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSeriesResponse(rsp)
+}
+
+// UpdateSeriesWithResponse Change a recurring lesson from a date onwards
+//
+// Needs `manage_lessons`; changing tutors also needs
+// `reassign_lessons`. The change applies to scheduled lessons on and
+// after `from` ("this and following"; send today for "all future
+// lessons"). Earlier lessons, and lessons that are done or cancelled,
+// are never rewritten. To change one lesson only, change the lesson.
+// Send the series' `version` in `If-Match`.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/workspaces/{workspaceId}/series/{seriesId} (the `UpdateSeries` operationId).
+func (c *ClientWithResponses) UpdateSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *UpdateSeriesParams, body UpdateSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSeriesResponse, error) {
+	rsp, err := c.UpdateSeries(ctx, workspaceId, seriesId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateSeriesResponse(rsp)
+}
+
+// EndSeriesWithBodyWithResponse Stop a recurring lesson after a date
+//
+// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+// lessons that are done, cancelled or have notes on them stay.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+func (c *ClientWithResponses) EndSeriesWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*EndSeriesResponse, error) {
+	rsp, err := c.EndSeriesWithBody(ctx, workspaceId, seriesId, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEndSeriesResponse(rsp)
+}
+
+// EndSeriesWithResponse Stop a recurring lesson after a date
+//
+// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+// lessons that are done, cancelled or have notes on them stay.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/series/{seriesId}/end (the `EndSeries` operationId).
+func (c *ClientWithResponses) EndSeriesWithResponse(ctx context.Context, workspaceId WorkspaceId, seriesId SeriesId, params *EndSeriesParams, body EndSeriesJSONRequestBody, reqEditors ...RequestEditorFn) (*EndSeriesResponse, error) {
+	rsp, err := c.EndSeries(ctx, workspaceId, seriesId, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEndSeriesResponse(rsp)
 }
 
 // ListStudentsWithResponse List students
@@ -9233,6 +10961,23 @@ func (c *ClientWithResponses) UpdateGoalWithResponse(ctx context.Context, worksp
 	return ParseUpdateGoalResponse(rsp)
 }
 
+// GetTimetableWithResponse The team timetable, one column per tutor
+//
+// Needs `view_team_timetable`. Every current owner and teacher gets a
+// column, with or without lessons, so free time is visible. A lesson
+// with several tutors appears in each of their columns.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/timetable (the `GetTimetable` operationId).
+func (c *ClientWithResponses) GetTimetableWithResponse(ctx context.Context, workspaceId WorkspaceId, params *GetTimetableParams, reqEditors ...RequestEditorFn) (*GetTimetableResponse, error) {
+	rsp, err := c.GetTimetable(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTimetableResponse(rsp)
+}
+
 // ParseGetLivezResponse parses an HTTP response from a GetLivezWithResponse call
 func ParseGetLivezResponse(rsp *http.Response) (*GetLivezResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9286,6 +11031,39 @@ func ParseGetReadyzResponse(rsp *http.Response) (*GetReadyzResponse, error) {
 			return nil, err
 		}
 		response.JSON503 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCalendarFeedResponse parses an HTTP response from a GetCalendarFeedWithResponse call
+func ParseGetCalendarFeedResponse(rsp *http.Response) (*GetCalendarFeedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCalendarFeedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
 
 	}
 
@@ -10832,6 +12610,110 @@ func ParseUpdateMemberResponse(rsp *http.Response) (*UpdateMemberResponse, error
 	return response, nil
 }
 
+// ParseRevokeCalendarFeedResponse parses an HTTP response from a RevokeCalendarFeedWithResponse call
+func ParseRevokeCalendarFeedResponse(rsp *http.Response) (*RevokeCalendarFeedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RevokeCalendarFeedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateCalendarFeedResponse parses an HTTP response from a CreateCalendarFeedWithResponse call
+func ParseCreateCalendarFeedResponse(rsp *http.Response) (*CreateCalendarFeedResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateCalendarFeedResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CalendarFeed
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetCancellationPolicyResponse parses an HTTP response from a GetCancellationPolicyWithResponse call
 func ParseGetCancellationPolicyResponse(rsp *http.Response) (*GetCancellationPolicyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -10927,6 +12809,250 @@ func ParseSetCancellationPolicyResponse(rsp *http.Response) (*SetCancellationPol
 			return nil, err
 		}
 		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateSeriesResponse parses an HTTP response from a CreateSeriesWithResponse call
+func ParseCreateSeriesResponse(rsp *http.Response) (*CreateSeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateSeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Series
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSeriesResponse parses an HTTP response from a GetSeriesWithResponse call
+func ParseGetSeriesResponse(rsp *http.Response) (*GetSeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Series
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateSeriesResponse parses an HTTP response from a UpdateSeriesWithResponse call
+func ParseUpdateSeriesResponse(rsp *http.Response) (*UpdateSeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateSeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Series
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEndSeriesResponse parses an HTTP response from a EndSeriesWithResponse call
+func ParseEndSeriesResponse(rsp *http.Response) (*EndSeriesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EndSeriesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Series
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 412:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON412 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest Problem
@@ -11464,6 +13590,67 @@ func ParseUpdateGoalResponse(rsp *http.Response) (*UpdateGoalResponse, error) {
 	return response, nil
 }
 
+// ParseGetTimetableResponse parses an HTTP response from a GetTimetableWithResponse call
+func ParseGetTimetableResponse(rsp *http.Response) (*GetTimetableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTimetableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Timetable
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// GetLivez Report that the process is running
@@ -11472,6 +13659,9 @@ type ServerInterface interface {
 	// GetReadyz Report whether the server can take traffic
 	// (GET /readyz)
 	GetReadyz(w http.ResponseWriter, r *http.Request)
+	// GetCalendarFeed A tutor's lessons as an iCalendar feed
+	// (GET /v1/calendar/{token})
+	GetCalendarFeed(w http.ResponseWriter, r *http.Request, token string)
 	// DeleteMe Delete the signed-in person's account
 	// (DELETE /v1/me)
 	DeleteMe(w http.ResponseWriter, r *http.Request)
@@ -11553,12 +13743,30 @@ type ServerInterface interface {
 	// UpdateMember Change a member's role
 	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
 	UpdateMember(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// RevokeCalendarFeed Stop a tutor's calendar link working
+	// (DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed)
+	RevokeCalendarFeed(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// CreateCalendarFeed Make a new private calendar link for a tutor
+	// (POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed)
+	CreateCalendarFeed(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
 	// GetCancellationPolicy Get a tutor's cancellation policy
 	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	GetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
 	// SetCancellationPolicy Set a tutor's cancellation policy
 	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	SetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId)
+	// CreateSeries Book a recurring lesson
+	// (POST /v1/workspaces/{workspaceId}/series)
+	CreateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// GetSeries Get a recurring lesson
+	// (GET /v1/workspaces/{workspaceId}/series/{seriesId})
+	GetSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId)
+	// UpdateSeries Change a recurring lesson from a date onwards
+	// (PATCH /v1/workspaces/{workspaceId}/series/{seriesId})
+	UpdateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId, params UpdateSeriesParams)
+	// EndSeries Stop a recurring lesson after a date
+	// (POST /v1/workspaces/{workspaceId}/series/{seriesId}/end)
+	EndSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId, params EndSeriesParams)
 	// ListStudents List students
 	// (GET /v1/workspaces/{workspaceId}/students)
 	ListStudents(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListStudentsParams)
@@ -11586,6 +13794,9 @@ type ServerInterface interface {
 	// UpdateGoal Rename a goal, or mark it achieved or dropped
 	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
 	UpdateGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, goalId GoalId)
+	// GetTimetable The team timetable, one column per tutor
+	// (GET /v1/workspaces/{workspaceId}/timetable)
+	GetTimetable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params GetTimetableParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -11616,6 +13827,32 @@ func (siw *ServerInterfaceWrapper) GetReadyz(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetReadyz(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCalendarFeed operation middleware
+func (siw *ServerInterfaceWrapper) GetCalendarFeed(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", r.PathValue("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCalendarFeed(w, r, token)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -12632,6 +14869,76 @@ func (siw *ServerInterfaceWrapper) UpdateMember(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// RevokeCalendarFeed operation middleware
+func (siw *ServerInterfaceWrapper) RevokeCalendarFeed(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeCalendarFeed(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateCalendarFeed operation middleware
+func (siw *ServerInterfaceWrapper) CreateCalendarFeed(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "memberId" -------------
+	var memberId MemberId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "memberId", r.PathValue("memberId"), &memberId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "memberId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateCalendarFeed(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetCancellationPolicy operation middleware
 func (siw *ServerInterfaceWrapper) GetCancellationPolicy(w http.ResponseWriter, r *http.Request) {
 
@@ -12693,6 +15000,193 @@ func (siw *ServerInterfaceWrapper) SetCancellationPolicy(w http.ResponseWriter, 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SetCancellationPolicy(w, r, workspaceId, memberId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSeries operation middleware
+func (siw *ServerInterfaceWrapper) CreateSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSeries(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSeries operation middleware
+func (siw *ServerInterfaceWrapper) GetSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "seriesId" -------------
+	var seriesId SeriesId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "seriesId", r.PathValue("seriesId"), &seriesId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "seriesId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSeries(w, r, workspaceId, seriesId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSeries operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "seriesId" -------------
+	var seriesId SeriesId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "seriesId", r.PathValue("seriesId"), &seriesId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "seriesId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateSeriesParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSeries(w, r, workspaceId, seriesId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// EndSeries operation middleware
+func (siw *ServerInterfaceWrapper) EndSeries(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "seriesId" -------------
+	var seriesId SeriesId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "seriesId", r.PathValue("seriesId"), &seriesId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "seriesId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params EndSeriesParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "If-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-Match")]; found {
+		var IfMatch IfMatch
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "If-Match", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-Match", valueList[0], &IfMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "If-Match", Err: err})
+			return
+		}
+
+		params.IfMatch = IfMatch
+
+	} else {
+		err := fmt.Errorf("Header parameter If-Match is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "If-Match", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.EndSeries(w, r, workspaceId, seriesId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -13094,6 +15588,74 @@ func (siw *ServerInterfaceWrapper) UpdateGoal(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
+// GetTimetable operation middleware
+func (siw *ServerInterfaceWrapper) GetTimetable(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetTimetableParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "teacherIds" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", false, false, "teacherIds", r.URL.Query(), &params.TeacherIds, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "teacherIds"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "teacherIds", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTimetable(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -13254,6 +15816,14 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/lessons/{lessonId}/history", wrapper.GetLessonHistory)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy", wrapper.GetCancellationPolicy)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy", wrapper.SetCancellationPolicy)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/series", wrapper.CreateSeries)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/series/{seriesId}", wrapper.GetSeries)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/series/{seriesId}", wrapper.UpdateSeries)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/series/{seriesId}/end", wrapper.EndSeries)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/timetable", wrapper.GetTimetable)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed", wrapper.RevokeCalendarFeed)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed", wrapper.CreateCalendarFeed)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/calendar/{token}", wrapper.GetCalendarFeed)
 
 	return m
 }
@@ -13312,6 +15882,67 @@ func (response GetReadyz503JSONResponse) VisitGetReadyzResponse(w http.ResponseW
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCalendarFeedRequestObject struct {
+	Token string `json:"token"`
+}
+
+type GetCalendarFeedResponseObject interface {
+	VisitGetCalendarFeedResponse(w http.ResponseWriter) error
+}
+
+type GetCalendarFeed200TextcalendarResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetCalendarFeed200TextcalendarResponse) VisitGetCalendarFeedResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "text/calendar")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetCalendarFeed404ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetCalendarFeed404ApplicationProblemPlusJSONResponse) VisitGetCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCalendarFeeddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetCalendarFeeddefaultApplicationProblemPlusJSONResponse) VisitGetCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -15757,6 +18388,168 @@ func (response UpdateMemberdefaultApplicationProblemPlusJSONResponse) VisitUpdat
 	return err
 }
 
+type RevokeCalendarFeedRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type RevokeCalendarFeedResponseObject interface {
+	VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error
+}
+
+type RevokeCalendarFeed204Response struct {
+}
+
+func (response RevokeCalendarFeed204Response) VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeCalendarFeed401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeCalendarFeed401ApplicationProblemPlusJSONResponse) VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCalendarFeed403ApplicationProblemPlusJSONResponse Problem
+
+func (response RevokeCalendarFeed403ApplicationProblemPlusJSONResponse) VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCalendarFeed404ApplicationProblemPlusJSONResponse Problem
+
+func (response RevokeCalendarFeed404ApplicationProblemPlusJSONResponse) VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeCalendarFeeddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RevokeCalendarFeeddefaultApplicationProblemPlusJSONResponse) VisitRevokeCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCalendarFeedRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	MemberId    MemberId    `json:"memberId"`
+}
+
+type CreateCalendarFeedResponseObject interface {
+	VisitCreateCalendarFeedResponse(w http.ResponseWriter) error
+}
+
+type CreateCalendarFeed201JSONResponse CalendarFeed
+
+func (response CreateCalendarFeed201JSONResponse) VisitCreateCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCalendarFeed401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateCalendarFeed401ApplicationProblemPlusJSONResponse) VisitCreateCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCalendarFeed403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCalendarFeed403ApplicationProblemPlusJSONResponse) VisitCreateCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCalendarFeed404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateCalendarFeed404ApplicationProblemPlusJSONResponse) VisitCreateCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateCalendarFeeddefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateCalendarFeeddefaultApplicationProblemPlusJSONResponse) VisitCreateCalendarFeedResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetCancellationPolicyRequestObject struct {
 	WorkspaceId WorkspaceId `json:"workspaceId"`
 	MemberId    MemberId    `json:"memberId"`
@@ -15915,6 +18708,402 @@ type SetCancellationPolicydefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response SetCancellationPolicydefaultApplicationProblemPlusJSONResponse) VisitSetCancellationPolicyResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeriesRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Body        *CreateSeriesJSONRequestBody
+}
+
+type CreateSeriesResponseObject interface {
+	VisitCreateSeriesResponse(w http.ResponseWriter) error
+}
+
+type CreateSeries201JSONResponse Series
+
+func (response CreateSeries201JSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeries400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response CreateSeries400ApplicationProblemPlusJSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeries401ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateSeries401ApplicationProblemPlusJSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeries403ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateSeries403ApplicationProblemPlusJSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeries404ApplicationProblemPlusJSONResponse Problem
+
+func (response CreateSeries404ApplicationProblemPlusJSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSeriesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateSeriesdefaultApplicationProblemPlusJSONResponse) VisitCreateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSeriesRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	SeriesId    SeriesId    `json:"seriesId"`
+}
+
+type GetSeriesResponseObject interface {
+	VisitGetSeriesResponse(w http.ResponseWriter) error
+}
+
+type GetSeries200JSONResponse Series
+
+func (response GetSeries200JSONResponse) VisitGetSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSeries401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetSeries401ApplicationProblemPlusJSONResponse) VisitGetSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSeries404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetSeries404ApplicationProblemPlusJSONResponse) VisitGetSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSeriesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetSeriesdefaultApplicationProblemPlusJSONResponse) VisitGetSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeriesRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	SeriesId    SeriesId    `json:"seriesId"`
+	Params      UpdateSeriesParams
+	Body        *UpdateSeriesJSONRequestBody
+}
+
+type UpdateSeriesResponseObject interface {
+	VisitUpdateSeriesResponse(w http.ResponseWriter) error
+}
+
+type UpdateSeries200JSONResponse Series
+
+func (response UpdateSeries200JSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeries400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateSeries400ApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeries401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateSeries401ApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeries403ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateSeries403ApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeries404ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateSeries404ApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeries412ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateSeries412ApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSeriesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateSeriesdefaultApplicationProblemPlusJSONResponse) VisitUpdateSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeriesRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	SeriesId    SeriesId    `json:"seriesId"`
+	Params      EndSeriesParams
+	Body        *EndSeriesJSONRequestBody
+}
+
+type EndSeriesResponseObject interface {
+	VisitEndSeriesResponse(w http.ResponseWriter) error
+}
+
+type EndSeries200JSONResponse Series
+
+func (response EndSeries200JSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeries400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response EndSeries400ApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeries401ApplicationProblemPlusJSONResponse Problem
+
+func (response EndSeries401ApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeries403ApplicationProblemPlusJSONResponse Problem
+
+func (response EndSeries403ApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeries404ApplicationProblemPlusJSONResponse Problem
+
+func (response EndSeries404ApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeries412ApplicationProblemPlusJSONResponse Problem
+
+func (response EndSeries412ApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(412)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type EndSeriesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response EndSeriesdefaultApplicationProblemPlusJSONResponse) VisitEndSeriesResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -16768,6 +19957,104 @@ func (response UpdateGoaldefaultApplicationProblemPlusJSONResponse) VisitUpdateG
 	return err
 }
 
+type GetTimetableRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      GetTimetableParams
+}
+
+type GetTimetableResponseObject interface {
+	VisitGetTimetableResponse(w http.ResponseWriter) error
+}
+
+type GetTimetable200JSONResponse Timetable
+
+func (response GetTimetable200JSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTimetable400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetTimetable400ApplicationProblemPlusJSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTimetable401ApplicationProblemPlusJSONResponse Problem
+
+func (response GetTimetable401ApplicationProblemPlusJSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTimetable403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetTimetable403ApplicationProblemPlusJSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTimetable404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetTimetable404ApplicationProblemPlusJSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTimetabledefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetTimetabledefaultApplicationProblemPlusJSONResponse) VisitGetTimetableResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// GetLivez Report that the process is running
@@ -16776,6 +20063,9 @@ type StrictServerInterface interface {
 	// GetReadyz Report whether the server can take traffic
 	// (GET /readyz)
 	GetReadyz(ctx context.Context, request GetReadyzRequestObject) (GetReadyzResponseObject, error)
+	// GetCalendarFeed A tutor's lessons as an iCalendar feed
+	// (GET /v1/calendar/{token})
+	GetCalendarFeed(ctx context.Context, request GetCalendarFeedRequestObject) (GetCalendarFeedResponseObject, error)
 	// DeleteMe Delete the signed-in person's account
 	// (DELETE /v1/me)
 	DeleteMe(ctx context.Context, request DeleteMeRequestObject) (DeleteMeResponseObject, error)
@@ -16857,12 +20147,30 @@ type StrictServerInterface interface {
 	// UpdateMember Change a member's role
 	// (PATCH /v1/workspaces/{workspaceId}/members/{memberId})
 	UpdateMember(ctx context.Context, request UpdateMemberRequestObject) (UpdateMemberResponseObject, error)
+	// RevokeCalendarFeed Stop a tutor's calendar link working
+	// (DELETE /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed)
+	RevokeCalendarFeed(ctx context.Context, request RevokeCalendarFeedRequestObject) (RevokeCalendarFeedResponseObject, error)
+	// CreateCalendarFeed Make a new private calendar link for a tutor
+	// (POST /v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed)
+	CreateCalendarFeed(ctx context.Context, request CreateCalendarFeedRequestObject) (CreateCalendarFeedResponseObject, error)
 	// GetCancellationPolicy Get a tutor's cancellation policy
 	// (GET /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	GetCancellationPolicy(ctx context.Context, request GetCancellationPolicyRequestObject) (GetCancellationPolicyResponseObject, error)
 	// SetCancellationPolicy Set a tutor's cancellation policy
 	// (PUT /v1/workspaces/{workspaceId}/members/{memberId}/cancellation-policy)
 	SetCancellationPolicy(ctx context.Context, request SetCancellationPolicyRequestObject) (SetCancellationPolicyResponseObject, error)
+	// CreateSeries Book a recurring lesson
+	// (POST /v1/workspaces/{workspaceId}/series)
+	CreateSeries(ctx context.Context, request CreateSeriesRequestObject) (CreateSeriesResponseObject, error)
+	// GetSeries Get a recurring lesson
+	// (GET /v1/workspaces/{workspaceId}/series/{seriesId})
+	GetSeries(ctx context.Context, request GetSeriesRequestObject) (GetSeriesResponseObject, error)
+	// UpdateSeries Change a recurring lesson from a date onwards
+	// (PATCH /v1/workspaces/{workspaceId}/series/{seriesId})
+	UpdateSeries(ctx context.Context, request UpdateSeriesRequestObject) (UpdateSeriesResponseObject, error)
+	// EndSeries Stop a recurring lesson after a date
+	// (POST /v1/workspaces/{workspaceId}/series/{seriesId}/end)
+	EndSeries(ctx context.Context, request EndSeriesRequestObject) (EndSeriesResponseObject, error)
 	// ListStudents List students
 	// (GET /v1/workspaces/{workspaceId}/students)
 	ListStudents(ctx context.Context, request ListStudentsRequestObject) (ListStudentsResponseObject, error)
@@ -16890,6 +20198,9 @@ type StrictServerInterface interface {
 	// UpdateGoal Rename a goal, or mark it achieved or dropped
 	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
 	UpdateGoal(ctx context.Context, request UpdateGoalRequestObject) (UpdateGoalResponseObject, error)
+	// GetTimetable The team timetable, one column per tutor
+	// (GET /v1/workspaces/{workspaceId}/timetable)
+	GetTimetable(ctx context.Context, request GetTimetableRequestObject) (GetTimetableResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -16972,6 +20283,32 @@ func (sh *strictHandler) GetReadyz(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetReadyzResponseObject); ok {
 		if err := validResponse.VisitGetReadyzResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCalendarFeed operation middleware
+func (sh *strictHandler) GetCalendarFeed(w http.ResponseWriter, r *http.Request, token string) {
+	var request GetCalendarFeedRequestObject
+
+	request.Token = token
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCalendarFeed(ctx, request.(GetCalendarFeedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCalendarFeed")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCalendarFeedResponseObject); ok {
+		if err := validResponse.VisitGetCalendarFeedResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -17787,6 +21124,60 @@ func (sh *strictHandler) UpdateMember(w http.ResponseWriter, r *http.Request, wo
 	}
 }
 
+// RevokeCalendarFeed operation middleware
+func (sh *strictHandler) RevokeCalendarFeed(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request RevokeCalendarFeedRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeCalendarFeed(ctx, request.(RevokeCalendarFeedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeCalendarFeed")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeCalendarFeedResponseObject); ok {
+		if err := validResponse.VisitRevokeCalendarFeedResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCalendarFeed operation middleware
+func (sh *strictHandler) CreateCalendarFeed(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
+	var request CreateCalendarFeedRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.MemberId = memberId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCalendarFeed(ctx, request.(CreateCalendarFeedRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCalendarFeed")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateCalendarFeedResponseObject); ok {
+		if err := validResponse.VisitCreateCalendarFeedResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetCancellationPolicy operation middleware
 func (sh *strictHandler) GetCancellationPolicy(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, memberId MemberId) {
 	var request GetCancellationPolicyRequestObject
@@ -17841,6 +21232,136 @@ func (sh *strictHandler) SetCancellationPolicy(w http.ResponseWriter, r *http.Re
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SetCancellationPolicyResponseObject); ok {
 		if err := validResponse.VisitSetCancellationPolicyResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSeries operation middleware
+func (sh *strictHandler) CreateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request CreateSeriesRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	var body CreateSeriesJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateSeries(ctx, request.(CreateSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSeriesResponseObject); ok {
+		if err := validResponse.VisitCreateSeriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSeries operation middleware
+func (sh *strictHandler) GetSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId) {
+	var request GetSeriesRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.SeriesId = seriesId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSeries(ctx, request.(GetSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSeriesResponseObject); ok {
+		if err := validResponse.VisitGetSeriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSeries operation middleware
+func (sh *strictHandler) UpdateSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId, params UpdateSeriesParams) {
+	var request UpdateSeriesRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.SeriesId = seriesId
+	request.Params = params
+
+	var body UpdateSeriesJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateSeries(ctx, request.(UpdateSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSeriesResponseObject); ok {
+		if err := validResponse.VisitUpdateSeriesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// EndSeries operation middleware
+func (sh *strictHandler) EndSeries(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, seriesId SeriesId, params EndSeriesParams) {
+	var request EndSeriesRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.SeriesId = seriesId
+	request.Params = params
+
+	var body EndSeriesJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.EndSeries(ctx, request.(EndSeriesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "EndSeries")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(EndSeriesResponseObject); ok {
+		if err := validResponse.VisitEndSeriesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -18135,154 +21656,209 @@ func (sh *strictHandler) UpdateGoal(w http.ResponseWriter, r *http.Request, work
 	}
 }
 
+// GetTimetable operation middleware
+func (sh *strictHandler) GetTimetable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params GetTimetableParams) {
+	var request GetTimetableRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTimetable(ctx, request.(GetTimetableRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTimetable")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetTimetableResponseObject); ok {
+		if err := validResponse.VisitGetTimetableResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7H1rd9s2tuhfweI9a6VdR5HtJO00zoe7PEnbyZmkzY3T6Ycqt4LJLQtjCuAAoBVNlv/7WXsDIEEJ1MO2",
-	"7GbqT7YkEo+N/X7hc5arWaUkSGuy489ZxTWfgQVNn14qaXluXxf4QcjsOKu4nWaDTPIZZMdZ3vw+yDT8",
-	"qxYaiuzY6hoGmcmnMOP44kTpGbfZcVbXAp+0iwpfNlYLeZ5dXQ2yl7U2SuOzBZhci8oKhbN9mAIbS/hk",
-	"3QNjpibMToFVGi6Fqg2r+DkMs4Fb279q0ItocW7QeCUz/ukNyHM7zY6fHB6mVvKj4mXvds/djzfb6+vJ",
-	"W27zaXqzJRij5CPDxpegjVByzLhhJTeWaeDFgJk6n+JX41H2dJSNh+zEv8PyKZfnUIykETIHJgzTMKkN",
-	"FGwu7JQ9O3oyYEYxqc5UsWDqEvRcCwuGcf8qQnbBpvwSRlIqywyAHI5kgO4UeAG6BcbryWO3kXXgSGzf",
-	"wqwXwML9eDMAvyF49M5Rhp9vOIuYCZs+xJkyluFWDLOKabC1ln1IWtIw8dQFTHhd2uz4CDG0WYiQ9umT",
-	"bIAoLGb1LDv+Bn+eCek+HTVrFNLCOWi3SJVzK9YBo33gZuB4C7Mz0K+LVYicsBn9ZqaiYkIS/VrgswYi",
-	"3RXNwkA3W8+prQuQ/ZzLNL/fbJ5flb4wFc/hdZFGBtoq+/4S9MJOhTxntSxAM2HZGZRKnhOO2Cm364Ay",
-	"j2a5yXqv8GVTKWmA+Ps7rc5KmOG/yMpBEkbzqiqFw4uDyj3x3/80uKPP0Vz/pWGSHWf/56AVIAfuV3MQ",
-	"xqUZV2GCGwBj2YSLEoohw++IKxm+MGw+XQwJtn40nOykKByGvXev4neVVhVoK9xWCmGqki9+IoAlDkJo",
-	"hsBE3hkwkM1FWTIDgKdRSytKxwKNOJdMEMlGAuPI01vzeQW8gwxmXJSdg3DfJB7VqoRNYHzbEM57fPrq",
-	"Kj773zpbDnN/bKZSZ/+E3OJUJ9aCLLjMaUKQyC9+yyoNBqTNBhk/8/+U3EL2MbHYl/hy6Rhr7wnM+AXU",
-	"1cY90VMfxAxw4Ipru9j0ipu9JIR8Ry8QILhHyeiMvkkL9RhobsYUmOJpVnfHbedcC27hsRUE+RVwERxX",
-	"kNCPDwU7WxAOeh70yDAjCnBiGqUTk8qKHOUxd+yyBF4wW1ulHxlWqVLkC8bNhWETpYftAs6UKoHL24Lr",
-	"ejhym4VpVhAnDdN3YU1dsPw6VSznBBfbaEBMTSa4s4CstPlsENj2GiT1cxGQVk9RmFdBvCaZNU7DppyO",
-	"gBmwjHt4k+70DqRcPDLMi2hGjBJM+ggQJvGS/irKkp85ol99upWRr4sOoqU5+SCT6nSq5usHdXj0N1Vr",
-	"s7pfvzYUSX2YJwyqkbgR3OKKKrKscAwyU89mXC/SwPWIG1QAj85zpQszYGaq5hJFYcU1SGuGq3teQsAO",
-	"xLp7XQP8FcC1ix5E2LERl2kvr2VVJxjhbid/jYPsVwqfPv02UgoPN5zRbpzzuhDeDpan61AnwQAHKMk9",
-	"sngZjjhz3yexFt77gW87RRrSFT8TpUix3p8lMK3mwarmtZ0qLf5N87EZt1p8QnItVG4OuM6nwkJuaw3D",
-	"WREz50sB89/VXP7ueDeunr6ywGe/o4y0fp0zLvk50Pftp/YlDdyg7hV9hVKrBAtLw0MhbPTV72RstUN6",
-	"KdEsBJ+MvvNPVXwxo2+SwqTkJmGjn0hlp6CZVPJx3sjzILMuQZe8qpClEvNUElBEO2GPyqeTL0oH0b+K",
-	"sSALc7KLqhEZuxtlxrKQ6ROAZ0pdoDieixwGTExQPxboKKCfO7KgbypjubY77cTEFtvqyvzP/WuLQLpx",
-	"dfOpWmckDOjURtkHPMTu4Rr2nl+KR4YdfXt8eOh/HI6yjeIqcjs0sBmE43YrSpKvJ4ANujfvqPjdfb2D",
-	"Ft+Yt4txWxPLVG0Z18A05EoXUBBPdXYBWaJEVhu0SD9iZGRcNfvgWvNFdtV+EW+MXIeryz1VM0DCmU8V",
-	"OwcbHe0jwzTMhCxAGyQiDTmIyukKS1S0vR0mtlS3vF0JnzgeCIJViwVnP3GhU89XUyWXXvjvb79hz4+e",
-	"PGXPvvn2L6l3aD+XYJCz41dJARQeeh8g0feYExtI7BvtAHcU7+NXltGXoCKdpdkZO7Wi1a187MeAHiVq",
-	"hyMMZ7Ojsd4cUfTe08PtzqVx0jkPzJbHtMVbt3tqqQNbcxTvl6ZvXAWkZmWD7LzmuhBcZoPMQDnJBhmJ",
-	"w7QE1cAtNP6xXtYl+zw25KN5ZDxHXjYQmJLMS/DgTzKMy6LDFVri+7uash9rYbkmFijU7s4dFFz/VjKx",
-	"2BPJXp/8dMLCE7TkIfPGBHn4TozgB6dCnvNKaeiurfvbRklCAEudIsYu0vzUeR4bRsrIn8ismnNdGBJt",
-	"zMAlaF56iZbgqTyfCriEYheZnhMO7PTKlvzYWG7rjbIJIXLqnqQDtOUyEy/5gr3lJT+vQXLGLTt6csjO",
-	"qtnGU3DLohGb1cQb7juglxRrMat0cKMdLQe21qLyVc/SejjxtSeJweUG6QPKabP3wHJ4bsUlZIMG7bJB",
-	"VmhVVVAkuc3fgJd2urr4fAr5hUmbPiCtXrAKNCugAlmAzBeMXkCn9Pezyi5IESzFJUgwZmuVyC3mJY60",
-	"qgxti7tukHDWS+BsEc7tLwXYeBWr7nKwXr4ue+Ocb5LGbRz0PyFzYBTtFdIwA7mGpI8mpSgV3PIzbuD6",
-	"ZLwWFF7G+ZH6AbGKY+oCbQUuljSUCKmEsUovvkc8SejcefAUt3v19kAwW5Osi+dW6XSc4oQ88YR0LiZr",
-	"nM+RzXgBTFgUukmo84kFip/zohA4GC/fRYvt6BstYHbxaZ/BRGnYcYpln7GDGE2cPCgH7zcipSc0lLcd",
-	"CcZHl6DBNqlgs2PGTZhaMAaz/y5kEWOV5QbxCnMFnFsyHVLBV/8hjOjzzaBbfMYX5NpCgsRFDNnYS/Ax",
-	"qTpjn39hxszyC2AwmUBu2XwK6GNVBkZSqxIMy7kMUS321VktyoJVJZcD9m7KDbCjw69fMKsKvmBKlgtm",
-	"LJ9MmjAYpQCE3dFPkSN+EHJA0m4UZ7auHuZZ5GTr7vuVkjBA644zqR6j1ocfSm6B5ZE7rDcugiP3eOTz",
-	"pQDPtrGR5Xfb4MLW0ZWOixOHQ/cSbI/Ozh2VwOOG0+ykltVao7Bbhf7r05/ZsydHf+kqqKc/vkoNs6uv",
-	"agLwMuQZrWr786kqowSYCcCADrONl7XHvRyO+PZZtsntvaVe2ZzG0gIx3DZgSNTOykC6NkP2M5KLp7ew",
-	"eHRHTcDmUyjQSBFoq8zl1sqDT1+xMEud94XnNptHIL50NWhSPLZ7K2SM4JsuoPuD0m92cjLSW/Erq2eN",
-	"zzyuq+DM8wBsnW1zbljjXt2bv3Eb1cPto9W4GzfytpQbBqDXUieasEqcoTpgP2oU+9+kVk9kYNZESyZC",
-	"G7sj0n3AQVNr9MloCeMSZIFCZRyywcbuMEl7cX7wQBZbhRBTRlbKXdrov0QPDTii84nYTcTwBq3kaZlw",
-	"u7+UjHeg6TXbbsIEd2RhZSeba58u+C56b5ypF6WXPSxr0HgrNCUEdWbqFUHrtXvraBuPs2dJPe7GuzvG",
-	"67PwnTjwrnz7y0KXLhv6/hPPbbmggNsY2d94a863C0otWeArXGmZCyFk+lkKTpSwKikIu11m2HuYkGmm",
-	"ilR4+VrutyLp4Pwg0CdCSTmMVCGyE9JaNo6wy4znTcZ1f9APn/H5KBZmXfflVurBltrfNqTZ2HwoFzsG",
-	"3Ka3InMvKei8LKPj7Iztj2UQkGOTn7HFr16xFXCm69Pb7AQP+LF67jeCxZot9DDs626gRbc/LjbEiNB/",
-	"vsuOBw3ndcl1FgQAbkkLXq4xzG/D0+JG2p+PZckuSThKQEPX/KLcIGHJjCB11NkZiZhGUWgwPWq0/xFt",
-	"OJQrpZAwcKlylrLZjOUly1UBw+siT9jUdeU8gBXy/BddJrl/8MSuB7zHtd6gUscAirAN91DUJbk4Y3dn",
-	"Y7bhoOp3dOCsQcBgF21IaFgHxG7iQc+ml9JLNuf1d0V9eHUjnJwFtSk5fWNizsaj3yZ7nNaSTBxfSp3s",
-	"5pHT0MkdRiSYJKM3QsJRcn/RA0+SD9yifF4hKm4FHmBXI1G1swH9FLJGiDgalOe7PN8lwi4X+UFpVJSE",
-	"hDisukXIxIWomVZqxp6kXnHc56UqUkEEZsSnx4U4F5Y1UeVlftXO9eTpd99983y7eKePtdAxrEORHpm9",
-	"jCcbyvFW8WbjC7ePIE1q7fO43Orx88PdcacZ6ui7zlhH36UG6yLWhlTd6yfBdBCp4taCltlx9v9/O3z8",
-	"/OPnb6/+a7t8hC2QYllfEfL3CrShgJCjkrSg8K/fiq4SeTf3o61E5S039jHsapFvtFCTC04stJUPKVsb",
-	"S9lc/RTpQXSEUTFbiJy7gCFT8kxh0pA839okb8ueUudUG9hoHv9iEs5EenHQ2VwaILMzN8MyW/VbFZJx",
-	"2v+gU0xWCmMpS4m+m60qm0tKQMuB34Jgb4RkHyix6iZFZaLP397smb1+NWROV8GQmZCWcRv9vp05/U8l",
-	"ZPArrGjj0lXRnUFO9XaUyDFkPrQ9n4oSmJCXwi559teSwnWq5bZ18bv3erILxKqCFKBPa1qbeOBGvg3G",
-	"5UbazLaWMn+5MVQsnvvy+ZCMji+52vlwLiGiyo1tiuqvzQMb51SCiIhWHL4R/bh8epeAbNgMZIjubqag",
-	"m6rR22vF/btsDaPuRscexce+sNT4rGYMqhtkIY0h6aZ9ZBjhVbA6hyP5HmbqEgr/gKFEbaksMRooumH5",
-	"Jl3KT5uUpBFfXc2TCmUiAhK7+ZXqk9H/5nkgZiYUytVyCeOLnF+WwlXj+KD9VBQwkrmSVqvSsIlWM/c4",
-	"sUqKovq8olmFm0OCotRJ4za3XWS8rW9JUIe4PXNqlb00VdmbXm2SYNPspR2nYSqd4+jHvmY1q4E57zlF",
-	"KLuMWZ/ob0AjUuH3Odd6waRi8WxsATYu7lFzSWLTAs+noDupH27gJK5FleUrubLvf3jJnj/75i/MF5e3",
-	"mHOmucynyIzGOOJ44DGEvhC2hDFTeiTHLnttPEBxgv0wtKuzqUBVJdDeEEFdCpXDpW2z37hlc5JTWsnz",
-	"Br9V7iOIaV+PkMamay/iancs6XeV/pVWRZ37gtcAhCReuldT7vH/VysLbnXk4tJQKW1DyHXdoKaHZeFa",
-	"//bhwzvmHlg1FZ8dPtuqCrSJ56zYpVOlLfPVaq7qTBiGhgN+iNbcTJn9pDAdrpZrAkmJeajgjAlEUzER",
-	"oL3g2zRZreVxBVIujv3Px1LZxz3TL1Ey/bqSEZwi3VOkQP2PNqS+xInVrLezCJr07nc6ZaJlTW5OTOqy",
-	"xGIpeWqU1fJCqrkcZd0tPp08yY/48xQ0e4P8DolL4AaYf8hPUsDlKCPgcobOy5LWUXSnPBweDQ83wi/M",
-	"PggASIKu112I1YmYJZwMTTQpalunW7kXUhKFUoC2HohS8q8vl3q9mZR+lFD4tLjkFlxLkaaAgnL2kqyg",
-	"0gJJ8YPn7dsHHdc4h5qjiOAewLbmTLtNKm7HGXxLPt9o+jUb6A21rcfNa/ptGgRYiX9tOORtgdG3zR7X",
-	"3nVJrI28808h8n6YsHLuBUprDWmS5LWpeVmSOySfQmv574ZsvUEFD/PbsCD9UFEO6n4cYEvz7EgN167G",
-	"PNH/rGV/NeY++VwKClFWyRrv2n0Ee3rDO+0IG1owuBTrOOL61cmr9+zw6LuvY8MBX0AwGSOM7auw+KUq",
-	"uIW3cO22Tq6pU1Mc2HokHzmrdKkM8BWXAkr2dzXdtf5vTe+lFDTDxtb2rLqFHlC9x+kWsH355Z6LIbeT",
-	"Mb943+5ubp/brvZOEX0YcdO5/xr7BFK+L9ft7JfXrtfZKPsAfDbKXhDmnrzzXzcegVUfmNil1cNLVcuE",
-	"KXFC3qIgzIbMrQzNIjwvdNs44mET4LbW0CWi77YyAldZdKoE9+ZFtsGXzXVgA41Tyj94o2LbmOM3a+uC",
-	"92Oq7MlAXmthF6dIxu7kJkLDGTfwuvigLoDsrDPgGvQPAZr/8+uHbLCCNT/499hJbafs9Stm8fW2sYg4",
-	"l1A8FtIzvmHoJkmilSZodzm1tnJd+YScpHtgUJmf5rllZ2Dn4EsbXBlaTn4acrA429Nh84/Kf2TG1mdU",
-	"IDGS+NYrrm3zkgZ2DhI0t1BEzsCJKOFFaEEqLKN0HspeH+DMciR1je4fbi7w/fFwJEfypZKXzlVs2Fep",
-	"/jQDNsqQnJrN4JrRoxHWIJQcZV8f42CPXXtG56CBTzlUzryeUt0guQqAOmF5GxUK38RxfHB5hOt5zJCK",
-	"H5tcVVAwDUbVOgdDhaPRowcNWZuDz1FLx6uD4XDoxvlea+VdvY2XbNzXj3HsnMg8+Ducz8ytR8zAWD6r",
-	"2rGePn36HGnjlw8vh+ytkrDALXmKZTn536qyxtNjoQxoJBkLufPOH4SD/8/pzz8xz5UWzmFLs+R8BuVL",
-	"buAFQyWAXfKy9j8ZyS/g95wb747zLqLModXJu9dREn7wGFwNMlWB5JVAv8XwcPiUXI52StR0gMD9N/53",
-	"DqkuInWeAxTOOUY+RO8Wy8H4ejjEWHJ4DdlrG1zRVE47kk1BsABDrd84C2WsTNWWnwMrFLg2cRoo0srA",
-	"IZHyrnkET5PNlf0I9g0teKkD55PDwzXdN3fruulroHuaboa9C8N0LSUFZGNOlR3/9jHqVpW9J4eib02a",
-	"fB/PkZ8bZJOOVLKPOOCBBl4stjwaGroBLY6NOjqhM1KssIa57eFvfiUeUZDFCOf5Khh8qiC3Zsj+Xp+B",
-	"lmDBMGNVZZhWtXOLKmrmV7gdYdmvwZ5h6bN677ZwL4flmJErwK64MRgnvRpk3xw+vYPJTyxq+saSJtAp",
-	"At8GWeZToHBe5JxEUqPiVKv5ZCLyPqS5PDoIKn4JqfaZLhxmuiq+a+kqixA8w/9kYTwttqZPoycMRjL0",
-	"/ep0C3FYEYcf2QVA5ULkiD4e97hUcjETBhttu6DlgCLdtQFXctuGMmtjkTMvkMfy3A7Z+04/7sPnLhg+",
-	"ku2OEMnxE1XhUuQFlTIesi24ZdMmZOo3d4wvLEaSppvilpqMBOrr4erASEx7QewA7CZyLnK7eFxpdSkK",
-	"0CPJ8xzVGkYl5S7DPkEjr2iQt7BKIs96smn9sML4BTisfnZ41IeszbhtO2F8/vlOzxdtu88t34lb9vlt",
-	"JvWsRybsKULpAM/s49Ugzf0QFnQm1PTUQZnGFi7e5DL7TdNr1KFT0/ieph6M5AUsmsJYoVfP0eV5cEsU",
-	"iOY6YTOyU0cpQo6ksVBFCc3+TYcrnWC0w+Uz4rwYT+mTcG9hnxzzLfSJtlUV+FqY9fQuMetHsEm0GvgT",
-	"JecFsai5l8CLKOqOQrIP7apwvUD3fIJHImvCin/1JRS3cjrLnpyrriVldQ1X94IcNS2s6KLG4Y6ocXSX",
-	"qPGyuY4hxXSCMbp69F6MRnE8z4FWCPUfTbBtbwfSjXL2nI1XJEPU8Nqg26TCBm3kUVAX22hjgKNZGAuz",
-	"FoqtrYZrqZSxqSZCIbfxEbpyXim2ULWLBTAl8YNGKU7BUjRinSD/v6Os4fJKwkiCIIE+54tjNOZUqbyj",
-	"1bc/jJwzIePB+WigScUcSe+qWUo3gtIAw2y9pBBfatG2J87Q0whuKwZxdIsMok0qTSMjyklCkdX7KiTM",
-	"/fUMXwD3IHAHtGnEu9udK4wyrMnq8diPz5oU8ncdFet4SheN9sRV4kyq5CFGp7Sr+H921+Kft1nU/nTa",
-	"LOrE2Qw6lzP9lp63feQgvprk6mOkF3Sh9hPZ4uOoNzMVT6eUh31zip6YxR2rEhtxLGgUd8YRdlVN7xiX",
-	"34Mzw72g0q0zt3XC785rDkK77z4/0s/Iwwz7apxoNj7+mhkALyDdQE1a4ESUFmltMZIkZl/46L12feTJ",
-	"9vZzO7WbnhqQHo4DsrENSQLjkcR4zZB9jyLfz5NzrQU4PutbjKSELwb13zQdzZdIu7tT/xgDWZArgmxG",
-	"Vw5PmYe273Yp9LJvd2HQ2rKSvvWQ35P0N1fr0VkSO7HuJqxvn7ACg1pu2WNc07hvwVbtYbk/d09UdCQ8",
-	"Ha7pXU846Wyna6E2ryB0NiCA9c0eJyHtNPsGyeCzPLZ40t1yhtJjb+w2qkRP8NuAamcLh23EUB6YrmMf",
-	"DUq5kiQxA6aR80bM1j9xG+pD0gTqag9+NrqWkFifj1D5WxOau33CVQKUzR2RgktiBtdSyvPOcVQpcFaq",
-	"/MIwwy+R6/i0k+dfD0eydau5gV2RhJue6gpcW5h1uSu9BpLDwT3pPHFXojs2ify+erQctHlC564Hcjsp",
-	"CsY9PJLktaU2c/A5XARx1avYUNk4KTcDwn2K9JOYasq0mo5qq1HGFln3yrD70KaDMl+ACRY6DiKjIIU1",
-	"2enx9jnqFrLXI8r2xltgvy+i/nsOb3hpFJP48EiOl+/ZGQ8Z9fGz6QtoO+39XjA+kt0bZ5m7cJacVc+O",
-	"nqT4qDPsGtTcDWzhwtyrj/vkwCF9+46NzfXEFCD8H8SHdw3gPTt6cpdM4a26hAELFILGLKkuc2HCaaCL",
-	"NvS+uV2BcOB65yxfw71HxjLYifh21gDjfs39d146frLTpZfhWsKBSzULPT2d7S4mvsrOvUMJlUYN2Ttv",
-	"Prd3CBmrqqTaF113ui+neOJG1T8W61m63cy3vhp32/uOEdp0WxM3TZetBy61dx8/HU6jvQyYqlxH/nJB",
-	"p+Bue/Fdlm+NO/kuX18Yf9pWm2ZfjVO3DY6DdemfOoNczcCwwHOS/KNzadu+OEjyZrirq6t75Bl+SQ8K",
-	"yx0qLFxftGZM0XW134jep+4KjX2aqf6Wjr3mWUZ3iqw1WR8Z5nf8JRivIUnUZYqoWBSUBd2tL7Sx92y2",
-	"XgPpmlrGOzStbyo2krfRjr9exfuToohaP+/Vn9g0zr0XnyLtb41fkS6zefAqeq8iupycxwntTalsh6Jv",
-	"i50TVh58xj/e+diXaZ1EfX8FEWa9UhPqYU9K8BKCb5MajOM67z81PBr+R4bIcWuMS9rs/bLlLZRqwpF1",
-	"fsfry/7YFXgnbPBeHXvrGGFII3lghl6lKYQNFEIpk1bkF/i3lvSfY5S3xQ795WL/ocbskP01+MSi26l4",
-	"4VNeHpmucy52lXnAUN1eyrhFg+MndYqw+zKDTH9qc/G9KydpqvpC8L0QFOlCE/7WDEgNqnJ1zl8Qhfms",
-	"MkwUc+tnXIbcHVel7xIM5nQ/o8ZrUTrWN6U0eBqKRxE25G4Lw/C3X2ShXKH/amXYSCqZA+OhPI3lWMsV",
-	"5y2kKPM9zXTfAeDl4MgDle5Ope9qDE0XlPAf3YK57JNnZzy/QFshvozhGqTru2Kb3vRuylVsntonasXN",
-	"vhMI9pKK0S1rljzAwJLrMPLHd9rgrjqN2Ti24qxKPJP7z9nqy37yoN6Xot65MuCuvRVhb+tyoPwzDyr6",
-	"cXbK0Yh1GNskH055VYG8Gec5+NzefbPWN9EXbX7HfUthf6VoWJwve0344lz7rg52b+OsCOukfgRujP9I",
-	"j8WpVRVe+AbaBRMjXnUv7osGPRxjq3fIRHgT44KNbnai7P45aPBYM5KogL3olgDwokB8olJqV+UPnc7C",
-	"SffGH45nHt4ZzwxujQe+uVLRu5mKNjFMX7jQG5NLFXOF9l5TbpgFaTD/uukp72o0qMWNncJI+lu4hXGm",
-	"IKWWKwl0J8ALNm57RI6RAbqsbAO2r8DFV13uty1Ac8lCqp9Jp9WZ6ymDLfKD9uicKXG/qRsqlE+/JAU0",
-	"Bkvl06Mi8OyjCHELjdSjbdtvFVFt04UKjnc7x0ZoU9HtYhHsb0yLcZ1a2djdmzCm2xaWmrMI13HDD1FS",
-	"U6OoQJNxv7gU6p8UhUPLPQmAZvx7LaZepzV72PwZE0BuJyboCs+QGTXNLHesn/TEffDZ/bOTYr1CgpiD",
-	"yaOKo07vJFSsRnKpVdIs0fAoRBI9+6HbZogDp91ZGDOL6Ggb9bxlGH/kaOIdo1SIPgbooPtS2Gmh+ZwC",
-	"Lg3Hv22Gv1mvf+txc9cKdZbi13jlq6pLtP7QUA2Y5kSDqim61ItuccfePffI2ZlzH94R5w66+wP3vrGm",
-	"37BNf6PPzbn3QRyye+xCdr2GwIkM7e98EIJjoPkFkogwbb9sd4MP6jNqyD64QCJGNqb8EjCMYZkB1wsQ",
-	"v2maknkgHbMnz9hU1do88un7AzKURzJequuSGfJlB22AcV0K7Y9gX0ZjvHO73SNhJGbrIRIH+S+oyUh/",
-	"xPc+PDldjl/3tMijRZMaYaC8BOMSAprOhtQa8auOSEjk2532ItG+Cjriie7FO3NNNP5ze7WvRSabGLiP",
-	"rG/Rv8RjcXih07vEf9n2KBlJ3/AEE06XXgkfnWOT+2vx/eUXYQSmJiOptPvoOgf0h5TRYXAaNrKhSwlF",
-	"1n1fUderAQv95YLNowaWks9gwMS5VORXpo7Qfd0vAP3rndYXy5cUbNd4owHLnBq0LsNDrDQF2XM3EPLC",
-	"hNhBuzohjUUxrSa+5zYJ3t7WJNE9S+1aGkqY8NLAYOWGlS+tOUh8AU6Cj/mfV6LAD51BTEu0gXU1X92N",
-	"F6/hTX2B5dPmHsl9yOPOdVV37B4LO1vjH/PQecDX4PBqbxVN4Ou2svbgc9MyaW2vwhj19su5+nCge/5f",
-	"gBXhF9w0lBSahTvfyBnoLvi7fW6zWQwFSt/Bh9TyJnayIodDmFjo2Ns5ko2786y2zWXMFCEHl4jbdswx",
-	"/Q6mO+F695TzvgHng3fpgfclAsMOJmTmes0O/9VgrOus16kauSFrPIhva7xL2ryZ2nBSFOFi1n2VVMd3",
-	"Ut6tzhB2tkZn8Kf2QDdOZwgRYPRX+k7ZbXeRtskHUZHj3HugoIPP/r+dwmtrkNzFamI83ybs5RfxJ6mi",
-	"C9u9b3VjC2M6IMe2WWtrMMPpD380Dnh4VxwwaA8PXHBVe1hLD9fib801539U9cAFBJR3Y9rYpEroDXQP",
-	"+35IBoe+F42B9rRGXcAjfKCS4N5HaLjsMFNxaYKhdtskc/AZ/3hl4I8jhwhJr2Mg70BmTj7tmdLuybJd",
-	"R2tBMD3Q29J1AAgQwh+sk2TCMp5PBaCvRWlWaFVVnYK1mP66l/ok7s797SPisrvVJ9kyX+W8ZAVcQqmq",
-	"GUjLvnJXyOpaHvNKjL/OBlmtS38n7vEB1aKUU2Xs8XeH3x0SqfiVLY/9zl0Iiy6f6LZJdILVFTXhdreI",
-	"DttYjb/pcDUU9IPzn51hcpKNLkTyt+u2I/jriVZHSN1/xvw1gOEasWic5rqoxEj4aLh+LM4M1qoEs/u9",
-	"1W3QbGYS07WxG0sX26mqbGw5v4jWiIvTDQfR9ojnDlc65qfmCxdAYkG886gsfOnSwF2x5j4Yf+fPzE2z",
-	"Gg0WEE8YxMjVx6v/HQA=",
+	"7L15cxs3tij+VVD9myoldSlK8pKJ5br1K43tZHRjJ762clNToV8IdR+KGDWBvgBaNMdP3/3VOQB6YaO5",
+	"SKIUe/yXLXY31rOvn5JUzQolQVqTHH9KCq75DCxo+uuFkpan9jTDP4RMjpOC22kySCSfQXKcpNXzQaLh",
+	"f0uhIUuOrS5hkJh0CjOOH06UnnGbHCdlKfBNuyjwY2O1kBfJ9fUgeVFqozS+m4FJtSisUDjb2RTYWMJH",
+	"614YMzVhdgqs0HAlVGlYwS9gmAzc2v63BL1oLM4N2lzJjH98DfLCTpPjR4eHsZX8qHjeu90L9/B2ez2d",
+	"vOE2ncY3m4MxSu4ZNr4CbYSSY8YNy7mxTAPPBsyU6RR/Go+Sx6NkPGQn/huWTrm8gGwkjZApMGGYhklp",
+	"IGNzYafsydGjATOKSXWusgVTV6DnWlgwjPtP8WQXbMqvYCSlsswAyOFIhtOdAs9A14dxOtl3G1l1HJHt",
+	"W5j1HrBwD293wK/pPHrnyMPjW84iZsLGL3GmjGW4FcOsYhpsqWUfkOY0THPqDCa8zG1yfIQQWi1ESPv4",
+	"UTJAEBazcpYcP8XHMyHdX0fVGoW0cAHaLVKl3IpVh1G/cLvjeAOzc9CnWfdETtiMnpmpKJiQhL8W+Kw6",
+	"kfaKZmGg263nPWgBpnffJjy+5Sy2zED200dTPb/dPL8pfWkKnsJpFgc5OlD26gr0wk6FvGClzEAzYdk5",
+	"5EpeECTaKberjn7emOU2673Gj02hpAHiIm+1Os9hhv9FhgGS8IYXRS4c9B0U7o3/+KfBHX1qzPUXDZPk",
+	"OPn/Dmo2deCemoMwLs3YPRPcABjLJlzkkA0Z/ka0z/CFYfPpYkhn60fDyU6yzMHxO/cp/lZoVYC2wm0l",
+	"E6bI+eJnOrDIRQjN8DCRQgc4Z3OR58wA4G2U0orcEVojLiQTRBgabOnIY3X1d+d4BwnMuMhbF+F+ibyq",
+	"VQ7rjvFNhZ7v8O3r6+bd/97acpj7QzWVOv8npBanOrEWZMZlShOCRKr0e1JoMCBtMkj4uf9Pzi0kHyKL",
+	"fcFzHEH/AJB1j77UeRz2Cy2uuAWWC3k5ZGcaOFJflotLYJwV3Ji50tkwiljNjeIEsY29wD3ljqv0AsaM",
+	"X0JZrD1qeutMzAAHLri2i3WfuNlzwpO39AEtm3tMaYDO08PDdVt0M/Zv0k3T3R23LXDLuIV9KwggOrdI",
+	"19u5KD8+ZOx8QajhSeOeYUZk4GQUZM1MKitSFEa44xU58IzZ0iq9Z1ihcpEuGDeXhk2UblzquVI5cHlX",
+	"57r6HLlNwjQdeI6f6duwpvax/DZVLOV0LrYS/5iaTHBnAYdo88kgcJMe3GnMRYfUvUVhXgbZIspDcBo2",
+	"5XQFzIBF7KGhSHB8C1Iu9gzz8gkj+g0mfgV4Js0l/U3kOT93tKj7di0gnGYtQIszmEEi1fupmq8e1MHR",
+	"31WpTXe/fm3IKfsgTxiUoXEjuMWOHLYsbQ0SU85mXC96iJQD3CD/eHBGwmQGzEzVXCKHLrgGac16WtU6",
+	"sfZeVxx+5+DqRQ8a0LEWlmkvp7IoI4Rwu5u/wUX2S8SPH3/XkIgP19zRdpTzpie82Vm+XwU6EQI4QAHD",
+	"A4sXLRBmHvomVp73bs63niJ+0gU/F7mIkd5fJDCt5sGkwEs7VVr8i+ZjM261+IjomqnUHHCdToWF1JYa",
+	"hrOsSZyvBMz/UHP5h6PduHr6yQKf/YE80vp1zrjkF0C/13/VH2ngBkXCxk/ItXKwsDQ8ZMI2fvqDNM16",
+	"SM8lqoXgm43f/FsFX8zolygzybmJGChOpLJT0EwquZ9W/DzwrCvQOS8KJKlEPJUEZNGO2aNM7PiL0oH1",
+	"dyEWZGZOthE1Gpr+Wp6xzGT6GOC5UpfIjucihQETE5QlBVpJ6HGLF/RNZSzXdqudmKYi2V2Zf9y/tsaR",
+	"rl3dfKpW6S4DurVRcoaX2L5cw97xK7Fn2NF3x4eH/uFwlKxlVw2bS3U2g3DdbkVR9PUIsEb25i3No72v",
+	"t1DDG/PqOm5rYpkqLeMamIZU6QwyoqlOXSEFmdBqjRTpR2zoPtfVPrjWfJFc1z80N0Z20+5y36sZIOLM",
+	"p4pdgG1c7Z5hGmZCZqANIpGGFEThZIUlLNpcPRQbilte3YWPHC8Ej1WLBWc/c6Fj7xdTJZc++I/vnrJn",
+	"R48esydPv/tr7BvazxUYpOz4U5QBhZfehZPoe82xDUT2tXqAu4p3zU+WwZdORToFuDV2bEXdrXzoh4Ae",
+	"IWqLKwx3s6UNobqixnePDze7l8pC6QxDG17TBl/d7a3FLmzFVbxbmr6yYJCYlQySi5LrTHCZDBID+SQZ",
+	"JMQO4xxUA7dQme16SZfsMySR6WjPeIq8rCAwJZnn4MHMZRiXWYsq1Mj3k5qyH0thuSYSKNT2NidkXP9S",
+	"MrLYE8lOT34+YeENWvKQeWWCDI8nRvCD90Je8EJpaK+t/WwtJ6EDi93iK5k5m28/m5hY6PExkYMl4wvG",
+	"axXcCS40JDOWL0yLuSI3X7tYN2NstehmilN/Z76tyD4joyyzas51ZogRMwNXoHnulxrhADydCriCbBsJ",
+	"JCWI3eqTDbmHsdyWazkpnsh79yaBm82XWU7OF+wNz/lFCZIzbtnRo0N2XszWXoNbFo1Yraa54b4LekFu",
+	"MdOFpFvtaNkHuRLxrnuW1sM3bjxJ87jcIH2H8r7aeyCQPLXiCpJBBXbJIMm0KgrIorTx78BzO+0uPp1C",
+	"emniihpIqxesAM0yKEBmINMFow/Qsv9qVtgFia25uAIJxmwswLnFvMCRuqLbprDrBgl3vXScNcC5/cUO",
+	"trmKrs8BrJcGlm2HzpJK41Zejp+RODByzAtpmIFUQ9SiFBPrMm75OTdwczReeRSeI/uR+g+iC2PqEokv",
+	"F0vyVAOohLFKL14hnERIfxrs2vVevfYSlOwo6eKpVTru7DkhdwYBnXOfG2chZTOeARMWRYToqVdsiGeZ",
+	"wMF4/rax2JZ0VB/MNhb4c5goDVtOscy63InRxNGLcuf9WsQ4bYV5m6Fg8+oiOFjHf6w3I7kJYwvGuIOf",
+	"hMyaUGW5QbjCsA5nRI37pfDT/xFG9FmS0Ig/4wsyxCFC4iKGbOw5+JgEs7EPlTFjZvklMJhMILVsPgW0",
+	"CCsDI6lVDoalXAbXIPvmvBR5xoqcywF7O+UG2NHht8+ZVSirKJkvUDKZTCpfIkVrhN3Ro4bbYBDCdeJG",
+	"H6dkdy/zvGESbO/7pZIwQF2UM6n2UUbFP3JugaUN412vFwdH7vEfpEvuqE09Ocvf1q6QjX1BLYMsDofG",
+	"MNgcnJ3xLALHFaXZSiwrtUZm1z390/e/sCePjv7aFqff//gyNsy2lrUJwIsQEtYVl+dTlTdilSYAA7rM",
+	"2rtXX/ey8+S7J8k6I/2GcmV1G0sLROfggCFSO50I8doM2S+ILh7fwuLReDYBm04hQ5VKoGY1lxsLDz7S",
+	"yMIsdt+XntqsH4Ho0vWgisbZ7KsQ3INfOvfzD0q/3sokSl81P+neNb6zXxbB9OgPsDYNzrlhlTF4M+to",
+	"IzSnO58GBHnUgfwENJlKPSJAI6BlZ7bYTQQdd2q1fF+Z2DelE2EA+iwGPxEdyCnxA/ajRiHjaWz1hHRm",
+	"hSdpIrSxW4L4GQ4aW6OPUoyosiAzZGHjECY4dqBDspLzEQQk3Mi9GlPpYqbkStom7KuOo3E/DeLWIK+D",
+	"ms/VJL/eX0yicEfTqyTehuRuSTDzVpjfLt0TbfBeO1MvSC9bn1aA8UZgSgDqlOJrOq1T99XRJtZ4TwB7",
+	"TLH3d403Zxhb0fttucTnBS5tMvTqI09tviBn5BjJ33hjyrcNSC3p+x2qtEyF8GT6SQpOFNFhyUG9WTDf",
+	"O5iQIqiymOv9Rsa+LGr8PRNogaGAJUaCF2klcZkeR9hmxosqFL/fIYrv+FgdC7O2sXQj8WBDWXMT1Kw0",
+	"TOSLLXVx3VcN5TLK6Dwvo+tsje2vZRCAY51Vs4avXrYVYKZtQVzvIAjw0b33W53Fii30EOybbqAGtz8v",
+	"NDQBof9+l80cGi7KnOskMADckhY8X2EGuAu7jhtpdxadJS0oYpYBDW1lj+KmhCWlhcRRp9VEPChZpsH0",
+	"iNH+IWqMyFdyIWHgwggtRfoZy3OWqgyGNwWesKmb8nkAK+TFry5iutfuu/rgPaz1OtxaClAD2nAPWZmT",
+	"QbVpXK2URBxU/YHmohUAGPSiNcEeqw6xHZTRs+ml0Jv1qRhtVh8+XXtOToNal0+wNmhp7dVvEvBPa4nG",
+	"+i+FlbZD/2no6A4bKBhFo9dCwlF0f40XHkVfuEP+3EEqbgVeYFsiUaXTAf0UssQTcTgoL7Z5v42EbSry",
+	"g9IoKAkJTSfuBg4a575nWqkZexT7xFGfFyqLuSyYER/3M3EhLKs87sv0qp7r0ePvv3/6bDPvqvfs0DWs",
+	"ApEenr0MJ2vyNLtws/aDuweQKuz4WTMPb//Z4fawUw119H1rrKPvY4O1AWtNGPPNA4RagFRwa0HL5Dj5",
+	"P78f7j/78Om7679sFquxAVAsyytC/lGANuR+clgSZxT+8zuRVRq21N1IK43Un1vbGLbVyNdqqNEFRxZa",
+	"84eYro3Zhy7ljeQgusKmudb76Z17kil5rjCgSl5srJLXmWqxeyoNrFWPfzURYyJ9OGhtLn4gs3M3wzJZ",
+	"9VsVknHa/6CV/5cLYymCi36bdYXNJSGgpsBvQLDXQrIzCjq7TR6g6LPuV3tmpy+HzMkq6KAT0jJuG883",
+	"U6f/qYQMdoWONC5d4uM5pJQiSWEjQ+Yd6fOpyIEJeSXskh9hJSrcJMFxUxO/+64nlkF0BaRw+rSmlWEO",
+	"buS7IFxupPVkaykqmhtDVQRSX1chBOrjR66oQriX4L/lxlbVFm5MAyvjVASJCFccvBH+uFwDF5xt2Axk",
+	"8CWvx6DbitGbS8X9u6wVo/ZGxx7Exz4X2PiIb3ThGyQhlSLppt0zjOAqaJ3DkXwHM3UFmX/BUBC7VJYI",
+	"DWTtIIAqOMtPG+WkDbrajcoKKTQCIrv5jVLK0f7maSDGQWTK5bkJ4/PSX+TCZSr5EIGpyGAkUyWtVrlh",
+	"E61m7nUileSz9VFMswI3hwhFYaXGbW4zP3yd+xPBDnF36lSXvFSJ9Os+rQKE4+SlHqciKq3r6Ie+ajVd",
+	"x5y3nOIpu2hinwRhQCNQ4e8p13rBpGLN2dgCbDPxSc0lsU0LPJ2CbgWauIGjsNYoBtCJI373wwv27MnT",
+	"vzJfD6CGnHPNZTpFYjTGEccDDyH0g7A5jJnSIzl2sXLjAbITLJSiXQ5SAarIgfaGAOoCthwsbRprxy2b",
+	"E5/SSl4w0fFLRxU4IY2N56U0CxQUnDCeW9x3VqY+GTgcQhQu3acx8/h/l8qCWx2ZuDQUStvgcl01qOkh",
+	"WbjWv5+dvWXuha6q+OTwyUYZspU/p6OXTpW2zGfyudhrYRgqDvhHY83VlMnPCoPvSrnCkRSZh5LxmEAw",
+	"FRMB2jO+dZOVWh4XIOXi2D8+lsru90y/hMn0tBN/HENdF78es2ijkfJXZBfdTQWRDT4i7SwLV+hDGAxn",
+	"f05XjlQEXF6bYZNSE1/lU+DZBhHt7QikzsOs1KQ3vRGytLBpVuhKH+mN44FuHj2jIWBxj4WQaxs0t/hT",
+	"84vsKGMrPKN3GiVSJ2Z08SAg3G3962vCQMoAm2sPoBEwcouYj19k0ryWLhy27rRxSFsFhDTQbnUkiEPc",
+	"XpfaJkhSm4CePGnagJ5ujT+rYwxQ1opTeIoLoiQYF1SOmwlFHphVg2btpj1TpftsRENuEqBSmUpq09M3",
+	"vx8efSD70/999Pvh/uMP3x7/frj/1P30ly8+cKWJDHSP/bDYY2f9M0HiljDRptFR0fHp0ydPmS5zV00G",
+	"03tfnr0/O3l3VpfN++Hdq//+z99evfrp9T+e/+0fL0/+8Z9nf2+z+tgbyWC9gbkFs5GQWZ7n+2mu0ktG",
+	"b9ZLGiWUTT1KSK29HbDXnGgFft8Kk78chGpwrRUJgd49Q2rDhOc5U3LIfilA7oPMfG1FVdrtcwNvyMg2",
+	"DCR6j8qc/p+a2S4p9WrWW70QvUPueciAREULPeaYjWBJW6eo/1FSykup5nKUtFHo8eRResSfrWH/MX0o",
+	"B26A+Zf8JBlcjRKS0zlDmpHTOrL2lIfDo+Hh2jMPsw/CAUSPrtfzrNOpuHKlySIZCyG3YuM8AfdBDDko",
+	"dn3jgSiX9OYmjl7HOMXNR2yHvtyaVU0iQskmUa2y0AK1ujNvJtg8fm2Fn7G6isa5h2NbcaftEnV3E1dw",
+	"R+EDjelXbKBXxFwNmzd0AVYA0AmlWnPJmx5G3zZ7pJeboljNDfjHwA0Ou/jyMKe00idDRqHSlDzPybOW",
+	"TqF2Im0HbL3xKf7M78IZ4YdqJE/txpe6NM+W2HDjoicn+p+l7C96sks6FzuFs6q4VART8nImY7nUaLQ1",
+	"ThYcICRJD1baDDB3C+fdPEI6LOAFTbfOOtFb4yK8FKy2pH+6HeyhEIalHvNczde7nhp6fjiClSfnF945",
+	"Py/13UGoow1xXzcDBvf5oFpQdDe1xLvCYf8Q8WO9EWP1CGsq3rkc0WYQ5zcnL9+xw6Pvv236IvADRBdj",
+	"hLF9KeK/FiiYv4EbF/cl7KhrsdRBDnvO0bVUdeUllwJy9pOabltuZUUF3thpho2trFx8B5WAe6/TLWDz",
+	"ajc7rj2zmazxqw8X2c6TfNfFtWLEP4y47t5/a7oZY+50V/P611NX8XqUnAGfjRLnFTh563+unIxdt7rY",
+	"prLeC1XKiEp5Qg7oINQMmVsZelrwvtAT7JCHTYDbUkMbib7fyK/UZdWxike3hqsqPIbrQAYqP3fDhnLj",
+	"2kZNzt/gZM3j/RCr22AgLbWwi/eIxt6qJzSccwOn2Zm6BOJw58A16B/Caf7Xb2fJoAM1P/jv2Elpp+z0",
+	"JbP4eV3HUVxIyPaF9IRvGDoXkIhFE9S7nFpbuNrsQk7iJQepTonmqWXnYOfgc7NdHY2UXL/ks3U2CAfN",
+	"Pyr/JzO2PKcM75HEr15ybauPNLALkKC5hawRXzAROTwPtm1hGWUINIShkdQlepS5ucTvx8ORHMkXSl65",
+	"6BPDvomVAx2wUYLoVG0G14xO0rAGoeQo+fYYB9t3Rfqdzxc+plA4M8uUCp+Q9xGo8LC3VUDmS/mPD66O",
+	"cD37DLF436SqgIxpMKrUKRiqfNN49aBCa3PwqVHY//pgOBy6cV5prXz0SOV4H/dV5R+7uBQeXKjODe/W",
+	"I2ZgLJ8V9ViPHz9+hrjx69mLIXujJCxwSx5jWUou/SIv8fZYqGMwkowF74tzMePg//X+l5+Zp0pOPHWz",
+	"pHwG+Qtu4DlDIYBd8bz0j4zkl/BHyo338HtTY+LA6uTtacObEyxH14NEFSB5IdB+NTwcPnbG2Clh0wEe",
+	"7r/wfxcQK9pYpilA5vztFJbgPe0pGF/QAyGWfOhDdmpDdAvVAxrJqqKRAEOVtjkLdXiYKi2/AJYpcFW5",
+	"NZCxkIEDIuWjffB4KmN68iPY17TgpT4Mjw4PV/Rg2K73gi/i1NN6IexdGKZLKSnGs0mpkuPfPzSKAyfv",
+	"KEbBN6iIfo/3yC8MkkmHKskHHPBAA88WG14NDV0dLY6Nqg+BM2KssIa57eEzvxIPKEhihLOAZgw+FpBa",
+	"M2Q/leegJVgwzFhVGKZV6SItFNVOz9yOsG6RwRLN8bt657bwIJfliBFBInVKwNDL60Hy9PDxPUx+YlHS",
+	"N5YkgVYVq02AZT4FimRoGKkR1ai6jtV8MhFpH9BcHR2kvtfEwSficNe9EPS2PM9FekzTlPKiBGMIYrDb",
+	"BMIJ/p5qoIgSntcyAjGdx4ekv44kv1AIFEffux9c+IVPGguO6D3vovFETvoooJynQFm1g5F0hIMsTmgc",
+	"DwaxHsBq9dNYC14WPtrqWNrXG2nw0u+AC0MQID05fNIHH9Vy6j4ug7pI6MbfrACUk6rgUPDicOI4IhwM",
+	"m7iTCUBSadnXg1YjtN+jKciQarCsQHKsJoxXG3eNSOItdgjYVjbXWeMPu/7gATjoqDnE2m24EFHT1lFd",
+	"ZxqZhYBS/J/MjGcmte5eAfFgJEOd8FZ1UUfWmiG57BKgcGHjVL7SEU8ulVzMhMGuZC6Qd0DR36UBV/Sq",
+	"Du8tjaUqmygk8NQO2btW87LDZy5AfCTrHQXsQ9xgFI3o7sFnIHDLplUYsd8cofFiJGm6aUAx+oAqa7ra",
+	"KCRneknSHbCbyIWN2cV+odWVyECPJE9TlMsZFXVzWecRXHxJg7yBLhI+6ckw9cNiGBd9m3lsOtoKm54c",
+	"PrsH7KvwzW0zqijsmbCnBrqF8yR8ixLf2m+NTVLcKdPYwsVgumx3U/UmceBUdQmkqQcjeQmLqjSV0N17",
+	"dLkP3BILQXsTQTPKAw5ThBxJY6FoJPn6Lx2stAK0HSyfk+iAMYZ9ItobWE+Tb85130CfbNbV4W4EWY/v",
+	"E7J+BBsFq4G/UbK+EYmaexFy0YhERymvD+yK0IuxfT/BpJZUobZ/82UF7uR2lk2R19fXyzzh+kGAo6SF",
+	"ZW3QONwSNI7uEzReVL0rY0QnWFO6V+/ZaCMgwVOgDqKGKIodXkg7XKPnbrwmFMIf7lpaqnSwIE7vBX2n",
+	"DpsI52gWxsKsPsXa2IBrKZSxsTK+Id9vD22RLxVbqNJ5n5iS+IdGLk5RH2iFcYz8/x8lFZVXEkYSBDH0",
+	"OV8cozVC5cp7Cny7hIZ1MfiTnJERqvTEkfS2xqUUHMgNMMxgizLxpZLuO6IMPYXjNyIQR3dIIOpEyzgw",
+	"Ip8kEOk295Qw910mPwPqQccdwKZi7253rliIYVWmi4d+fNfEgL9taVtFU9pgtCOq0swuil5i45a2Zf9P",
+	"7pv98zqz2N9OnVkcuZuOAhebt37loNlh9fpDQy5on9rPZEwaN3o5UUGxmPCwa0rR43S7Z1FiLYwFieLe",
+	"KMK2ouk9w/I7cGq4Z1S69kbUXqTtac1BI2Ihqkn5wI9vxpHmZONvmQHwDNINVKXKTURuEdcWI0ls9nkV",
+	"L0LfkO7t53ZiN701IDkcB2RjG6KdxiOJDsche4Us38+Tck0dNnD7vuxmjPlidNLrqgPaStuMf42BzMgU",
+	"QTqjKxFH2Xi2rxU3hdRv1Pd4ZamFvvWQ4Z7kN1f/oLUkdmJd2/DvHnkDIS17jGsa9y3Yqh0s95f2jYoW",
+	"h6fLNb3rCTedbNXdev0KQrU/OrC+2ZvRlFvNvoYz+HC1Dd50LeGRe+yM3Daqs0XobQC184WDNiIoX4mu",
+	"Ix8VSLkyHWIGTCPl3cz+u634EFWB2tKDn22MMRFE+ryL1XdZrBsR8ap14kh6KHfeK1TYwJVZ9rRz3Mie",
+	"P8dsE8MMv0Kq4+Omnn07HMnarOYGdoUD3PSUa+9Kpa4KvupVkBwM7kjmaVbqvWeVyO+rR8pBnSdUs/6K",
+	"bidZVnXSiqLXhtLMwafQOLLfP0el1Ei4GRDsU6gKsamqdElVZbzrJq+BdacEuw9sWiDzGahgoeY/EgoS",
+	"WKO9Fu6eom7Aez2gbK68BfL7vFGT3sENz41iEl8eyfFyX97xkFFt+xqy9gwbexPZuF3y/jnjIxkEXZwE",
+	"MmaETMEZq54cPYrRUafYVaC53bGdTmhqL4XsigKHPJR7VjZXI1M44S+IDm/rwHty9Og+icIbdQUDFjAE",
+	"lVkSXebC1AnkrKoHe7cM4cDVk3UZ4vdCWAZbId/WEmCzY5LvolO3/jUic1nNjp4w1y4dvdz97ZWoHDuy",
+	"Q2GoKdPAxUqGPhdOdxcTX3nGfUMRwUYN2VuvPtc9h41VRVTso4XvVOxrTvFAdq41pGepG7qP7Bm3G+yM",
+	"8bSpuzMm0/rK01+p1M5t/HQ5lfQyYKpwPfHyBd2C67fq+xzdGXXyla8/M/q0qTTNvhmHHf6h5rVwFLRL",
+	"/9Y5pGoGhgWaE6UfrSbvu6Ig0U7y156IPAzN8Ev6KrDco8DC9WWtxmRtU/ut8H3qmljuUk31fTJ3Gijc",
+	"6Oq5UmXdM8zv+HNQXkOUs4sUUU1WkGdgrDOGPbDaegOgq3JT71G1vi3bgEzYBsv4g/Yw/rYL9ydZ1miH",
+	"tFN7YtVM5kFsirS/FXZFaif71arorYpocnIWJ9Q3pbItjL4rck5QefAJ//HGx75I6yjo+ybAGPVKjZmG",
+	"PSHBSwC+SWgwjuus/1QEePhFushxaxSp707mAcnyBkI1wcgqu+PNeX/TFHgvZPBBDXurCGEII/lKDL1I",
+	"kwkbMIRCJq1IL/HfUtL/HKG8K3Lo23t/ocrskP0t2MQa/aF55kNe9kzbONc0lfmDocTTmHKLCsfP6j2e",
+	"3efpZPq3VhffuXSSKi01ON8zQZ4uVOHvTIHUoAqXqP8ZYZiPKsNAMbd+xmWI3XFlJlyAwXyq2IxrbBXa",
+	"0r4ppMHjUHMUYUPstjAMn/0qM+UqVXQzw0ZSyRQYD+lpLMVcrmbcQgwz39FMD+0AXnaOfMXS7bH0bYmu",
+	"6YwC/gMsKd2xybNznl6irtBsUHgD1PVla01veDfFKlZv7RK0mg2wIgD2gqopWFYtuVHi689vtMFdtSpM",
+	"cmxPQenQ5uFjtvqin/xR70pQb7XRu29rRdjbqhgo/85XEf04ec9RifUJ/CH4cMqLAuTtKM/Bp7p29krb",
+	"RJ+3+S33bXacE7JanE97jdjiXB3CFnRvYqwI66SCGm6ML9Ji8d6qApugg3bOxAatehDzRQUejrCVW0Qi",
+	"vG7Cgm10O6bo/jlo8FAzkiiAPW+nAPAsQ3iiVGqX5Q+tbjtR88afjmYe3hvNDGaNr3Szk9G7HovWEUyf",
+	"uNDrk4slc4X6dFNumAVpMP666rPmcjSoRpOdwkjOp4oqwRinClJouZJAffKes3Fd7HaMBNBFZRuwfQku",
+	"Putyt2UBqsaDsTIurVp9rigSto0L0qPqVo+9nUD5+HMSQJvHUvjwqMbx7CIJcQOJ1INtXTgaQW1dk0FH",
+	"u51hI5SpaFexCPo3hsW4ktNs7HoJjqkD4VJxFuEqbvghcqrK1UjQZNwvLgb6J1nmwHJHDKAa/0GTqVdJ",
+	"zf5s/h0DQO7GJ+gSz5AYVdVYt8yf9Mh98Mn9ZyvBuoOCGIPJGxlHrdpJKFiN5FKppFmk4FHwJHryQy1J",
+	"iALHzVnoM2vg0SbieU0w/szexHsGqeB9DKeD5kthp5nmc3K4VBT/rgn+ern+jYfNbTPUWYxeC8vmqsxR",
+	"+0NFNUDaSIbmSVz2g1uz5PSOa+RsTbkP74lyB9n9K/W+taRfkU3f5fb21LuqZLhPNf5atHyZcl6pS1hd",
+	"K7HPvIE1IKViKOaA9v6JL9W8wVntDW0UOqRdtwu03pudo00Po8LyWeWDQi5rIL8C4/zlVeE/onHsRC4Y",
+	"cJ0L8Pvy7Nc7gX2BV79Zx+xDCVBXClzJFJ772tXI442zjHBUJacjqSY9FWCd4Xg1/B3dYSpFY54+h7GQ",
+	"zlFSnuOjc4qwEpL9qNRFDnh4J0WRA3vRrvT5RYH8Gywjy0k6L3zDqzbYu4ZkoT/HjY0TbZJVRxnsuyiD",
+	"XtsFgqv70vtNOcbGPEeuXkGkVb7DN6pgasjOXOwDOmOn/ArQ82qZAVd/F3+p6ij6wztmj56wqSq12fMZ",
+	"RwOy7Y1kc6muMnUI8R/UMRGrov6pPG09xlu32x3y8shsPeDvTv4zqovUH6Ty8ES5vDlNZt+0pNhIiPD7",
+	"XiDaVQ5ac6IHMSjfEIz/vR1xN0KTdQTc1N3a77VUiJuXPGqu2e03ofT2gAG2QeC+JogTXtottr51bRca",
+	"EfnCMg0FcKxn7/IkVBoajuIkwpoRNvmsUia8z5AqmLuqyRzF9hyNGVOlxb9c0ZKjR2wOcOk6GqB9hpgG",
+	"1XtahKp6rlzAgNXND51x1dWc7heWfKP83SB6s4HyPVsK/b5WWArd5Q/oAF0Fl8rGFIyuX05e6S3R/m9K",
+	"XbqosFKTX/YWKQLu3A8+uX9vV4/EjRFN9GoA9u4qza4AsbC0z0X02ehudyzveHpxL5VHzmKd+TtBhARp",
+	"lOvfrCLHvhklVE3NQSU2VBTyAtuBGapnorDd9YRaLmOt9UlpSw2hfIkZJd9i4T6vH7vfHIDXldq4a7zk",
+	"AzvrALzBSOLvzv+pYa6FtSCH7EyFzeAXod4VdroIv7dCOKuyKw5K9/qqrvTbKyv0+nPVVHHLeqDUi00I",
+	"giuEi9IAQlKAJwyc/y3Ey/sLc13NXfVC16vBj5CJbNC4PBzLFLmwvs+JMKGbA3I5JUln/BIMqvdc6iAY",
+	"VJcJo7s4aiyF2EadKu6GER6AzHYetV7T2F0WYXnfoaOeftI/YyJu3lH2fCSjdG/QCDtW2hlVfLse3yjF",
+	"WL6IUahXMtupWFuN/0C+lNV0BiTGjbXEj6+Iv72FvoP2DoAd3t8M331zqvWFhT06hQ9aRYX9j3Xx4JH0",
+	"lYgxE3zpk/CnizjkGnzHFWqvHUZgajKSSrs/XUnP/lwPjOR5HzaypnwwEQ/f8McVUcUKnHLB5o3OMpLP",
+	"YMDEhVR02NRrsK8sLWDga7JNi6d4RdzqWObUOWn5PESnWu+Oy/TioVZBvfXqhDSWLAMT382RzMu9NYPD",
+	"AK21VMgw4bmBQaeH++dWtbfZYj9CAP3jTnrG15K9pkbaQLqqn+4nvK6iTX0ZH/7ydmWMcqM/jDXK72yV",
+	"Ocq98hVeQySaqaAhAq+b8tqDT1Ut85VNRJqgt1vK1asetu7/MzAY+QVXnV5E3USTNFGqZLsDarOBihOu",
+	"fHM7Uk2b2EmHD4f8DaGbYYgjWcUhnpdObZHKutQVcMbKupS1WWFJuQ+q91AWkdUwH8K+vtK+SMaGOxNy",
+	"5nrJDv+rwVjX8qJVzuWWpPEgYO7uzQ9t3Lyd2HCSZS/cwndW65BGfxCZIexshczgb+0r3jiZIaRmYFSO",
+	"b2FXl/2tq+8SFjnKvQMMOvjk/7dV3PsKIHdB1E043ySe0i/i36S8VdjuQ4sbGyjTATg2TSddARlOfviz",
+	"UcDD+6KAQXr4SgW70sNKfLgRfXPi/J9YPHBhb8qbMW1TpYrIDT8qnu8IZXDoB5EYaE8rxAW8wq9YEoLY",
+	"8DScx8kUXJqgqN01yhx8wn+8MPDn4UMEpDdRkLdAM8efdoxpD6TZrsK1wJi+4ttSn048EIIfLGDGhGU8",
+	"nQq4cg7eTKuiaFWS2gL/qgac6yoUxHp2hmjNyslCIdMUTeE9Qk6bGMlU5eUstKTw2YyY31dF8RjFJhrA",
+	"9cQThl0JIzBsn534d3y6uIEr0DyvgpWKArg2ocO+942RRQ0nND1h/2fVrjsi7j125Qz9Nv/6Z2i3aadg",
+	"fEi82auOLxkk8LHIVQaVI2ylO8+0fGhVbfA1jr0BuiNP3ctPa2ck15ov8Kmxi5zuQenZbr1kNWD0kKgK",
+	"+L/Sp7p/d30qAwqjc9DDCtArkpNu5zmjhUBaamEX9PVEaDjnBk6zM3UJMjn+/QNCigF91dOjV6U8Zxlc",
+	"Qa6KGUjLvhljvVqmS3nMCzH+Nhkkpc6T42RqbXF8QMWv8qky9vj7w+8PCRD9tpbHxuMC1/jop/IctAQL",
+	"zrhfFkTh0imkl2ZYY9AUeG6nSRc5f3B+gXOklig06FJK9Pe7jTVGMAtDtYsHMasGxnBCti/oUkJvZUcp",
+	"8QKbKxHIOvBUIyPhqwP/XbMUiVY5GBca+uupq0o7orcxtBNXffLW/1wxn2GLesxMZLraJ41DFKCKvLJR",
+	"+UXUxqlmfYNBY3skSw47LXpj870OzGg+BWcpXvhaaQPqJe3/MD6xYeam6eZyCGhOGCD++sP1/xsA",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

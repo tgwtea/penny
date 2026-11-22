@@ -30,6 +30,7 @@ class Lesson {
     this.location,
     this.makeupForLessonId,
     this.makeupLessonId,
+    this.seriesId,
     this.cancellation,
     this.completedAt,
     this.items,
@@ -68,6 +69,7 @@ class Lesson {
         billable: json['billable'] as bool,
         makeupForLessonId: json['makeupForLessonId'] as String?,
         makeupLessonId: json['makeupLessonId'] as String?,
+        seriesId: json['seriesId'] as String?,
         cancellation: Cancellation.maybeFromJson(
           json['cancellation'] as Map<String, dynamic>?,
         ),
@@ -126,6 +128,9 @@ class Lesson {
 
   /// The make-up booked when this lesson was cancelled.
   final String? makeupLessonId;
+
+  /// The recurring lesson this occurrence belongs to.
+  final String? seriesId;
   final Cancellation? cancellation;
   final DateTime? completedAt;
   final List<Clash> clashes;
@@ -156,6 +161,7 @@ class Lesson {
       'billable': billable,
       'makeupForLessonId': ?makeupForLessonId,
       'makeupLessonId': ?makeupLessonId,
+      'seriesId': ?seriesId,
       'cancellation': ?cancellation?.toJson(),
       'completedAt': ?completedAt?.toUtc().toIso8601String(),
       'clashes': clashes.map((e) => e.toJson()).toList(),
@@ -181,6 +187,7 @@ class Lesson {
     billable,
     makeupForLessonId,
     makeupLessonId,
+    seriesId,
     cancellation,
     completedAt,
     listHash(clashes),
@@ -207,6 +214,7 @@ class Lesson {
         billable == other.billable &&
         makeupForLessonId == other.makeupForLessonId &&
         makeupLessonId == other.makeupLessonId &&
+        seriesId == other.seriesId &&
         cancellation == other.cancellation &&
         completedAt == other.completedAt &&
         listsEqual(clashes, other.clashes) &&

@@ -5,6 +5,8 @@ import 'package:penny_api/api_client.dart';
 import 'package:penny_api/api_exception.dart';
 import 'package:penny_api/messages/cancel_lesson_request.dart';
 import 'package:penny_api/messages/complete_lesson_request.dart';
+import 'package:penny_api/messages/end_series_request.dart';
+import 'package:penny_api/models/calendar_feed.dart';
 import 'package:penny_api/models/cancellation_policy.dart';
 import 'package:penny_api/models/cancellation_policy_input.dart';
 import 'package:penny_api/models/history_list.dart';
@@ -19,6 +21,10 @@ import 'package:penny_api/models/location.dart';
 import 'package:penny_api/models/location_input.dart';
 import 'package:penny_api/models/location_list.dart';
 import 'package:penny_api/models/problem.dart';
+import 'package:penny_api/models/series.dart';
+import 'package:penny_api/models/series_changes.dart';
+import 'package:penny_api/models/series_input.dart';
+import 'package:penny_api/models/timetable.dart';
 
 /// Lessons, where they happen, what happens in them, and cancellation policies.
 class LessonsApi {
@@ -696,6 +702,300 @@ class LessonsApi {
       return CancellationPolicy.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Book a recurring lesson
+  /// Needs `manage_lessons`. A series is a rule (RFC 5545, evaluated in the
+  /// team's timezone) plus the lesson it repeats. Every occurrence is its
+  /// own lesson, booked ahead over a rolling horizon of 12 weeks, so each
+  /// can carry its own notes, attendance and payment.
+  Future<Series> createSeries(
+    String workspaceId,
+    SeriesInput seriesInput,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.post,
+      path: '/v1/workspaces/{workspaceId}/series'.replaceAll(
+        '{workspaceId}',
+        Uri.encodeComponent(workspaceId),
+      ),
+      body: seriesInput.toJson(),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Series.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Get a recurring lesson
+  /// For owners, and for tutors on the series.
+  Future<Series> getSeries(String workspaceId, String seriesId) async {
+    final response = await client.invokeApi(
+      method: Method.get,
+      path: '/v1/workspaces/{workspaceId}/series/{seriesId}'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{seriesId}', Uri.encodeComponent(seriesId)),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Series.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Change a recurring lesson from a date onwards
+  /// Needs `manage_lessons`; changing tutors also needs
+  /// `reassign_lessons`. The change applies to scheduled lessons on and
+  /// after `from` ("this and following"; send today for "all future
+  /// lessons"). Earlier lessons, and lessons that are done or cancelled,
+  /// are never rewritten. To change one lesson only, change the lesson.
+  /// Send the series' `version` in `If-Match`.
+  Future<Series> updateSeries(
+    String workspaceId,
+    String seriesId,
+    String ifMatch,
+    SeriesChanges seriesChanges,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.patch,
+      path: '/v1/workspaces/{workspaceId}/series/{seriesId}'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{seriesId}', Uri.encodeComponent(seriesId)),
+      body: seriesChanges.toJson(),
+      headerParameters: {'If-Match': ifMatch},
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Series.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Stop a recurring lesson after a date
+  /// Needs `manage_lessons`. Scheduled lessons after `after` are removed;
+  /// lessons that are done, cancelled or have notes on them stay.
+  Future<Series> endSeries(
+    String workspaceId,
+    String seriesId,
+    String ifMatch,
+    EndSeriesRequest endSeriesRequest,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.post,
+      path: '/v1/workspaces/{workspaceId}/series/{seriesId}/end'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{seriesId}', Uri.encodeComponent(seriesId)),
+      body: endSeriesRequest.toJson(),
+      headerParameters: {'If-Match': ifMatch},
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Series.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// The team timetable, one column per tutor
+  /// Needs `view_team_timetable`. Every current owner and teacher gets a
+  /// column, with or without lessons, so free time is visible. A lesson
+  /// with several tutors appears in each of their columns.
+  Future<Timetable> getTimetable(
+    String workspaceId,
+    DateTime from,
+    DateTime to, {
+    List<String>? teacherIds,
+  }) async {
+    teacherIds?.validate(maxItems: 50);
+
+    final response = await client.invokeApi(
+      method: Method.get,
+      path: '/v1/workspaces/{workspaceId}/timetable'.replaceAll(
+        '{workspaceId}',
+        Uri.encodeComponent(workspaceId),
+      ),
+      queryParameters: {
+        'from': [from.toUtc().toIso8601String()],
+        'to': [to.toUtc().toIso8601String()],
+        if (teacherIds != null) 'teacherIds': [teacherIds.join(',')],
+      },
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Timetable.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Make a new private calendar link for a tutor
+  /// The tutor themselves, or the team owner. Any earlier link for the
+  /// tutor stops working. The link is shown once; Penny keeps only a hash
+  /// of it.
+  Future<CalendarFeed> createCalendarFeed(
+    String workspaceId,
+    String memberId,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.post,
+      path: '/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{memberId}', Uri.encodeComponent(memberId)),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return CalendarFeed.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Stop a tutor's calendar link working
+  Future<void> revokeCalendarFeed(String workspaceId, String memberId) async {
+    final response = await client.invokeApi(
+      method: Method.delete,
+      path: '/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{memberId}', Uri.encodeComponent(memberId)),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+  }
+
+  /// A tutor's lessons as an iCalendar feed
+  /// Public: the unguessable link is the credential. Lessons from 30 days
+  /// ago to 180 days ahead, with students' first names and the place only,
+  /// never notes or contacts.
+  Future<String> getCalendarFeed(String token) async {
+    token.validate(maxLength: 100);
+
+    final response = await client.invokeApi(
+      method: Method.get,
+      path: '/v1/calendar/{token}'.replaceAll(
+        '{token}',
+        Uri.encodeComponent(token),
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return response.body;
     }
 
     throw ApiException<Object?>.unhandled(response.statusCode);

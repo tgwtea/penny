@@ -6,9 +6,11 @@ import '../features/shared/application/clock.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/system/application/server_info_provider.dart';
 import '../features/team/application/team_controller.dart';
+import '../features/timetable/application/timetable_providers.dart';
 import 'demo_personas.dart';
 import 'demo_repositories.dart';
 import 'demo_scheduling.dart';
+import 'demo_series.dart';
 import 'demo_store.dart';
 
 /// Every repository, backed by in-memory demo data, starting as [persona].
@@ -24,6 +26,7 @@ List<Override> demoOverrides({
 }) {
   final store = DemoStore(clock: clock);
   final session = DemoSessionRepository(persona: persona, store: store);
+  final lessons = DemoLessonRepository(session);
   return [
     clockProvider.overrideWithValue(store.now),
     sessionRepositoryProvider.overrideWithValue(session),
@@ -31,10 +34,19 @@ List<Override> demoOverrides({
     serverInfoRepositoryProvider.overrideWithValue(DemoServerInfoRepository()),
     teamRepositoryProvider.overrideWithValue(DemoTeamRepository(session)),
     studentRepositoryProvider.overrideWithValue(DemoStudentRepository(session)),
-    lessonRepositoryProvider.overrideWithValue(DemoLessonRepository(session)),
+    lessonRepositoryProvider.overrideWithValue(lessons),
     locationRepositoryProvider.overrideWithValue(
       DemoLocationRepository(session),
     ),
     policyRepositoryProvider.overrideWithValue(DemoPolicyRepository(session)),
+    seriesRepositoryProvider.overrideWithValue(
+      DemoSeriesRepository(session, lessons),
+    ),
+    timetableRepositoryProvider.overrideWithValue(
+      DemoTimetableRepository(session, lessons),
+    ),
+    calendarFeedRepositoryProvider.overrideWithValue(
+      DemoCalendarFeedRepository(session),
+    ),
   ];
 }

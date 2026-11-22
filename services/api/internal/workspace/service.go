@@ -363,6 +363,32 @@ func (s *Service) MembersByID(ctx context.Context, db database.DBTX, workspaceID
 	return out, nil
 }
 
+// Timezone is the team's IANA timezone, for modules that schedule in it.
+func (s *Service) Timezone(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) (*time.Location, error) {
+	tz, err := workspacesql.New(db).GetWorkspaceTimezone(ctx, workspaceID)
+	if err != nil {
+		return nil, readErr(err, "workspace")
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, fmt.Errorf("load timezone %q: %w", tz, err)
+	}
+	return loc, nil
+}
+
+// Staff lists the team's current owners and teachers, owners first.
+func (s *Service) Staff(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) ([]MemberInfo, error) {
+	rows, err := workspacesql.New(db).ListStaff(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("list staff: %w", err)
+	}
+	out := make([]MemberInfo, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, MemberInfo{ID: r.ID, UserID: r.UserID, DisplayName: r.DisplayName, Role: authz.Role(r.Role), Active: true})
+	}
+	return out, nil
+}
+
 // NamesByUser returns, for each user, the name they have in the team.
 func (s *Service) NamesByUser(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
 	rows, err := workspacesql.New(db).MemberNamesByUser(ctx, workspacesql.MemberNamesByUserParams{WorkspaceID: workspaceID, UserIds: userIDs})

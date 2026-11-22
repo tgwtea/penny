@@ -29,6 +29,8 @@ overlays/dev/             namespace penny-dev: hostnames, backup path, secrets, 
 
 The migrate Job is a Sync hook rather than the PreSync hook the architecture describes: PreSync runs before anything is created, so on the very first sync the database would not exist yet. Waves give the same guarantee: new API pods start only after migrations succeed.
 
+The image also carries the `worker` binary (`services/api/cmd/worker`), which books recurring lessons ahead and, from Phase 7, sends reminders. It needs a Deployment of its own (one replica is enough; River elects a leader if there are more), with the same database credentials as the API and probes on `:9091/livez` and `:9091/readyz`. That manifest is part of the deployment work and is not in `base/` yet.
+
 ## Cluster prerequisites
 
 Installed once per cluster, outside this repository:

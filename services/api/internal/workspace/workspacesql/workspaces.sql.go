@@ -70,6 +70,17 @@ func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, er
 	return i, err
 }
 
+const getWorkspaceTimezone = `-- name: GetWorkspaceTimezone :one
+SELECT timezone FROM workspaces WHERE id = $1
+`
+
+func (q *Queries) GetWorkspaceTimezone(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceTimezone, id)
+	var timezone string
+	err := row.Scan(&timezone)
+	return timezone, err
+}
+
 const updateWorkspace = `-- name: UpdateWorkspace :one
 UPDATE workspaces
 SET name = COALESCE($1, name),

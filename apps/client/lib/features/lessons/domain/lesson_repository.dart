@@ -1,6 +1,7 @@
 import 'lesson.dart';
 import 'location.dart';
 import 'policy.dart';
+import 'series.dart';
 
 /// Lessons in a team (build plan, Phase 5).
 ///
@@ -75,6 +76,28 @@ abstract interface class LessonRepository {
 
   /// Every change to the lesson, oldest first.
   Future<List<HistoryEntry>> history(String teamId, String lessonId);
+}
+
+/// Recurring lessons (build plan, Phase 6). Owners book and change them;
+/// owners and the series' tutors may read them. A change from a day on
+/// rewrites only scheduled lessons from that day; lessons that are done,
+/// cancelled or have started are never rewritten. Changes send the
+/// series' version, and a series changed since is a ConflictFailure.
+abstract interface class SeriesRepository {
+  /// Books a recurring lesson and its lessons up to the booking horizon.
+  Future<Series> create(String teamId, SeriesDraft draft);
+
+  /// One series.
+  Future<Series> series(String teamId, String seriesId);
+
+  /// Changes [series] from [SeriesChanges.from] on. Returns the series as
+  /// it is from then: a new one when the change splits it.
+  Future<Series> update(String teamId, Series series, SeriesChanges changes);
+
+  /// Stops [series] after the day [after]. Later lessons that never
+  /// happened are removed; lessons that are done, cancelled or have notes
+  /// stay.
+  Future<Series> end(String teamId, Series series, {required DateTime after});
 }
 
 /// The team's saved places.

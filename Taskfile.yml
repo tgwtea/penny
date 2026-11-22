@@ -89,6 +89,17 @@ tasks:
     cmds:
       - go run ./cmd/api
 
+  run:worker:
+    desc: Migrate the local database, then run background jobs (metrics on http://localhost:9091)
+    dir: "{{.API_DIR}}"
+    deps: [db:migrate]
+    env:
+      PENNY_DATABASE_URL: '{{.PENNY_DATABASE_URL | default .LOCAL_DATABASE_URL}}'
+      PENNY_LOG_FORMAT: text
+      PENNY_LOG_LEVEL: debug
+    cmds:
+      - go run ./cmd/worker
+
   run:client:
     desc: Run the client on demo data (pass a device after --, for example -- -d windows)
     dir: "{{.CLIENT_DIR}}"

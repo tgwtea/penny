@@ -189,7 +189,7 @@ func toLesson(r schedulingsql.Lesson) Lesson {
 		ID: r.ID, WorkspaceID: r.WorkspaceID, StartsAt: r.StartsAt, EndsAt: r.EndsAt,
 		Status: LessonStatus(r.Status), Kind: LessonKind(r.Kind), Title: r.Title,
 		FeeCents: r.FeeCents, Currency: r.Currency, Billable: r.Billable,
-		MakeupForLessonID: r.MakeupForLessonID, CompletedAt: r.CompletedAt, Version: int(r.Version),
+		MakeupForLessonID: r.MakeupForLessonID, SeriesID: r.SeriesID, CompletedAt: r.CompletedAt, Version: int(r.Version),
 		Tutors: []LessonTutor{}, Students: []LessonStudent{}, Clashes: []Clash{},
 	}
 	if r.LocationKind != nil {

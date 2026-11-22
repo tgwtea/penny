@@ -20,3 +20,6 @@ RETURNING *;
 SELECT count(*)::int AS active
 FROM workspace_memberships
 WHERE workspace_id = @workspace_id AND status = 'active';
+
+-- name: GetWorkspaceTimezone :one
+SELECT timezone FROM workspaces WHERE id = @id;

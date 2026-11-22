@@ -37,12 +37,25 @@ These have no artboard; they were designed in code from the components above and
 | Places | `/places`, from Account | Owner | Rooms, homes and online links; in person needs a six-digit postal code, online a meeting link | ListRow, Menu, Sheet, SegmentedControl, TextField |
 | Cancellation policy | Sheet from Account ("Change policy") and Team (member menu) | Owner for anyone, a teacher for their own | Notice period, whether late cancellations and no-shows are charged, the summary parents see | Sheet, SelectField, ToggleRow, TextField |
 
+## Designed while building Phase 6
+
+| Screen | Route or opener | Who sees it | Notes | Components used |
+| --- | --- | --- | --- | --- |
+| Calendar, team day | `/calendar`, Day and Team | Owner of a team | Every tutor's column on laptop, with a chip filter (Everyone first); one tutor at a time on phone with a scrolling chip switcher, starting with the viewer. Column headers count lessons and clashes. A free time shows "Add lesson at 16:00" on hover and opens Add lesson for that tutor | DateNavigator, SegmentedControl, Chips, Timetable |
+| Calendar, week | `/calendar?view=week` | Everyone (Team or Mine for owners) | A column per day on laptop, today in copper, other tutors' lessons named; a list per day on phone, so nothing scrolls sideways | Timetable, LessonRow |
+| Calendar, month | `/calendar?view=month` | Everyone | Each day's first three lessons and "+N more" on laptop, counts and a clash mark on phone; tapping a day opens it. The team's month has the chip filter on laptop | MonthGrid, Chips |
+| Calendar, empty, loading, error | `/calendar` | Everyone | Empty keeps the grid (free time is the point) with one line above it: "No lessons on this day. Tap a free time to add one."; loading is skeleton rows; errors offer Retry in place | Notice, Skeleton rows |
+| Add lesson, repeating | Sheet from Add lesson | Owner | "Repeats" (does not repeat, or every week on the lesson's day) and "Ends" (when stopped, or after a date); trial lessons do not repeat | Sheet, SelectField, OptionRow |
+| Change which lessons? | Choice from Reschedule on a repeating lesson | Owner | This lesson, this and following lessons, or all lessons from today. The last two open "Change the weekly lesson", whose date is fixed, with a note that done and cancelled lessons stay | Sheet, OptionRow, Notice |
+| Lesson details, repeating | `/lessons/:id` | Owner, tutors on the lesson | A Repeats section ("Every Thursday, 16:30 to 17:15.") with Stop repeating, which confirms and removes later lessons that never happened | SectionHeader, ListRow, Dialog |
+| Calendar link | Account | Owners and teachers | Make a link, shown once with a warning to treat it like a password; Copy link; Stop the link | Notice, Button, Dialog |
+
 ## Still to design
 
 The design track's definition of done is every key screen in all five states at both widths. This first pass covers each screen once, plus the empty, loading, error and no-permission states on Today and Team. Still to draw, before or during Phase 2:
 
 - Lesson details and Student details as a side panel beside the list on laptop (today they are pages with Back), and Payment request on laptop.
 - Phone version of Payments. (Team list at phone width, onboarding's single-choice question and the add-teacher sheet were designed while building Phase 4, from PennyListRow, PennyOptionRow and PennySheet.)
-- Empty, loading and error states for Calendar and Payments.
+- Empty, loading and error states for Payments (Calendar's were designed while building Phase 6).
 - Record payment. Add lesson as a panel on laptop (it is a sheet at both widths today).
-- Month view.
+- Swiping between tutors and days on phone, and dragging a lesson to move it (Timetable and LessonBlock guidelines).

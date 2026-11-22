@@ -1,10 +1,11 @@
 # services/api
 
-One Go module (ADR 002). Today it builds two binaries; `worker` joins them when background jobs arrive (Phase 7).
+One Go module (ADR 002), three binaries, one image.
 
 | Binary | What it does |
 | --- | --- |
 | `cmd/api` | Serves the contract in `api/openapi.yaml` on `:8080` and Prometheus metrics on `:9090` |
+| `cmd/worker` | Runs background jobs from River's queue (`internal/jobs`): booking recurring lessons ahead, and later reminders and receipts. Health and metrics on `:9091`. Safe to run more than one: River elects a leader for periodic jobs |
 | `cmd/migrate` | Applies goose and River migrations. Runs as a Kubernetes Job before each rollout (ADR 006) |
 
 ## Layout
@@ -19,6 +20,11 @@ internal/apperr/       the errors services return (not found, forbidden, conflic
 internal/httpapi/      generated server (gen/), thin handlers, middleware, problem mapping
 internal/identity/     token verification (Firebase, emulator, test fake) and users
 internal/account/      use cases about the signed-in person: /v1/me, rename, deletion
+internal/workspace/    teams, memberships and roles
+internal/authz/        the capability matrix and resource rules, pure functions
+internal/scheduling/   students, locations, lessons, series, timetable, calendar feeds, clashes
+internal/audit/        the append-only audit log
+internal/jobs/         River job registration for the worker
 internal/platform/     config, logging, database pool and transactions, clock, health
                        checks, metrics, tracing, HTTP server, schema migrations, test databases
 ```
@@ -57,9 +63,10 @@ Environment variables only; the process exits at startup if any is invalid, list
 | --- | --- | --- |
 | `PENNY_DATABASE_URL` | required | `postgres://` URL. User and password may come from `PGUSER` and `PGPASSWORD` instead |
 | `PENNY_HTTP_ADDR` | `:8080` | API listener (api only) |
-| `PENNY_ADMIN_ADDR` | `:9090` | `/metrics` listener, never exposed through the ingress (api only) |
+| `PENNY_ADMIN_ADDR` | `:9090` (api), `:9091` (worker) | `/metrics` listener, never exposed through the ingress; the worker also serves `/livez` and `/readyz` there |
 | `PENNY_CORS_ORIGINS` | none | Comma-separated browser origins allowed to call the API, such as the web client (api only) |
 | `PENNY_SHUTDOWN_TIMEOUT` | `20s` | How long in-flight requests get after SIGTERM (api only) |
+| `PENNY_PUBLIC_URL` | `http://localhost:8080` | The API's address as browsers and calendar apps reach it, for links it hands out (calendar feeds, later unsubscribe and payment links) |
 | `PENNY_FIREBASE_PROJECT_ID` | required | The Firebase project whose ID tokens are accepted (api only) |
 | `PENNY_FIREBASE_AUTH_EMULATOR_HOST` | none | host:port of the Firebase Auth emulator. Makes the API accept the emulator's unsigned tokens, so it is refused unless the project ID starts with `demo-` (api only) |
 | `PENNY_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |

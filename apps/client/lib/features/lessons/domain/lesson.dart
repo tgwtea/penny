@@ -295,6 +295,7 @@ class Lesson {
     this.currency = 'SGD',
     this.makeupForLessonId,
     this.makeupLessonId,
+    this.seriesId,
     this.cancellation,
     this.completedAt,
     this.clashes = const [],
@@ -343,6 +344,9 @@ class Lesson {
 
   /// The make-up booked when this lesson was cancelled.
   final String? makeupLessonId;
+
+  /// The recurring lesson this is one occurrence of.
+  final String? seriesId;
 
   /// Why and when it was cancelled.
   final Cancellation? cancellation;
