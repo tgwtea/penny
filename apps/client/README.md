@@ -28,6 +28,25 @@ Someone signed in without a team is sent to `/onboarding`: "Do you teach on your
 
 `TeamRepository` (`features/team/domain/`) has `HttpTeamRepository` and, in `lib/demo/`, `DemoTeamRepository` over `DemoStore`, the in-memory data every demo repository shares. Both keep the server's rules (owners first, no duplicate emails, never a team without an owner); `test/contract/team_repository_contract.dart` checks them against both.
 
+## Lessons and students
+
+Today (`features/lessons/presentation/today_screen.dart`) lists the day's lessons in the team's timezone with the now line. Owners of a team switch between their own lessons and everyone's; on everyone's, each lesson names its tutor. Mark done offers Undo for six seconds, which reopens the lesson. A clash is a warning on the lesson and on Today, never a block: saving a lesson that overlaps another switches the sheet to "Keep it" or "Change the time".
+
+Lesson details (`/lessons/:id`) show the lesson's facts, its clashes, its cancellation and make-up, its tutors, attendance, fee and who bills it, its tasks, goals and notes, the lead tutor's cancellation policy and its history. Its buttons follow the viewer's capabilities; the server checks the same rules. Students (`/students`, `/students/:id`) are searched, added with a first contact, and archived. Places (`/places`, from Account) and cancellation policies (your own on Account, each member's from the Team page) are edited in sheets.
+
+The rules the server applies are mirrored as plain Dart in `features/lessons/domain/` so the demo backend and the screens agree with it: `findClashes` (`clash_rule.dart`, checked against the shared fixtures in `api/fixtures/clashes/`), and `isLateCancellation` and `isBillable` (`policy.dart`). Each tutor's policy is transparent: the lesson sheet says before cancelling whether it is late and whether it will be charged. Without a policy of their own a tutor has Penny's default: 24 hours' notice, late cancellations not charged, no-shows charged.
+
+Times: the server sends UTC instants. `TeamTime` (`core/team_time.dart`) turns them into the team's wall-clock time and back; `activeTeamProvider` carries it with the membership and capabilities. It knows a table of Asian timezones without daylight saving (Singapore, Kuala Lumpur and their neighbours), which covers the teams Penny is offered to today; any other name reads as UTC until the client gains a timezone database. "Now" comes from `clockProvider`, so tests and the demo can stand at any moment.
+
+## Demo data
+
+`DemoStore` (`lib/demo/`) seeds two teams around the current week, from `demo/scenarios/`:
+
+- `studio.dart`, Koh Guitar Studio: Daniel (owner), Mei and six more teachers, 40 students with a parent each, a weekly timetable for this week and next, and today as the designs draw it: a done lesson with a ticked task, a no-show, Mei booked twice at 16:00 and 16:30, a late cancellation with a make-up tomorrow, and a group lesson Mei leads with Aisha assisting. Mei's policy asks for 48 hours and charges late cancellations.
+- `solo.dart`, Priya's team of one: five students and lessons on other days, so Today is empty and says when the next lesson is.
+
+`demoOverrides(persona:, clock:)` starts the demo at any moment; widget tests use `designsNow` (Thursday 19 November 2026, 16:20 in Singapore) from `test/support/pump_app.dart`.
+
 ## Structure
 
 ```text
