@@ -60,10 +60,6 @@ class _TeamScreenState extends ConsumerState<TeamScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (!wide) ...[
-            Align(alignment: Alignment.centerLeft, child: addButton),
-            const SizedBox(height: PennySpace.s4),
-          ],
           if (wide && _addPanelOpen) ...[
             _AddPanel(onClose: () => setState(() => _addPanelOpen = false)),
             const SizedBox(height: PennySpace.s6),

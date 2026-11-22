@@ -26,7 +26,9 @@ class PennyPage extends StatelessWidget {
   /// The content.
   final Widget child;
 
-  /// Shown beside the title on wide screens, such as the primary button.
+  /// Buttons for the page, such as "Add lesson": beside the title on
+  /// laptop, at the top of the content on phone, where the title is in the
+  /// top bar.
   final List<Widget> actions;
 
   /// Use the full width (timetables) instead of `content-max`.
@@ -64,6 +66,15 @@ class PennyPage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: PennySpace.s6),
+        ],
+        // On phone the title is in the top bar; the actions lead the page.
+        if (!wide && actions.isNotEmpty) ...[
+          Wrap(
+            spacing: PennySpace.s2,
+            runSpacing: PennySpace.s2,
+            children: actions,
+          ),
+          const SizedBox(height: PennySpace.s4),
         ],
         if (scrollable) child else Expanded(child: child),
       ],
