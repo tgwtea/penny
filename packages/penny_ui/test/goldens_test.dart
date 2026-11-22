@@ -477,4 +477,38 @@ void main() {
     ),
     size: const Size(600, 560),
   );
+
+  pennyGoldens(
+    'dialog',
+    (_) => PennyDialog(
+      title: 'Delete your account?',
+      body: const Text(
+        'Your name and email are removed from Penny and you leave every team. '
+        'This cannot be undone.',
+      ),
+      actions: [
+        PennyButton(
+          label: 'Cancel',
+          variant: PennyButtonVariant.secondary,
+          onPressed: () {},
+        ),
+        PennyButton(
+          label: 'Delete account',
+          variant: PennyButtonVariant.danger,
+          onPressed: () {},
+        ),
+      ],
+    ),
+    size: const Size(390, 320),
+  );
+
+  pennyGoldens(
+    'divider_and_demo_chip',
+    (_) => _gallery([
+      const PennyDivider(),
+      const PennyDivider(label: 'or'),
+      const PennyDemoChip(label: 'Choose who to view Penny as'),
+      PennyDemoChip(label: 'Viewing as Daniel Koh', onPressed: () {}),
+    ]),
+  );
 }

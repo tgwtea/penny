@@ -243,4 +243,279 @@ abstract final class PennyIcons {
     fontFamily: _regular,
     fontPackage: _package,
   );
+
+  // Actions and objects.
+
+  /// The signed-in person's account (user-circle).
+  static const IconData account = IconData(
+    0xe4c4,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Edit something (pencil-simple).
+  static const IconData edit = IconData(
+    0xe3b4,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Delete or remove (trash).
+  static const IconData delete = IconData(
+    0xe4a6,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Close a sheet, dialog or panel (x).
+  static const IconData close = IconData(
+    0xe4f6,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// More actions (dots-three).
+  static const IconData more = IconData(
+    0xe1fe,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Email (envelope-simple).
+  static const IconData email = IconData(
+    0xe218,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Copy to the clipboard (copy).
+  static const IconData copy = IconData(
+    0xe1ca,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A link, such as a payment link (link-simple).
+  static const IconData link = IconData(
+    0xe2e6,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Send, such as a payment request (paper-plane-tilt).
+  static const IconData send = IconData(
+    0xe398,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A receipt (receipt).
+  static const IconData receipt = IconData(
+    0xe3ec,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A PayNow QR code (qr-code).
+  static const IconData qrCode = IconData(
+    0xe3e6,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A recurring lesson series (repeat).
+  static const IconData recurring = IconData(
+    0xe3f6,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A note on a lesson (note-pencil).
+  static const IconData note = IconData(
+    0xe34c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A done task on a lesson (check-square).
+  static const IconData taskDone = IconData(
+    0xe186,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// An open task on a lesson (square).
+  static const IconData taskOpen = IconData(
+    0xe45e,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A goal (target).
+  static const IconData goal = IconData(
+    0xe47c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A phone number (phone).
+  static const IconData phone = IconData(
+    0xe3b8,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Add a lesson (calendar-plus).
+  static const IconData addLesson = IconData(
+    0xe714,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Download, such as a receipt PDF (download-simple).
+  static const IconData download = IconData(
+    0xe20c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A voided receipt (prohibit).
+  static const IconData voided = IconData(
+    0xe3de,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Settings (gear-six).
+  static const IconData settings = IconData(
+    0xe272,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Filter a list (funnel-simple).
+  static const IconData filter = IconData(
+    0xe268,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Collapse (caret-up).
+  static const IconData chevronUp = IconData(
+    0xe13c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Opens outside Penny (arrow-square-out).
+  static const IconData external = IconData(
+    0xe5de,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Show a hidden value, such as a password (eye).
+  static const IconData show = IconData(
+    0xe220,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Hide a shown value (eye-slash).
+  static const IconData hide = IconData(
+    0xe224,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Add a teacher or student (user-plus).
+  static const IconData addPerson = IconData(
+    0xe4d0,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A list view (list-bullets).
+  static const IconData list = IconData(
+    0xe2f2,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Waiting on someone, such as a confirmation (hourglass).
+  static const IconData pending = IconData(
+    0xe2b2,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Checked and confirmed, such as a payee account (shield-check).
+  static const IconData verified = IconData(
+    0xe40c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A bank or PayNow account (bank).
+  static const IconData bank = IconData(
+    0xe0b4,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A payment (money).
+  static const IconData money = IconData(
+    0xe588,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A reminder (bell).
+  static const IconData reminder = IconData(
+    0xe0ce,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Reminders turned off (bell-slash).
+  static const IconData noReminder = IconData(
+    0xe0d4,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// Go to the next step (arrow-right).
+  static const IconData forward = IconData(
+    0xe06c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// An unselected option in a single-choice list (circle).
+  static const IconData optionOff = IconData(
+    0xe18a,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// The selected option in a single-choice list (radio-button).
+  static const IconData optionOn = IconData(
+    0xeb08,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A late cancellation (clock-countdown).
+  static const IconData lateCancel = IconData(
+    0xed2c,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
+
+  /// A cancellation policy (handshake).
+  static const IconData policy = IconData(
+    0xe582,
+    fontFamily: _regular,
+    fontPackage: _package,
+  );
 }
