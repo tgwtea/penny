@@ -35,12 +35,16 @@ func (s *server) DeleteMe(ctx context.Context, _ gen.DeleteMeRequestObject) (gen
 }
 
 func toMe(me account.Me) gen.Me {
+	memberships := make([]gen.Membership, 0, len(me.Memberships))
+	for _, m := range me.Memberships {
+		memberships = append(memberships, toMembership(m))
+	}
 	return gen.Me{
 		User: gen.User{
 			Id:          me.User.ID,
 			Email:       openapi_types.Email(me.User.Email),
 			DisplayName: me.User.DisplayName,
 		},
-		Memberships: []gen.Membership{},
+		Memberships: memberships,
 	}
 }

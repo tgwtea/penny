@@ -12,8 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tgwtea/penny/services/api/internal/account"
+	"github.com/tgwtea/penny/services/api/internal/audit"
 	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
+	"github.com/tgwtea/penny/services/api/internal/workspace"
 )
 
 // Deps are the outside things the services need.
@@ -27,6 +29,8 @@ type Deps struct {
 type Services struct {
 	Users   *identity.Service
 	Account *account.Service
+	Teams   *workspace.Service
+	Audit   *audit.Recorder
 }
 
 // New builds the services.
@@ -37,9 +41,13 @@ func New(d Deps) (*Services, error) {
 	if d.Clock == nil {
 		d.Clock = clock.System{}
 	}
+	rec := audit.NewRecorder(d.Clock)
 	users := identity.NewService(d.Pool, d.Verifier, d.Clock)
+	teams := workspace.NewService(d.Pool, rec, d.Clock)
 	return &Services{
 		Users:   users,
-		Account: account.NewService(d.Pool, users),
+		Account: account.NewService(d.Pool, users, teams, rec),
+		Teams:   teams,
+		Audit:   rec,
 	}, nil
 }

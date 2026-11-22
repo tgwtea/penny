@@ -1,5 +1,13 @@
 import 'package:collection/collection.dart';
 
+/// Parse a nullable string as a DateTime.
+DateTime? maybeParseDateTime(String? value) {
+  if (value == null) {
+    return null;
+  }
+  return DateTime.parse(value);
+}
+
 /// Runs [build] to construct a `fromJson`-parsed value of type [T],
 /// converting any `TypeError` (e.g. an unexpected null or a cast
 /// failure on a required field) into a `FormatException` that names

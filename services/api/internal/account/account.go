@@ -13,32 +13,52 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/tgwtea/penny/services/api/internal/audit"
 	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/platform/database"
+	"github.com/tgwtea/penny/services/api/internal/workspace"
 )
 
 // Me is the signed-in person as GET /v1/me describes them.
 type Me struct {
-	User identity.User
+	User        identity.User
+	Memberships []workspace.Membership
 }
 
 // Service implements the account use cases.
 type Service struct {
 	pool  *pgxpool.Pool
 	users *identity.Service
+	teams *workspace.Service
+	audit *audit.Recorder
 }
 
 // NewService returns the account service.
-func NewService(pool *pgxpool.Pool, users *identity.Service) *Service {
-	return &Service{pool: pool, users: users}
+func NewService(pool *pgxpool.Pool, users *identity.Service, teams *workspace.Service, rec *audit.Recorder) *Service {
+	return &Service{pool: pool, users: users, teams: teams, audit: rec}
 }
 
-// Me returns the person signed in as user.
+// Me returns the person signed in as user and their teams. It is also the
+// moment invitations to their (verified) email become memberships, and
+// their teams see their current name and email.
 func (s *Service) Me(ctx context.Context, user identity.User) (Me, error) {
-	return Me{User: user}, nil
+	err := database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := s.teams.ClaimInvitations(ctx, tx, user); err != nil {
+			return err
+		}
+		return s.teams.SyncProfile(ctx, tx, user)
+	})
+	if err != nil {
+		return Me{}, err
+	}
+	memberships, err := s.teams.MembershipsOf(ctx, user.ID)
+	if err != nil {
+		return Me{}, err
+	}
+	return Me{User: user, Memberships: memberships}, nil
 }
 
-// Rename changes the person's display name.
+// Rename changes the person's display name everywhere.
 func (s *Service) Rename(ctx context.Context, user identity.User, name string) (Me, error) {
 	updated, err := s.users.Rename(ctx, user.ID, name)
 	if err != nil {
@@ -47,9 +67,19 @@ func (s *Service) Rename(ctx context.Context, user identity.User, name string) (
 	return s.Me(ctx, updated)
 }
 
-// Delete removes the person's personal data in one transaction.
+// Delete removes the person's personal data in one transaction: they leave
+// every team, then their user row is anonymised. Refused while they are the
+// only owner of a team with other members.
 func (s *Service) Delete(ctx context.Context, user identity.User) error {
 	return database.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		return s.users.Anonymise(ctx, tx, user.ID)
+		if err := s.teams.LeaveAll(ctx, tx, user.ID); err != nil {
+			return err
+		}
+		if err := s.users.Anonymise(ctx, tx, user.ID); err != nil {
+			return err
+		}
+		return s.audit.Record(ctx, tx, audit.Event{
+			Actor: audit.Ptr(user.ID), Action: "user.deleted", EntityType: "user", EntityID: user.ID,
+		})
 	})
 }
