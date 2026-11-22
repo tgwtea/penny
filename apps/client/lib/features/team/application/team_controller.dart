@@ -76,3 +76,25 @@ final _activeTeamId = Provider<String?>((ref) {
   final session = ref.watch(sessionProvider);
   return session is SignedIn ? session.activeTeamId : null;
 });
+
+/// Team-wide settings, for owners.
+final teamSettingsActionsProvider = Provider<TeamSettingsActions>(
+  TeamSettingsActions.new,
+);
+
+/// Changes a team's settings. The session reloads after each change, since
+/// it carries the team.
+class TeamSettingsActions {
+  /// Creates the actions.
+  TeamSettingsActions(this._ref);
+
+  final Ref _ref;
+
+  /// Sets how many hours before a lesson its contacts are reminded; 0 sends
+  /// no reminders.
+  Future<void> setReminderHours(int hours) async {
+    final teamId = _ref.read(_activeTeamId) ?? (throw StateError('no team'));
+    await _ref.read(teamRepositoryProvider).setReminderHours(teamId, hours);
+    await _ref.read(sessionProvider.notifier).refresh();
+  }
+}

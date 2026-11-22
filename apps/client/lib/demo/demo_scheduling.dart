@@ -940,6 +940,7 @@ class DemoStudentRepository implements StudentRepository {
       relationship: d.relationship,
       receivesReminders: d.receivesReminders,
       receivesBilling: d.receivesBilling,
+      receivesPaymentReminders: d.receivesPaymentReminders,
     );
   }
 

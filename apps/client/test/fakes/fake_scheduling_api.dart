@@ -855,6 +855,7 @@ class FakeSchedulingApi {
     'relationship': c['relationship'],
     'receivesReminders': c['receivesReminders'] ?? true,
     'receivesBilling': c['receivesBilling'] ?? true,
+    'receivesPaymentReminders': c['receivesPaymentReminders'] ?? true,
   };
 
   Map<String, Object?> _policy(String member) =>

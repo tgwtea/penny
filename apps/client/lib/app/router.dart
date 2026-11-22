@@ -14,6 +14,7 @@ import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/lessons/presentation/lesson_details_screen.dart';
 import '../features/lessons/presentation/places_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
+import '../features/notifications/presentation/unsubscribe_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/payments/presentation/payments_screen.dart';
 import '../features/students/presentation/student_details_screen.dart';
@@ -46,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       _entry(Routes.resetPassword, (_) => const ResetPasswordScreen()),
       _entry(Routes.verifyEmail, (_) => const VerifyEmailScreen()),
       _entry(Routes.onboarding, (_) => const OnboardingScreen()),
+      _public(
+        Routes.unsubscribe,
+        (token) => UnsubscribeScreen(key: ValueKey(token), token: token),
+      ),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),
@@ -90,6 +95,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// A page anyone may open from a link, built from the `:token` in its
+/// path. It sits outside the shell: there is nothing to navigate to.
+GoRoute _public(String path, Widget Function(String token) builder) {
+  return GoRoute(
+    path: path,
+    pageBuilder: (context, state) => NoTransitionPage(
+      key: state.pageKey,
+      child: builder(state.pathParameters['token']!),
+    ),
+  );
+}
 
 /// A detail page, built from the `:id` in its path.
 GoRoute _detail(String path, Widget Function(String id) builder) {

@@ -11,6 +11,8 @@ import '../features/auth/data/identity_provider.dart';
 import '../features/lessons/application/lesson_providers.dart';
 import '../features/lessons/data/http_lesson_repository.dart';
 import '../features/lessons/data/http_series_repository.dart';
+import '../features/notifications/application/unsubscribe_providers.dart';
+import '../features/notifications/data/http_unsubscribe_repository.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/students/data/http_student_repository.dart';
 import '../features/system/application/server_info_provider.dart';
@@ -69,6 +71,9 @@ List<Override> httpOverrides(
     timetableRepositoryProvider.overrideWithValue(HttpTimetableRepository(api)),
     calendarFeedRepositoryProvider.overrideWithValue(
       HttpCalendarFeedRepository(api),
+    ),
+    unsubscribeRepositoryProvider.overrideWithValue(
+      HttpUnsubscribeRepository(api),
     ),
   ];
 }

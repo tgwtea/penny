@@ -13,6 +13,7 @@ class Team {
     required this.name,
     required this.timezone,
     required this.memberCount,
+    this.reminderHours = 24,
   });
 
   /// The workspace ID.
@@ -26,6 +27,10 @@ class Team {
 
   /// Active members. A team of one hides every team feature.
   final int memberCount;
+
+  /// How many hours before a lesson its contacts are reminded by email;
+  /// 0 sends no reminders.
+  final int reminderHours;
 }
 
 /// A person's place in one team: their role and what it lets them do.

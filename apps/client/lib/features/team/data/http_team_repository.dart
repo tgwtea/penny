@@ -82,6 +82,22 @@ class HttpTeamRepository implements TeamRepository {
     });
   }
 
+  @override
+  Future<void> setReminderHours(String teamId, int hours) async {
+    if (hours < 0 || hours > 168) {
+      throw const ValidationFailure(
+        'reminder hours',
+        detail: 'Remind between 1 and 168 hours ahead, or not at all.',
+      );
+    }
+    await _api.call(
+      (client) => api.TeamsApi(client).updateWorkspace(
+        teamId,
+        api.UpdateWorkspaceRequest(reminderHours: hours),
+      ),
+    );
+  }
+
   static TeamMember _member(api.Member m) => TeamMember(
     id: m.id,
     name: m.displayName,

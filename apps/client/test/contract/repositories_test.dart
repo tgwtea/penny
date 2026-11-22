@@ -8,7 +8,9 @@ import 'package:penny/features/auth/data/http_session_repository.dart';
 import 'package:penny/demo/demo_store.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
 import 'package:penny/demo/demo_scheduling.dart';
+import 'package:penny/demo/demo_notifications.dart';
 import 'package:penny/demo/demo_series.dart';
+import 'package:penny/features/notifications/data/http_unsubscribe_repository.dart';
 import 'package:penny/features/lessons/data/http_series_repository.dart';
 import 'package:penny/features/timetable/data/http_timetable_repository.dart';
 import 'package:penny/features/lessons/data/http_lesson_repository.dart';
@@ -23,6 +25,7 @@ import 'session_repository_contract.dart';
 import 'lesson_repository_contract.dart';
 import 'student_repository_contract.dart';
 import 'team_repository_contract.dart';
+import 'unsubscribe_repository_contract.dart';
 
 /// An HTTP session signed in as a verified person, settled.
 Future<SignedInRepositories> httpSignedIn() async {
@@ -163,4 +166,20 @@ void main() {
 
   lessonRepositoryContract('Demo lesson repositories', demoLessons);
   lessonRepositoryContract('Http lesson repositories', httpLessons);
+
+  unsubscribeRepositoryContract(
+    'DemoUnsubscribeRepository',
+    () async => (
+      repository: DemoUnsubscribeRepository(),
+      lessonRemindersToken: DemoUnsubscribeRepository.lessonReminders,
+    ),
+  );
+  unsubscribeRepositoryContract('HttpUnsubscribeRepository', () async {
+    final api = FakeApi()
+      ..unsubscribeLinks['signed-token'] = 'lesson_reminders';
+    return (
+      repository: HttpUnsubscribeRepository(api.connection()),
+      lessonRemindersToken: 'signed-token',
+    );
+  });
 }

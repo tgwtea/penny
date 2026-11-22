@@ -29,6 +29,16 @@ void teamRepositoryContract(
       expect(names, [...names]..sort());
     });
 
+    test('an owner sets how far ahead reminders go, within a week', () async {
+      final f = await create();
+      await f.repository.setReminderHours(f.teamId, 48);
+      await f.repository.setReminderHours(f.teamId, 0);
+      await expectLater(
+        f.repository.setReminderHours(f.teamId, 200),
+        throwsA(isA<ValidationFailure>()),
+      );
+    });
+
     test('an added teacher is invited until they sign in', () async {
       final f = await create();
       final added = await f.repository.addTeacher(

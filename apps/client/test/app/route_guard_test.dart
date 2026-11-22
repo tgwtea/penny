@@ -40,12 +40,13 @@ void main() {
       );
     });
 
-    test('may see the signed-out pages and public payment links', () {
+    test('may see the signed-out pages and public links', () {
       for (final page in [
         '/sign-in',
         '/create-account',
         '/reset-password',
         '/pay/abc123',
+        '/unsubscribe/abc123',
       ]) {
         expect(guard(signedOut, page), isNull, reason: page);
       }

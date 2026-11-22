@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../features/auth/application/session_controller.dart';
 import '../features/lessons/application/lesson_providers.dart';
+import '../features/notifications/application/unsubscribe_providers.dart';
 import '../features/shared/application/clock.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/system/application/server_info_provider.dart';
 import '../features/team/application/team_controller.dart';
 import '../features/timetable/application/timetable_providers.dart';
+import 'demo_notifications.dart';
 import 'demo_personas.dart';
 import 'demo_repositories.dart';
 import 'demo_scheduling.dart';
@@ -47,6 +49,9 @@ List<Override> demoOverrides({
     ),
     calendarFeedRepositoryProvider.overrideWithValue(
       DemoCalendarFeedRepository(session),
+    ),
+    unsubscribeRepositoryProvider.overrideWithValue(
+      DemoUnsubscribeRepository(),
     ),
   ];
 }
