@@ -298,7 +298,7 @@ Firebase proves who someone is; Penny's database decides what they may do. Keepi
 | Mark own lesson complete | Yes | Yes |  |  |
 | Add tasks, goals and notes on own lesson | Yes | Yes |  |  |
 | Manage students | Yes | View own students only |  |  |
-| Create payment requests and confirm payments | Yes | Open question (who collects?) |  |  |
+| Create payment requests and confirm payments | Yes | For their own lessons, as payee (ADR 024) |  |  |
 
 The two reserved roles exist in the `membership_role` enum and in the `authz` package with an empty capability set, so adding them is a data and policy change with no schema migration.
 
@@ -397,16 +397,16 @@ Reminders are jobs enqueued in the same database transaction as the change that 
 
 ## Payments (PayNow) and receipts
 
-Penny generates a PayNow QR that pays the teacher directly and records what the teacher confirms. It never sees the money, so it can never prove a payment happened; the payee's confirmation is the source of truth, and the design makes that confirmation quick and traceable.
+Penny generates a PayNow QR that pays the teacher directly and records what both sides confirm. It never sees the money, so it can never prove a payment happened; a request closes only when the payee and the payer have each confirmed it (ADR 024), and the design makes both confirmations quick and traceable.
 
 **Flow**
 
 1. **Payee setup.** A teacher registers a PayNow proxy (mobile number or UEN) and a display name. Penny shows a test QR they scan in their own banking app: the app shows the registered recipient name, which confirms the proxy is right before any parent sees it.
-2. **Payment request.** Created by hand or from completed lessons in a period. It gets lines (one per lesson or item), an amount, a due date and a short reference such as `PNY-7K3Q9X` (Crockford base32, no ambiguous characters). Each request has exactly one payee. For a lesson with several tutors, the lead tutor (whoever created the lesson, unless the owner reassigns it) bills the whole fee and decides how it is shared under the tutors' own agreement. Penny does not split or track the shares; the lesson and the payment request state that the split is arranged outside the app.
+2. **Payment request.** Created by an owner for any payee, or by a teacher for their own lessons, from billable lessons (done, and no-shows or late cancellations the lead tutor's policy bills) plus any extra lines. Each payee chooses whether a new request is sent at once or kept as a draft until they send it. It gets lines (one per lesson or item), an amount, a due date and a short reference such as `PNY-7K3Q9X` (Crockford base32, no ambiguous characters). Each request has exactly one payee. For a lesson with several tutors, the lead tutor (whoever created the lesson, unless the owner reassigns it) bills the whole fee and decides how it is shared under the tutors' own agreement. Penny does not split or track the shares; the lesson and the payment request state that the split is arranged outside the app.
 3. **Unique link.** `https://<domain>/pay/<token>`, where the token is 128 random bits and only its SHA-256 hash is stored. Links expire and can be revoked. The page shows the payee name, amount, what it covers, the reference and the QR. It is rate-limited and shows no more about the student than a first name.
-4. **Payer pays** in their banking app; money moves bank to bank, outside Penny. The payer may tap "I've paid", which only notifies the payee.
-5. **Payee confirms** the money arrived (matching amount and reference in their bank notification). This creates a `payment_record`.
-6. **Receipt issued** automatically from that record and emailed.
+4. **Payer pays** in their banking app; money moves bank to bank, outside Penny, then taps "I've paid", which records their confirmation and notifies the payee.
+5. **Payee confirms** the money arrived (matching amount and reference in their bank notification). This creates a `payment_record`. Steps 4 and 5 may happen in either order.
+6. **Receipt issued** automatically from that record when the second confirmation arrives, and emailed with its PDF. Overdue requests are chased weekly until either side confirms; contacts can stop these reminders.
 
 **QR payload.** PayNow QR codes follow SGQR, which follows EMVCo's merchant-presented QR format. Penny encodes them itself in `billing/paynow`: about a hundred lines with golden-file tests, rather than depending on a small library (the Go one found supports UEN proxies only, not mobile numbers).
 
@@ -674,7 +674,7 @@ The PRD's prototype becomes the client running with `PENNY_BACKEND=demo`. Nothin
 - [ ] Do teachers set their own availability, or does the owner assign slots?
 - [ ] Does he schedule around rooms or locations as well as teachers?
 - [ ] How are students assigned to teachers, and how often does that change?
-- [ ] Who collects payment, the studio or each teacher, and how are teachers paid? (This decides whether `payee_accounts` belong to memberships or to the team.)
+- [x] Who collects payment, the studio or each teacher? Each payee, owner or teacher, has their own PayNow account and bills for the lessons they lead (ADR 024). How the studio then pays its teachers stays outside Penny.
 - [ ] Are no-shows and late cancellations billable?
 - [ ] What does he use now, and what has he tried and abandoned?
 
