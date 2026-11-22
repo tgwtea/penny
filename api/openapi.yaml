@@ -37,6 +37,8 @@ tags:
     description: The emails Penny sends, and how people stop them.
   - name: payments
     description: PayNow payment requests, payments and receipts. Penny never moves money.
+  - name: family
+    description: What a signed-in student or parent sees of their own lessons and payments, read-only (ADR 025).
 
 paths:
   /livez:
@@ -539,6 +541,63 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces/{workspaceId}/students/{studentId}/sign-in:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+    put:
+      operationId: setStudentSignIn
+      tags: [students]
+      summary: Give the student their own account, at an email address
+      description: |
+        Owners only (ADR 025). Penny invites the address to the team as a
+        student, who then sees their own lessons, read-only, after they
+        first sign in with it. A new address replaces the old one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentSignInInput"
+      responses:
+        "200":
+          description: The student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: removeStudentSignIn
+      tags: [students]
+      summary: Take the student's account away
+      responses:
+        "200":
+          description: The student.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
   /v1/workspaces/{workspaceId}/students/{studentId}/contacts:
     parameters:
       - $ref: "#/components/parameters/WorkspaceId"
@@ -613,6 +672,47 @@ paths:
       responses:
         "204":
           description: The contact is removed.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+      - $ref: "#/components/parameters/ContactId"
+    put:
+      operationId: setContactSignIn
+      tags: [students]
+      summary: Give a contact a parent account, or take it away
+      description: |
+        Owners only (ADR 025). Giving access invites the contact's email to
+        the team as a parent, who after first signing in sees this student's
+        lessons and payments, read-only. One account covers all of a
+        parent's children in the team. A contact who can sign in keeps their
+        email until access is taken away.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactSignInInput"
+      responses:
+        "200":
+          description: The contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
         "401":
           $ref: "#/components/responses/Problem"
         "403":
@@ -2003,6 +2103,166 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces/{workspaceId}/family/students:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listFamilyStudents
+      tags: [family]
+      summary: The students a family account is linked to
+      description: A student sees themselves; a parent sees their children in the team.
+      responses:
+        "200":
+          description: The students.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyStudentList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/family/lessons:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listFamilyLessons
+      tags: [family]
+      summary: The linked students' lessons in a range
+      description: |
+        Read-only. Other students in a group lesson are counted, not named,
+        and only items meant for the caller are included (ADR 025).
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Lessons ending after this instant.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          description: Lessons starting before this instant. At most 62 days after `from`.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: The lessons, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyLessonList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/family/payment-requests:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listFamilyPaymentRequests
+      tags: [family]
+      summary: A parent's open and paid payment requests
+      description: |
+        What each request's payment page shows, with its PayNow code while
+        open, for the parent's children. Newest first.
+      responses:
+        "200":
+          description: The requests.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyPaymentRequestList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: confirmFamilyPayment
+      tags: [family]
+      summary: Say "I've paid" as a signed-in parent
+      description: The payer's confirmation (ADR 024), exactly as the payment page records it.
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyPaymentRequest"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/family/receipts:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listFamilyReceipts
+      tags: [family]
+      summary: A parent's receipts, newest first
+      responses:
+        "200":
+          description: The receipts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ReceiptId"
+    get:
+      operationId: getFamilyReceiptPdf
+      tags: [family]
+      summary: One of a parent's receipts as a PDF
+      responses:
+        "200":
+          description: The PDF, the same bytes as the team's copy.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
   /v1/pay/{token}:
     parameters:
       - $ref: "#/components/parameters/PayToken"
@@ -2493,6 +2753,12 @@ components:
       type: object
       required: [id, name, archived, contacts, goals]
       properties:
+        signInEmail:
+          type: string
+          description: Where the student was given their own account (ADR 025).
+        signedIn:
+          type: boolean
+          description: The student has signed in with that account.
         id:
           type: string
           format: uuid
@@ -2581,6 +2847,12 @@ components:
         receivesPaymentReminders:
           type: boolean
           description: Reminders about overdue payment requests. Stopped from an email's link.
+        canSignIn:
+          type: boolean
+          description: The owner gave the contact a parent account (ADR 025).
+        signedIn:
+          type: boolean
+          description: The contact has signed in with that account.
 
     ContactInput:
       type: object
@@ -2841,8 +3113,9 @@ components:
     ItemVisibility:
       type: string
       description: |
-        Who may see the item. `student` and `contacts` take effect when those
-        roles can sign in (build plan, Phase 10); today only staff sign in.
+        Who may see the item besides the team's staff: `student` items are
+        seen by the signed-in student, `contacts` items by the student and
+        their signed-in parents (ADR 025).
       enum: [staff, student, contacts]
 
     LessonItem:
@@ -3939,6 +4212,134 @@ components:
           items:
             $ref: "#/components/schemas/Receipt"
 
+    ContactSignInInput:
+      type: object
+      required: [canSignIn]
+      properties:
+        canSignIn:
+          type: boolean
+
+    StudentSignInInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    FamilyStudent:
+      type: object
+      required: [id, name, goals]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        goals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Goal"
+
+    FamilyStudentList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyStudent"
+
+    FamilyLessonItem:
+      type: object
+      required: [kind, body, done, createdAt]
+      properties:
+        kind:
+          $ref: "#/components/schemas/ItemKind"
+        body:
+          type: string
+        done:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    FamilyLesson:
+      type: object
+      required: [id, studentIds, otherStudents, startsAt, endsAt, status, tutors, items]
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentIds:
+          type: array
+          description: The caller's students in the lesson.
+          items:
+            type: string
+            format: uuid
+        otherStudents:
+          type: integer
+          format: int32
+          description: How many other students are in it, unnamed.
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/LessonStatus"
+        title:
+          type: string
+        tutors:
+          type: array
+          items:
+            type: string
+        location:
+          $ref: "#/components/schemas/LessonLocation"
+        cancellation:
+          $ref: "#/components/schemas/Cancellation"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyLessonItem"
+
+    FamilyLessonList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyLesson"
+
+    FamilyPaymentRequest:
+      allOf:
+        - $ref: "#/components/schemas/PublicPaymentRequest"
+        - type: object
+          required: [id, student, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            student:
+              $ref: "#/components/schemas/StudentRef"
+            createdAt:
+              type: string
+              format: date-time
+            receipt:
+              $ref: "#/components/schemas/ReceiptRef"
+
+    FamilyPaymentRequestList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FamilyPaymentRequest"
+
     MembershipRole:
       type: string
       description: Student and parent are reserved and carry no capabilities yet.
@@ -3959,6 +4360,8 @@ components:
         - view_own_students
         - manage_payments
         - manage_own_payments
+        - view_linked_lessons
+        - view_linked_payments
 
 security:
   - firebaseIdToken: []

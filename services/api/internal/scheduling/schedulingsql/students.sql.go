@@ -106,6 +106,24 @@ func (q *Queries) ContactsToRemind(ctx context.Context, arg ContactsToRemindPara
 	return items, nil
 }
 
+const countAccessForEmail = `-- name: CountAccessForEmail :one
+SELECT (SELECT count(*) FROM student_contacts c WHERE c.workspace_id = $1 AND c.can_sign_in AND c.email = $2)
+     + (SELECT count(*) FROM students s WHERE s.workspace_id = $1 AND s.sign_in_email = $2) AS links
+`
+
+type CountAccessForEmailParams struct {
+	WorkspaceID uuid.UUID
+	Email       *string
+}
+
+// How many records give an address family access in the team, linked or not.
+func (q *Queries) CountAccessForEmail(ctx context.Context, arg CountAccessForEmailParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countAccessForEmail, arg.WorkspaceID, arg.Email)
+	var links int32
+	err := row.Scan(&links)
+	return links, err
+}
+
 const countActiveStudentsIn = `-- name: CountActiveStudentsIn :one
 SELECT count(*)::int AS found FROM students
 WHERE workspace_id = $1 AND id = ANY($2::uuid[]) AND archived_at IS NULL
@@ -123,10 +141,28 @@ func (q *Queries) CountActiveStudentsIn(ctx context.Context, arg CountActiveStud
 	return found, err
 }
 
+const countLinksOfUser = `-- name: CountLinksOfUser :one
+SELECT (SELECT count(*) FROM student_contacts c WHERE c.workspace_id = $1 AND c.user_id = $2)
+     + (SELECT count(*) FROM students s WHERE s.workspace_id = $1 AND s.user_id = $2) AS links
+`
+
+type CountLinksOfUserParams struct {
+	WorkspaceID uuid.UUID
+	UserID      *uuid.UUID
+}
+
+// How many records still give a person family access in the team.
+func (q *Queries) CountLinksOfUser(ctx context.Context, arg CountLinksOfUserParams) (int32, error) {
+	row := q.db.QueryRow(ctx, countLinksOfUser, arg.WorkspaceID, arg.UserID)
+	var links int32
+	err := row.Scan(&links)
+	return links, err
+}
+
 const createContact = `-- name: CreateContact :one
 INSERT INTO student_contacts (workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, receives_payment_reminders)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders
+RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders, can_sign_in
 `
 
 type CreateContactParams struct {
@@ -168,6 +204,7 @@ func (q *Queries) CreateContact(ctx context.Context, arg CreateContactParams) (S
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReceivesPaymentReminders,
+		&i.CanSignIn,
 	)
 	return i, err
 }
@@ -211,7 +248,7 @@ const createStudent = `-- name: CreateStudent :one
 
 INSERT INTO students (workspace_id, name, primary_teacher_membership_id, notes)
 VALUES ($1, $2, $3, $4)
-RETURNING id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at
+RETURNING id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at, sign_in_email
 `
 
 type CreateStudentParams struct {
@@ -241,6 +278,7 @@ func (q *Queries) CreateStudent(ctx context.Context, arg CreateStudentParams) (S
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SignInEmail,
 	)
 	return i, err
 }
@@ -264,7 +302,7 @@ func (q *Queries) DeleteContact(ctx context.Context, arg DeleteContactParams) (i
 }
 
 const getContact = `-- name: GetContact :one
-SELECT c.id, c.workspace_id, c.student_id, c.name, c.email, c.phone, c.relationship, c.receives_reminders, c.receives_billing, c.user_id, c.created_at, c.updated_at, c.receives_payment_reminders, s.name AS student_name FROM student_contacts c
+SELECT c.id, c.workspace_id, c.student_id, c.name, c.email, c.phone, c.relationship, c.receives_reminders, c.receives_billing, c.user_id, c.created_at, c.updated_at, c.receives_payment_reminders, c.can_sign_in, s.name AS student_name FROM student_contacts c
 JOIN students s ON s.workspace_id = c.workspace_id AND s.id = c.student_id
 WHERE c.workspace_id = $1 AND c.id = $2
 `
@@ -288,6 +326,7 @@ type GetContactRow struct {
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 	ReceivesPaymentReminders bool
+	CanSignIn                bool
 	StudentName              string
 }
 
@@ -308,13 +347,14 @@ func (q *Queries) GetContact(ctx context.Context, arg GetContactParams) (GetCont
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReceivesPaymentReminders,
+		&i.CanSignIn,
 		&i.StudentName,
 	)
 	return i, err
 }
 
 const getStudent = `-- name: GetStudent :one
-SELECT id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at FROM students WHERE workspace_id = $1 AND id = $2
+SELECT id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at, sign_in_email FROM students WHERE workspace_id = $1 AND id = $2
 `
 
 type GetStudentParams struct {
@@ -335,6 +375,7 @@ func (q *Queries) GetStudent(ctx context.Context, arg GetStudentParams) (Student
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SignInEmail,
 	)
 	return i, err
 }
@@ -361,8 +402,140 @@ func (q *Queries) GoalBelongsToLessonStudent(ctx context.Context, arg GoalBelong
 	return belongs, err
 }
 
+const linkContact = `-- name: LinkContact :exec
+UPDATE student_contacts SET user_id = $1, updated_at = now()
+WHERE workspace_id = $2 AND id = $3 AND can_sign_in
+`
+
+type LinkContactParams struct {
+	UserID      *uuid.UUID
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+func (q *Queries) LinkContact(ctx context.Context, arg LinkContactParams) error {
+	_, err := q.db.Exec(ctx, linkContact, arg.UserID, arg.WorkspaceID, arg.ID)
+	return err
+}
+
+const linkContactsByEmail = `-- name: LinkContactsByEmail :many
+UPDATE student_contacts SET user_id = $1, updated_at = now()
+WHERE workspace_id = $2 AND can_sign_in AND email = $3 AND user_id IS NULL
+RETURNING id
+`
+
+type LinkContactsByEmailParams struct {
+	UserID      *uuid.UUID
+	WorkspaceID uuid.UUID
+	Email       *string
+}
+
+// At a parent's first sign-in: every contact in the team given access at
+// their address.
+func (q *Queries) LinkContactsByEmail(ctx context.Context, arg LinkContactsByEmailParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, linkContactsByEmail, arg.UserID, arg.WorkspaceID, arg.Email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const linkStudent = `-- name: LinkStudent :exec
+UPDATE students SET user_id = $1, updated_at = now()
+WHERE workspace_id = $2 AND id = $3 AND sign_in_email IS NOT NULL
+`
+
+type LinkStudentParams struct {
+	UserID      *uuid.UUID
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+func (q *Queries) LinkStudent(ctx context.Context, arg LinkStudentParams) error {
+	_, err := q.db.Exec(ctx, linkStudent, arg.UserID, arg.WorkspaceID, arg.ID)
+	return err
+}
+
+const linkStudentsByEmail = `-- name: LinkStudentsByEmail :many
+UPDATE students SET user_id = $1, updated_at = now()
+WHERE workspace_id = $2 AND sign_in_email = $3 AND user_id IS NULL
+RETURNING id
+`
+
+type LinkStudentsByEmailParams struct {
+	UserID      *uuid.UUID
+	WorkspaceID uuid.UUID
+	Email       *string
+}
+
+func (q *Queries) LinkStudentsByEmail(ctx context.Context, arg LinkStudentsByEmailParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, linkStudentsByEmail, arg.UserID, arg.WorkspaceID, arg.Email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const linkedUsersOfStudent = `-- name: LinkedUsersOfStudent :many
+SELECT c.user_id FROM student_contacts c
+WHERE c.workspace_id = $1 AND c.student_id = $2 AND c.user_id IS NOT NULL
+UNION
+SELECT s.user_id FROM students s
+WHERE s.workspace_id = $1 AND s.id = $2 AND s.user_id IS NOT NULL
+`
+
+type LinkedUsersOfStudentParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+// Who signs in to see a student: the student and their parents.
+func (q *Queries) LinkedUsersOfStudent(ctx context.Context, arg LinkedUsersOfStudentParams) ([]*uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, linkedUsersOfStudent, arg.WorkspaceID, arg.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*uuid.UUID
+	for rows.Next() {
+		var user_id *uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listContacts = `-- name: ListContacts :many
-SELECT id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders FROM student_contacts
+SELECT id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders, can_sign_in FROM student_contacts
 WHERE workspace_id = $1 AND student_id = $2
 ORDER BY created_at, id
 `
@@ -395,6 +568,7 @@ func (q *Queries) ListContacts(ctx context.Context, arg ListContactsParams) ([]S
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.ReceivesPaymentReminders,
+			&i.CanSignIn,
 		); err != nil {
 			return nil, err
 		}
@@ -448,7 +622,7 @@ func (q *Queries) ListGoals(ctx context.Context, arg ListGoalsParams) ([]Student
 }
 
 const listStudents = `-- name: ListStudents :many
-SELECT id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at FROM students s
+SELECT id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at, sign_in_email FROM students s
 WHERE s.workspace_id = $1
   AND (s.archived_at IS NOT NULL) = $2::boolean
   AND ($3::uuid IS NULL OR s.primary_teacher_membership_id = $3)
@@ -509,6 +683,7 @@ func (q *Queries) ListStudents(ctx context.Context, arg ListStudentsParams) ([]S
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SignInEmail,
 		); err != nil {
 			return nil, err
 		}
@@ -518,6 +693,86 @@ func (q *Queries) ListStudents(ctx context.Context, arg ListStudentsParams) ([]S
 		return nil, err
 	}
 	return items, nil
+}
+
+const setContactSignIn = `-- name: SetContactSignIn :one
+
+UPDATE student_contacts
+SET can_sign_in = $1,
+    user_id = CASE WHEN $1::boolean THEN user_id END,
+    updated_at = now()
+WHERE workspace_id = $2 AND student_id = $3 AND id = $4
+RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders, can_sign_in
+`
+
+type SetContactSignInParams struct {
+	CanSignIn   bool
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+	ID          uuid.UUID
+}
+
+// Family accounts (ADR 025).
+// Turning access off also unlinks the contact.
+func (q *Queries) SetContactSignIn(ctx context.Context, arg SetContactSignInParams) (StudentContact, error) {
+	row := q.db.QueryRow(ctx, setContactSignIn,
+		arg.CanSignIn,
+		arg.WorkspaceID,
+		arg.StudentID,
+		arg.ID,
+	)
+	var i StudentContact
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.StudentID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Relationship,
+		&i.ReceivesReminders,
+		&i.ReceivesBilling,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReceivesPaymentReminders,
+		&i.CanSignIn,
+	)
+	return i, err
+}
+
+const setStudentSignIn = `-- name: SetStudentSignIn :one
+UPDATE students
+SET sign_in_email = $1,
+    user_id = CASE WHEN sign_in_email IS NOT DISTINCT FROM $1::citext THEN user_id END,
+    updated_at = now()
+WHERE workspace_id = $2 AND id = $3
+RETURNING id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at, sign_in_email
+`
+
+type SetStudentSignInParams struct {
+	SignInEmail *string
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+// A changed or removed address unlinks the student.
+func (q *Queries) SetStudentSignIn(ctx context.Context, arg SetStudentSignInParams) (Student, error) {
+	row := q.db.QueryRow(ctx, setStudentSignIn, arg.SignInEmail, arg.WorkspaceID, arg.ID)
+	var i Student
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.PrimaryTeacherMembershipID,
+		&i.Notes,
+		&i.UserID,
+		&i.ArchivedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SignInEmail,
+	)
+	return i, err
 }
 
 const stopLessonReminders = `-- name: StopLessonReminders :exec
@@ -613,13 +868,85 @@ func (q *Queries) StudentTaughtBy(ctx context.Context, arg StudentTaughtByParams
 	return taught, err
 }
 
+const studentsLinkedTo = `-- name: StudentsLinkedTo :many
+SELECT DISTINCT s.id, s.name FROM students s
+WHERE s.workspace_id = $1 AND s.archived_at IS NULL
+  AND (s.user_id = $2 OR EXISTS (
+       SELECT 1 FROM student_contacts c
+       WHERE c.workspace_id = s.workspace_id AND c.student_id = s.id AND c.user_id = $2))
+ORDER BY s.name, s.id
+`
+
+type StudentsLinkedToParams struct {
+	WorkspaceID uuid.UUID
+	UserID      *uuid.UUID
+}
+
+type StudentsLinkedToRow struct {
+	ID   uuid.UUID
+	Name string
+}
+
+// The students a person is linked to: as a contact (parent) or as the
+// student.
+func (q *Queries) StudentsLinkedTo(ctx context.Context, arg StudentsLinkedToParams) ([]StudentsLinkedToRow, error) {
+	rows, err := q.db.Query(ctx, studentsLinkedTo, arg.WorkspaceID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudentsLinkedToRow
+	for rows.Next() {
+		var i StudentsLinkedToRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unlinkStudent = `-- name: UnlinkStudent :exec
+UPDATE students SET sign_in_email = NULL, user_id = NULL, updated_at = now()
+WHERE workspace_id = $1 AND id = $2 AND sign_in_email IS NOT NULL
+`
+
+type UnlinkStudentParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+func (q *Queries) UnlinkStudent(ctx context.Context, arg UnlinkStudentParams) error {
+	_, err := q.db.Exec(ctx, unlinkStudent, arg.WorkspaceID, arg.StudentID)
+	return err
+}
+
+const unlinkStudentAndContacts = `-- name: UnlinkStudentAndContacts :exec
+UPDATE student_contacts SET can_sign_in = false, user_id = NULL, updated_at = now()
+WHERE workspace_id = $1 AND student_id = $2 AND can_sign_in
+`
+
+type UnlinkStudentAndContactsParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+// Archiving a student ends every family account's access to them.
+func (q *Queries) UnlinkStudentAndContacts(ctx context.Context, arg UnlinkStudentAndContactsParams) error {
+	_, err := q.db.Exec(ctx, unlinkStudentAndContacts, arg.WorkspaceID, arg.StudentID)
+	return err
+}
+
 const updateContact = `-- name: UpdateContact :one
 UPDATE student_contacts
 SET name = $1, email = $2, phone = $3, relationship = $4,
     receives_reminders = $5, receives_billing = $6,
     receives_payment_reminders = $7, updated_at = now()
 WHERE workspace_id = $8 AND student_id = $9 AND id = $10
-RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders
+RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders, can_sign_in
 `
 
 type UpdateContactParams struct {
@@ -663,6 +990,7 @@ func (q *Queries) UpdateContact(ctx context.Context, arg UpdateContactParams) (S
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReceivesPaymentReminders,
+		&i.CanSignIn,
 	)
 	return i, err
 }
@@ -724,7 +1052,7 @@ SET name = COALESCE($1, name),
         ELSE NULL END,
     updated_at = now()
 WHERE workspace_id = $6 AND id = $7
-RETURNING id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at
+RETURNING id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at, sign_in_email
 `
 
 type UpdateStudentParams struct {
@@ -758,6 +1086,7 @@ func (q *Queries) UpdateStudent(ctx context.Context, arg UpdateStudentParams) (S
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SignInEmail,
 	)
 	return i, err
 }

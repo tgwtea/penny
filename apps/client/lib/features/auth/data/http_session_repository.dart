@@ -217,4 +217,6 @@ Capability capabilityFrom(api.Capability c) => switch (c) {
   api.Capability.viewOwnStudents => Capability.viewOwnStudents,
   api.Capability.managePayments => Capability.managePayments,
   api.Capability.manageOwnPayments => Capability.manageOwnPayments,
+  api.Capability.viewLinkedLessons => Capability.viewLinkedLessons,
+  api.Capability.viewLinkedPayments => Capability.viewLinkedPayments,
 };

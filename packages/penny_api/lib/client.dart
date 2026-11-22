@@ -5,6 +5,7 @@ class Penny {
 
   final ApiClient client;
 
+  FamilyApi get family => FamilyApi(client);
   HealthApi get health => HealthApi(client);
   IdentityApi get identity => IdentityApi(client);
   LessonsApi get lessons => LessonsApi(client);

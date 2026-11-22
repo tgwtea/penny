@@ -37,6 +37,12 @@ enum Capability {
 
   /// Bill for their own lessons and confirm payments to themselves.
   manageOwnPayments,
+
+  /// See their own lessons, or their children's, read-only (ADR 025).
+  viewLinkedLessons,
+
+  /// See and pay their children's payment requests, and their receipts.
+  viewLinkedPayments,
 }
 
 /// A person's role in a team. Shown as a word; never used to decide what

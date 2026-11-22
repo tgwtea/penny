@@ -15,10 +15,14 @@ import (
 
 var postalCode = regexp.MustCompile(`^[0-9]{6}$`)
 
-// ListLocations lists the team's current places. Any member may.
+// ListLocations lists the team's current places. Any of the team's staff
+// may; family accounts may not, since a place can be a student's home.
 func (s *Service) ListLocations(ctx context.Context, userID, workspaceID uuid.UUID) ([]Location, error) {
 	var out []Location
-	err := s.inTeam(ctx, userID, workspaceID, func(_ pgx.Tx, _ authz.Actor, st store) error {
+	err := s.inTeam(ctx, userID, workspaceID, func(_ pgx.Tx, a authz.Actor, st store) error {
+		if err := authz.Require(a, authz.ViewOwnLessons); err != nil {
+			return err
+		}
 		rows, err := st.q.ListLocations(ctx, workspaceID)
 		if err != nil {
 			return fmt.Errorf("list locations: %w", err)

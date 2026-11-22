@@ -57,6 +57,11 @@ const (
 	// ManageOwnPayments covers payment requests where the member is the
 	// payee, for lessons they lead (ADR 024).
 	ManageOwnPayments Capability = "manage_own_payments"
+	// ViewLinkedLessons and ViewLinkedPayments are family accounts': a
+	// student's own lessons, a parent's children's lessons and payments,
+	// read-only (ADR 025).
+	ViewLinkedLessons  Capability = "view_linked_lessons"
+	ViewLinkedPayments Capability = "view_linked_payments"
 )
 
 // matrix is docs/architecture.md's authorization table: what each role may
@@ -70,8 +75,8 @@ var matrix = map[Role][]Capability{
 	Teacher: {
 		ViewOwnLessons, CompleteOwnLessons, EditOwnLessonItems, ViewOwnStudents, ManageOwnPayments,
 	},
-	Student: {},
-	Parent:  {},
+	Student: {ViewLinkedLessons},
+	Parent:  {ViewLinkedLessons, ViewLinkedPayments},
 }
 
 // CapabilitiesOf returns what role may do, in the matrix's order.

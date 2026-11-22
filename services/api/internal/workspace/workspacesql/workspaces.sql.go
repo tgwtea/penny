@@ -14,9 +14,11 @@ import (
 const countActiveMembers = `-- name: CountActiveMembers :one
 SELECT count(*)::int AS active
 FROM workspace_memberships
-WHERE workspace_id = $1 AND status = 'active'
+WHERE workspace_id = $1 AND status = 'active' AND role IN ('owner', 'teacher')
 `
 
+// Staff only: a team of one hides team features however many families
+// sign in.
 func (q *Queries) CountActiveMembers(ctx context.Context, workspaceID uuid.UUID) (int32, error) {
 	row := q.db.QueryRow(ctx, countActiveMembers, workspaceID)
 	var active int32

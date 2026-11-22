@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/tgwtea/penny/services/api/internal/authz"
 	"github.com/tgwtea/penny/services/api/internal/platform/database"
@@ -28,6 +29,10 @@ import (
 // *workspace.Service implements it.
 type Teams interface {
 	Actor(ctx context.Context, db database.DBTX, workspaceID, userID uuid.UUID) (authz.Actor, error)
+	// InviteFamily and EndFamily keep family accounts' memberships in
+	// step with the access an owner gives (ADR 025).
+	InviteFamily(ctx context.Context, tx pgx.Tx, workspaceID uuid.UUID, role authz.Role, name, email string, actorID uuid.UUID) (workspace.Member, error)
+	EndFamily(ctx context.Context, tx pgx.Tx, workspaceID uuid.UUID, userID *uuid.UUID, email string, actorID uuid.UUID) error
 	MembersByID(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]workspace.MemberInfo, error)
 	NamesByUser(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]string, error)
 	Timezone(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) (*time.Location, error)
@@ -112,6 +117,10 @@ type Student struct {
 	Notes    string
 	Contacts []Contact
 	Goals    []Goal
+	// SignInEmail is where the student was given an account (ADR 025);
+	// SignedIn is whether they have signed in with it.
+	SignInEmail *string
+	SignedIn    bool
 }
 
 // Contact gets a student's reminders or receipts.
@@ -126,6 +135,10 @@ type Contact struct {
 	// ReceivesPaymentReminders is whether overdue payment requests are
 	// chased with this contact. Stopped from an email's link.
 	ReceivesPaymentReminders bool
+	// CanSignIn is whether the owner gave the contact a parent account
+	// (ADR 025); SignedIn is whether they have signed in with it.
+	CanSignIn bool
+	SignedIn  bool
 }
 
 // Goal is something a student works towards over several lessons.

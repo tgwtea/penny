@@ -1,3 +1,5 @@
 GET /v1/me added the new `manage_own_payments` enum value to the `memberships/items/capabilities/items` response property for the response status `200`
 PATCH /v1/me added the new `manage_own_payments` enum value to the `memberships/items/capabilities/items` response property for the response status `200`
 POST /v1/workspaces added the new `manage_own_payments` enum value to the `capabilities/items` response property for the response status `201`
+GET /v1/me added the new `view_linked_lessons` enum value to the `memberships/items/capabilities/items` response property for the response status `200`
+GET /v1/me added the new `view_linked_payments` enum value to the `memberships/items/capabilities/items` response property for the response status `200`

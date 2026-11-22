@@ -74,6 +74,8 @@ const (
 	CapabilityManageStudents     Capability = "manage_students"
 	CapabilityManageTeam         Capability = "manage_team"
 	CapabilityReassignLessons    Capability = "reassign_lessons"
+	CapabilityViewLinkedLessons  Capability = "view_linked_lessons"
+	CapabilityViewLinkedPayments Capability = "view_linked_payments"
 	CapabilityViewOwnLessons     Capability = "view_own_lessons"
 	CapabilityViewOwnStudents    Capability = "view_own_students"
 	CapabilityViewTeamTimetable  Capability = "view_team_timetable"
@@ -97,6 +99,10 @@ func (e Capability) Valid() bool {
 	case CapabilityManageTeam:
 		return true
 	case CapabilityReassignLessons:
+		return true
+	case CapabilityViewLinkedLessons:
+		return true
+	case CapabilityViewLinkedPayments:
 		return true
 	case CapabilityViewOwnLessons:
 		return true
@@ -565,8 +571,10 @@ type CompleteLessonRequest struct {
 
 // Contact Someone who gets a student's reminders or receipts.
 type Contact struct {
-	Email *openapi_types.Email `json:"email,omitempty"`
-	Id    openapi_types.UUID   `json:"id"`
+	// CanSignIn The owner gave the contact a parent account (ADR 025).
+	CanSignIn *bool                `json:"canSignIn,omitempty"`
+	Email     *openapi_types.Email `json:"email,omitempty"`
+	Id        openapi_types.UUID   `json:"id"`
 
 	// Name Example: Priya Nair
 	Name string `json:"name"`
@@ -579,6 +587,9 @@ type Contact struct {
 	ReceivesPaymentReminders *bool               `json:"receivesPaymentReminders,omitempty"`
 	ReceivesReminders        bool                `json:"receivesReminders"`
 	Relationship             ContactRelationship `json:"relationship"`
+
+	// SignedIn The contact has signed in with that account.
+	SignedIn *bool `json:"signedIn,omitempty"`
 }
 
 // ContactInput defines model for ContactInput.
@@ -594,6 +605,11 @@ type ContactInput struct {
 
 // ContactRelationship defines model for ContactRelationship.
 type ContactRelationship string
+
+// ContactSignInInput defines model for ContactSignInInput.
+type ContactSignInInput struct {
+	CanSignIn bool `json:"canSignIn"`
+}
 
 // CreateWorkspaceRequest defines model for CreateWorkspaceRequest.
 type CreateWorkspaceRequest struct {
@@ -621,6 +637,82 @@ type EndSeriesRequest struct {
 type ExtraLine struct {
 	AmountCents int64  `json:"amountCents"`
 	Description string `json:"description"`
+}
+
+// FamilyLesson defines model for FamilyLesson.
+type FamilyLesson struct {
+	Cancellation *Cancellation      `json:"cancellation,omitempty"`
+	EndsAt       time.Time          `json:"endsAt"`
+	Id           openapi_types.UUID `json:"id"`
+	Items        []FamilyLessonItem `json:"items"`
+
+	// Location Where the lesson is, as it was when booked.
+	Location *LessonLocation `json:"location,omitempty"`
+
+	// OtherStudents How many other students are in it, unnamed.
+	OtherStudents int32        `json:"otherStudents"`
+	StartsAt      time.Time    `json:"startsAt"`
+	Status        LessonStatus `json:"status"`
+
+	// StudentIds The caller's students in the lesson.
+	StudentIds []openapi_types.UUID `json:"studentIds"`
+	Title      *string              `json:"title,omitempty"`
+	Tutors     []string             `json:"tutors"`
+}
+
+// FamilyLessonItem defines model for FamilyLessonItem.
+type FamilyLessonItem struct {
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"createdAt"`
+	Done      bool      `json:"done"`
+	Kind      ItemKind  `json:"kind"`
+}
+
+// FamilyLessonList defines model for FamilyLessonList.
+type FamilyLessonList struct {
+	Items []FamilyLesson `json:"items"`
+}
+
+// FamilyPaymentRequest defines model for FamilyPaymentRequest.
+type FamilyPaymentRequest struct {
+	AmountCents int64 `json:"amountCents"`
+
+	// CancellationPolicy The payee's cancellation policy, in their words.
+	CancellationPolicy *string             `json:"cancellationPolicy,omitempty"`
+	CoTaught           bool                `json:"coTaught"`
+	CreatedAt          time.Time           `json:"createdAt"`
+	Currency           string              `json:"currency"`
+	DueOn              openapi_types.Date  `json:"dueOn"`
+	Id                 openapi_types.UUID  `json:"id"`
+	Lines              []PublicPaymentLine `json:"lines"`
+	PayeeName          string              `json:"payeeName"`
+	PayerConfirmed     bool                `json:"payerConfirmed"`
+
+	// PaynowPayload The PayNow QR code's content. Absent once paid or cancelled.
+	PaynowPayload    *string              `json:"paynowPayload,omitempty"`
+	Receipt          *ReceiptRef          `json:"receipt,omitempty"`
+	Reference        string               `json:"reference"`
+	Status           PaymentRequestStatus `json:"status"`
+	Student          StudentRef           `json:"student"`
+	StudentFirstName string               `json:"studentFirstName"`
+	TeamName         string               `json:"teamName"`
+}
+
+// FamilyPaymentRequestList defines model for FamilyPaymentRequestList.
+type FamilyPaymentRequestList struct {
+	Items []FamilyPaymentRequest `json:"items"`
+}
+
+// FamilyStudent defines model for FamilyStudent.
+type FamilyStudent struct {
+	Goals []Goal             `json:"goals"`
+	Id    openapi_types.UUID `json:"id"`
+	Name  string             `json:"name"`
+}
+
+// FamilyStudentList defines model for FamilyStudentList.
+type FamilyStudentList struct {
+	Items []FamilyStudent `json:"items"`
 }
 
 // Goal Something a student works towards over several lessons.
@@ -689,8 +781,9 @@ type HistoryList struct {
 // ItemKind defines model for ItemKind.
 type ItemKind string
 
-// ItemVisibility Who may see the item. `student` and `contacts` take effect when those
-// roles can sign in (build plan, Phase 10); today only staff sign in.
+// ItemVisibility Who may see the item besides the team's staff: `student` items are
+// seen by the signed-in student, `contacts` items by the student and
+// their signed-in parents (ADR 025).
 type ItemVisibility string
 
 // Lesson defines model for Lesson.
@@ -783,8 +876,9 @@ type LessonItem struct {
 	Id     openapi_types.UUID  `json:"id"`
 	Kind   ItemKind            `json:"kind"`
 
-	// Visibility Who may see the item. `student` and `contacts` take effect when those
-	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	// Visibility Who may see the item besides the team's staff: `student` items are
+	// seen by the signed-in student, `contacts` items by the student and
+	// their signed-in parents (ADR 025).
 	Visibility ItemVisibility `json:"visibility"`
 }
 
@@ -793,8 +887,9 @@ type LessonItemChanges struct {
 	Body *string `json:"body,omitempty"`
 	Done *bool   `json:"done,omitempty"`
 
-	// Visibility Who may see the item. `student` and `contacts` take effect when those
-	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	// Visibility Who may see the item besides the team's staff: `student` items are
+	// seen by the signed-in student, `contacts` items by the student and
+	// their signed-in parents (ADR 025).
 	Visibility *ItemVisibility `json:"visibility,omitempty"`
 }
 
@@ -804,8 +899,9 @@ type LessonItemInput struct {
 	GoalId *openapi_types.UUID `json:"goalId,omitempty"`
 	Kind   ItemKind            `json:"kind"`
 
-	// Visibility Who may see the item. `student` and `contacts` take effect when those
-	// roles can sign in (build plan, Phase 10); today only staff sign in.
+	// Visibility Who may see the item besides the team's staff: `student` items are
+	// seen by the signed-in student, `contacts` items by the student and
+	// their signed-in parents (ADR 025).
 	Visibility *ItemVisibility `json:"visibility,omitempty"`
 }
 
@@ -1331,6 +1427,12 @@ type Student struct {
 
 	// PrimaryTeacher A team member, as other records mention them.
 	PrimaryTeacher *MemberRef `json:"primaryTeacher,omitempty"`
+
+	// SignInEmail Where the student was given their own account (ADR 025).
+	SignInEmail *string `json:"signInEmail,omitempty"`
+
+	// SignedIn The student has signed in with that account.
+	SignedIn *bool `json:"signedIn,omitempty"`
 }
 
 // StudentAttendance defines model for StudentAttendance.
@@ -1379,6 +1481,11 @@ type StudentList struct {
 type StudentRef struct {
 	Id   openapi_types.UUID `json:"id"`
 	Name string             `json:"name"`
+}
+
+// StudentSignInInput defines model for StudentSignInInput.
+type StudentSignInInput struct {
+	Email openapi_types.Email `json:"email"`
 }
 
 // StudentSummary defines model for StudentSummary.
@@ -1580,6 +1687,15 @@ type ListBillableLessonsParams struct {
 
 	// PayeeId Only lessons this membership leads.
 	PayeeId *openapi_types.UUID `form:"payeeId,omitempty" json:"payeeId,omitempty"`
+}
+
+// ListFamilyLessonsParams defines parameters for ListFamilyLessons.
+type ListFamilyLessonsParams struct {
+	// From Lessons ending after this instant.
+	From time.Time `form:"from" json:"from"`
+
+	// To Lessons starting before this instant. At most 62 days after `from`.
+	To time.Time `form:"to" json:"to"`
 }
 
 // ListLessonsParams defines parameters for ListLessons.
@@ -1811,11 +1927,17 @@ type AddContactJSONRequestBody = ContactInput
 // UpdateContactJSONRequestBody defines body for UpdateContact for application/json ContentType.
 type UpdateContactJSONRequestBody = ContactInput
 
+// SetContactSignInJSONRequestBody defines body for SetContactSignIn for application/json ContentType.
+type SetContactSignInJSONRequestBody = ContactSignInInput
+
 // AddGoalJSONRequestBody defines body for AddGoal for application/json ContentType.
 type AddGoalJSONRequestBody = GoalInput
 
 // UpdateGoalJSONRequestBody defines body for UpdateGoal for application/json ContentType.
 type UpdateGoalJSONRequestBody = GoalChanges
+
+// SetStudentSignInJSONRequestBody defines body for SetStudentSignIn for application/json ContentType.
+type SetStudentSignInJSONRequestBody = StudentSignInInput
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -2069,6 +2191,46 @@ type ClientInterface interface {
 	//
 	// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
 	ListBillableLessons(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFamilyLessons The linked students' lessons in a range
+	//
+	// Read-only. Other students in a group lesson are counted, not named,
+	// and only items meant for the caller are included (ADR 025).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/lessons (the `ListFamilyLessons` operationId).
+	ListFamilyLessons(ctx context.Context, workspaceId WorkspaceId, params *ListFamilyLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFamilyPaymentRequests A parent's open and paid payment requests
+	//
+	// What each request's payment page shows, with its PayNow code while
+	// open, for the parent's children. Newest first.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/payment-requests (the `ListFamilyPaymentRequests` operationId).
+	ListFamilyPaymentRequests(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ConfirmFamilyPayment Say "I've paid" as a signed-in parent
+	//
+	// The payer's confirmation (ADR 024), exactly as the payment page records it.
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid (the `ConfirmFamilyPayment` operationId).
+	ConfirmFamilyPayment(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFamilyReceipts A parent's receipts, newest first
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts (the `ListFamilyReceipts` operationId).
+	ListFamilyReceipts(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetFamilyReceiptPdf One of a parent's receipts as a PDF
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf (the `GetFamilyReceiptPdf` operationId).
+	GetFamilyReceiptPdf(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListFamilyStudents The students a family account is linked to
+	//
+	// A student sees themselves; a parent sees their children in the team.
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/students (the `ListFamilyStudents` operationId).
+	ListFamilyStudents(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListLessons List lessons in a time range
 	//
@@ -2712,6 +2874,32 @@ type ClientInterface interface {
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
 	UpdateContact(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetContactSignInWithBody Give a contact a parent account, or take it away
+	//
+	// Owners only (ADR 025). Giving access invites the contact's email to
+	// the team as a parent, who after first signing in sees this student's
+	// lessons and payments, read-only. One account covers all of a
+	// parent's children in the team. A contact who can sign in keeps their
+	// email until access is taken away.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+	SetContactSignInWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetContactSignIn Give a contact a parent account, or take it away
+	//
+	// Owners only (ADR 025). Giving access invites the contact's email to
+	// the team as a parent, who after first signing in sees this student's
+	// lessons and payments, read-only. One account covers all of a
+	// parent's children in the team. A contact who can sign in keeps their
+	// email until access is taken away.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+	SetContactSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body SetContactSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ExportStudentData Download everything the team holds about a student
 	//
 	// For a PDPA access request from a student or their family, for the
@@ -2758,6 +2946,33 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
 	UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RemoveStudentSignIn Take the student's account away
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `RemoveStudentSignIn` operationId).
+	RemoveStudentSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetStudentSignInWithBody Give the student their own account, at an email address
+	//
+	// Owners only (ADR 025). Penny invites the address to the team as a
+	// student, who then sees their own lessons, read-only, after they
+	// first sign in with it. A new address replaces the old one.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+	SetStudentSignInWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetStudentSignIn Give the student their own account, at an email address
+	//
+	// Owners only (ADR 025). Penny invites the address to the team as a
+	// student, who then sees their own lessons, read-only, after they
+	// first sign in with it. A new address replaces the old one.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+	SetStudentSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body SetStudentSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTimetable The team timetable, one column per tutor
 	//
@@ -3138,6 +3353,106 @@ func (c *Client) UpdateWorkspace(ctx context.Context, workspaceId WorkspaceId, b
 // Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
 func (c *Client) ListBillableLessons(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListBillableLessonsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFamilyLessons The linked students' lessons in a range
+//
+// Read-only. Other students in a group lesson are counted, not named,
+// and only items meant for the caller are included (ADR 025).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/lessons (the `ListFamilyLessons` operationId).
+func (c *Client) ListFamilyLessons(ctx context.Context, workspaceId WorkspaceId, params *ListFamilyLessonsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFamilyLessonsRequest(c.Server, workspaceId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFamilyPaymentRequests A parent's open and paid payment requests
+//
+// What each request's payment page shows, with its PayNow code while
+// open, for the parent's children. Newest first.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/payment-requests (the `ListFamilyPaymentRequests` operationId).
+func (c *Client) ListFamilyPaymentRequests(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFamilyPaymentRequestsRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ConfirmFamilyPayment Say "I've paid" as a signed-in parent
+//
+// The payer's confirmation (ADR 024), exactly as the payment page records it.
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid (the `ConfirmFamilyPayment` operationId).
+func (c *Client) ConfirmFamilyPayment(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmFamilyPaymentRequest(c.Server, workspaceId, requestId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFamilyReceipts A parent's receipts, newest first
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts (the `ListFamilyReceipts` operationId).
+func (c *Client) ListFamilyReceipts(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFamilyReceiptsRequest(c.Server, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetFamilyReceiptPdf One of a parent's receipts as a PDF
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf (the `GetFamilyReceiptPdf` operationId).
+func (c *Client) GetFamilyReceiptPdf(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetFamilyReceiptPdfRequest(c.Server, workspaceId, receiptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// ListFamilyStudents The students a family account is linked to
+//
+// A student sees themselves; a parent sees their children in the team.
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/students (the `ListFamilyStudents` operationId).
+func (c *Client) ListFamilyStudents(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListFamilyStudentsRequest(c.Server, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -4490,6 +4805,52 @@ func (c *Client) UpdateContact(ctx context.Context, workspaceId WorkspaceId, stu
 	return c.Client.Do(req)
 }
 
+// SetContactSignInWithBody Give a contact a parent account, or take it away
+//
+// Owners only (ADR 025). Giving access invites the contact's email to
+// the team as a parent, who after first signing in sees this student's
+// lessons and payments, read-only. One account covers all of a
+// parent's children in the team. A contact who can sign in keeps their
+// email until access is taken away.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+func (c *Client) SetContactSignInWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetContactSignInRequestWithBody(c.Server, workspaceId, studentId, contactId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetContactSignIn Give a contact a parent account, or take it away
+//
+// Owners only (ADR 025). Giving access invites the contact's email to
+// the team as a parent, who after first signing in sees this student's
+// lessons and payments, read-only. One account covers all of a
+// parent's children in the team. A contact who can sign in keeps their
+// email until access is taken away.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+func (c *Client) SetContactSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body SetContactSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetContactSignInRequest(c.Server, workspaceId, studentId, contactId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ExportStudentData Download everything the team holds about a student
 //
 // For a PDPA access request from a student or their family, for the
@@ -4577,6 +4938,63 @@ func (c *Client) UpdateGoalWithBody(ctx context.Context, workspaceId WorkspaceId
 // Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
 func (c *Client) UpdateGoal(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateGoalRequest(c.Server, workspaceId, studentId, goalId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// RemoveStudentSignIn Take the student's account away
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `RemoveStudentSignIn` operationId).
+func (c *Client) RemoveStudentSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRemoveStudentSignInRequest(c.Server, workspaceId, studentId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetStudentSignInWithBody Give the student their own account, at an email address
+//
+// Owners only (ADR 025). Penny invites the address to the team as a
+// student, who then sees their own lessons, read-only, after they
+// first sign in with it. A new address replaces the old one.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+func (c *Client) SetStudentSignInWithBody(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetStudentSignInRequestWithBody(c.Server, workspaceId, studentId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SetStudentSignIn Give the student their own account, at an email address
+//
+// Owners only (ADR 025). Penny invites the address to the team as a
+// student, who then sees their own lessons, read-only, after they
+// first sign in with it. A new address replaces the old one.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+func (c *Client) SetStudentSignIn(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body SetStudentSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetStudentSignInRequest(c.Server, workspaceId, studentId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -5175,6 +5593,255 @@ func NewListBillableLessonsRequest(server string, workspaceId WorkspaceId, param
 			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
 		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFamilyLessonsRequest constructs an http.Request for the ListFamilyLessons method
+func NewListFamilyLessonsRequest(server string, workspaceId WorkspaceId, params *ListFamilyLessonsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/lessons", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "from", params.From, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "to", params.To, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "date-time"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFamilyPaymentRequestsRequest constructs an http.Request for the ListFamilyPaymentRequests method
+func NewListFamilyPaymentRequestsRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/payment-requests", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewConfirmFamilyPaymentRequest constructs an http.Request for the ConfirmFamilyPayment method
+func NewConfirmFamilyPaymentRequest(server string, workspaceId WorkspaceId, requestId RequestId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "requestId", requestId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/payment-requests/%s/paid", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFamilyReceiptsRequest constructs an http.Request for the ListFamilyReceipts method
+func NewListFamilyReceiptsRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/receipts", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetFamilyReceiptPdfRequest constructs an http.Request for the GetFamilyReceiptPdf method
+func NewGetFamilyReceiptPdfRequest(server string, workspaceId WorkspaceId, receiptId ReceiptId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "receiptId", receiptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/receipts/%s/pdf", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListFamilyStudentsRequest constructs an http.Request for the ListFamilyStudents method
+func NewListFamilyStudentsRequest(server string, workspaceId WorkspaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/family/students", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -7769,6 +8436,67 @@ func NewUpdateContactRequestWithBody(server string, workspaceId WorkspaceId, stu
 	return req, nil
 }
 
+// NewSetContactSignInRequest calls the generic SetContactSignIn builder with application/json body
+func NewSetContactSignInRequest(server string, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body SetContactSignInJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetContactSignInRequestWithBody(server, workspaceId, studentId, contactId, "application/json", bodyReader)
+}
+
+// NewSetContactSignInRequestWithBody constructs an http.Request for the SetContactSignIn method, with any body, and a specified content type
+func NewSetContactSignInRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "contactId", contactId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/contacts/%s/sign-in", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewExportStudentDataRequest constructs an http.Request for the ExportStudentData method
 func NewExportStudentDataRequest(server string, workspaceId WorkspaceId, studentId StudentId) (*http.Request, error) {
 	var err error
@@ -7916,6 +8644,101 @@ func NewUpdateGoalRequestWithBody(server string, workspaceId WorkspaceId, studen
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRemoveStudentSignInRequest constructs an http.Request for the RemoveStudentSignIn method
+func NewRemoveStudentSignInRequest(server string, workspaceId WorkspaceId, studentId StudentId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/sign-in", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSetStudentSignInRequest calls the generic SetStudentSignIn builder with application/json body
+func NewSetStudentSignInRequest(server string, workspaceId WorkspaceId, studentId StudentId, body SetStudentSignInJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetStudentSignInRequestWithBody(server, workspaceId, studentId, "application/json", bodyReader)
+}
+
+// NewSetStudentSignInRequestWithBody constructs an http.Request for the SetStudentSignIn method, with any body, and a specified content type
+func NewSetStudentSignInRequestWithBody(server string, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "workspaceId", workspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "studentId", studentId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/workspaces/%s/students/%s/sign-in", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -8248,6 +9071,58 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /v1/workspaces/{workspaceId}/billable-lessons (the `ListBillableLessons` operationId).
 	ListBillableLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListBillableLessonsParams, reqEditors ...RequestEditorFn) (*ListBillableLessonsResponse, error)
+
+	// ListFamilyLessonsWithResponse The linked students' lessons in a range
+	//
+	// Read-only. Other students in a group lesson are counted, not named,
+	// and only items meant for the caller are included (ADR 025).
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/lessons (the `ListFamilyLessons` operationId).
+	ListFamilyLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListFamilyLessonsParams, reqEditors ...RequestEditorFn) (*ListFamilyLessonsResponse, error)
+
+	// ListFamilyPaymentRequestsWithResponse A parent's open and paid payment requests
+	//
+	// What each request's payment page shows, with its PayNow code while
+	// open, for the parent's children. Newest first.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/payment-requests (the `ListFamilyPaymentRequests` operationId).
+	ListFamilyPaymentRequestsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyPaymentRequestsResponse, error)
+
+	// ConfirmFamilyPaymentWithResponse Say "I've paid" as a signed-in parent
+	//
+	// The payer's confirmation (ADR 024), exactly as the payment page records it.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid (the `ConfirmFamilyPayment` operationId).
+	ConfirmFamilyPaymentWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*ConfirmFamilyPaymentResponse, error)
+
+	// ListFamilyReceiptsWithResponse A parent's receipts, newest first
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts (the `ListFamilyReceipts` operationId).
+	ListFamilyReceiptsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyReceiptsResponse, error)
+
+	// GetFamilyReceiptPdfWithResponse One of a parent's receipts as a PDF
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf (the `GetFamilyReceiptPdf` operationId).
+	GetFamilyReceiptPdfWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetFamilyReceiptPdfResponse, error)
+
+	// ListFamilyStudentsWithResponse The students a family account is linked to
+	//
+	// A student sees themselves; a parent sees their children in the team.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/workspaces/{workspaceId}/family/students (the `ListFamilyStudents` operationId).
+	ListFamilyStudentsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyStudentsResponse, error)
 
 	// ListLessonsWithResponse List lessons in a time range
 	//
@@ -8943,6 +9818,32 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId} (the `UpdateContact` operationId).
 	UpdateContactWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body UpdateContactJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateContactResponse, error)
 
+	// SetContactSignInWithBodyWithResponse Give a contact a parent account, or take it away
+	//
+	// Owners only (ADR 025). Giving access invites the contact's email to
+	// the team as a parent, who after first signing in sees this student's
+	// lessons and payments, read-only. One account covers all of a
+	// parent's children in the team. A contact who can sign in keeps their
+	// email until access is taken away.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+	SetContactSignInWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetContactSignInResponse, error)
+
+	// SetContactSignInWithResponse Give a contact a parent account, or take it away
+	//
+	// Owners only (ADR 025). Giving access invites the contact's email to
+	// the team as a parent, who after first signing in sees this student's
+	// lessons and payments, read-only. One account covers all of a
+	// parent's children in the team. A contact who can sign in keeps their
+	// email until access is taken away.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+	SetContactSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body SetContactSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetContactSignInResponse, error)
+
 	// ExportStudentDataWithResponse Download everything the team holds about a student
 	//
 	// For a PDPA access request from a student or their family, for the
@@ -8991,6 +9892,35 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId} (the `UpdateGoal` operationId).
 	UpdateGoalWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, goalId GoalId, body UpdateGoalJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateGoalResponse, error)
+
+	// RemoveStudentSignInWithResponse Take the student's account away
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `RemoveStudentSignIn` operationId).
+	RemoveStudentSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*RemoveStudentSignInResponse, error)
+
+	// SetStudentSignInWithBodyWithResponse Give the student their own account, at an email address
+	//
+	// Owners only (ADR 025). Penny invites the address to the team as a
+	// student, who then sees their own lessons, read-only, after they
+	// first sign in with it. A new address replaces the old one.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+	SetStudentSignInWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetStudentSignInResponse, error)
+
+	// SetStudentSignInWithResponse Give the student their own account, at an email address
+	//
+	// Owners only (ADR 025). Penny invites the address to the team as a
+	// student, who then sees their own lessons, read-only, after they
+	// first sign in with it. A new address replaces the old one.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+	SetStudentSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body SetStudentSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetStudentSignInResponse, error)
 
 	// GetTimetableWithResponse The team timetable, one column per tutor
 	//
@@ -9948,6 +10878,399 @@ func (r ListBillableLessonsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListBillableLessonsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListFamilyLessonsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FamilyLessonList
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFamilyLessonsResponse) GetJSON200() *FamilyLessonList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r ListFamilyLessonsResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListFamilyLessonsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListFamilyLessonsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListFamilyLessonsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFamilyLessonsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFamilyLessonsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFamilyLessonsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFamilyLessonsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListFamilyPaymentRequestsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FamilyPaymentRequestList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFamilyPaymentRequestsResponse) GetJSON200() *FamilyPaymentRequestList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListFamilyPaymentRequestsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListFamilyPaymentRequestsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListFamilyPaymentRequestsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFamilyPaymentRequestsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFamilyPaymentRequestsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFamilyPaymentRequestsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFamilyPaymentRequestsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ConfirmFamilyPaymentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FamilyPaymentRequest
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ConfirmFamilyPaymentResponse) GetJSON200() *FamilyPaymentRequest {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ConfirmFamilyPaymentResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ConfirmFamilyPaymentResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r ConfirmFamilyPaymentResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r ConfirmFamilyPaymentResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ConfirmFamilyPaymentResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ConfirmFamilyPaymentResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ConfirmFamilyPaymentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ConfirmFamilyPaymentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ConfirmFamilyPaymentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListFamilyReceiptsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *ReceiptList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFamilyReceiptsResponse) GetJSON200() *ReceiptList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListFamilyReceiptsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListFamilyReceiptsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListFamilyReceiptsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFamilyReceiptsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFamilyReceiptsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFamilyReceiptsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFamilyReceiptsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetFamilyReceiptPdfResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r GetFamilyReceiptPdfResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetFamilyReceiptPdfResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r GetFamilyReceiptPdfResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r GetFamilyReceiptPdfResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r GetFamilyReceiptPdfResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetFamilyReceiptPdfResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetFamilyReceiptPdfResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetFamilyReceiptPdfResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListFamilyStudentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *FamilyStudentList
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r ListFamilyStudentsResponse) GetJSON200() *FamilyStudentList {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r ListFamilyStudentsResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r ListFamilyStudentsResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r ListFamilyStudentsResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r ListFamilyStudentsResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r ListFamilyStudentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListFamilyStudentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListFamilyStudentsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -13483,6 +14806,89 @@ func (r UpdateContactResponse) ContentType() string {
 	return ""
 }
 
+type SetContactSignInResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Contact
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetContactSignInResponse) GetJSON200() *Contact {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SetContactSignInResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetContactSignInResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetContactSignInResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetContactSignInResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetContactSignInResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ExportStudentDataResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -13698,6 +15104,158 @@ func (r UpdateGoalResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateGoalResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RemoveStudentSignInResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Student
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r RemoveStudentSignInResponse) GetJSON200() *Student {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r RemoveStudentSignInResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r RemoveStudentSignInResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r RemoveStudentSignInResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r RemoveStudentSignInResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r RemoveStudentSignInResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r RemoveStudentSignInResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RemoveStudentSignInResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveStudentSignInResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SetStudentSignInResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Student
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SetStudentSignInResponse) GetJSON200() *Student {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r SetStudentSignInResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r SetStudentSignInResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SetStudentSignInResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetStudentSignInResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetStudentSignInResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -14101,6 +15659,94 @@ func (c *ClientWithResponses) ListBillableLessonsWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseListBillableLessonsResponse(rsp)
+}
+
+// ListFamilyLessonsWithResponse The linked students' lessons in a range
+//
+// Read-only. Other students in a group lesson are counted, not named,
+// and only items meant for the caller are included (ADR 025).
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/lessons (the `ListFamilyLessons` operationId).
+func (c *ClientWithResponses) ListFamilyLessonsWithResponse(ctx context.Context, workspaceId WorkspaceId, params *ListFamilyLessonsParams, reqEditors ...RequestEditorFn) (*ListFamilyLessonsResponse, error) {
+	rsp, err := c.ListFamilyLessons(ctx, workspaceId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFamilyLessonsResponse(rsp)
+}
+
+// ListFamilyPaymentRequestsWithResponse A parent's open and paid payment requests
+//
+// What each request's payment page shows, with its PayNow code while
+// open, for the parent's children. Newest first.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/payment-requests (the `ListFamilyPaymentRequests` operationId).
+func (c *ClientWithResponses) ListFamilyPaymentRequestsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyPaymentRequestsResponse, error) {
+	rsp, err := c.ListFamilyPaymentRequests(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFamilyPaymentRequestsResponse(rsp)
+}
+
+// ConfirmFamilyPaymentWithResponse Say "I've paid" as a signed-in parent
+//
+// The payer's confirmation (ADR 024), exactly as the payment page records it.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid (the `ConfirmFamilyPayment` operationId).
+func (c *ClientWithResponses) ConfirmFamilyPaymentWithResponse(ctx context.Context, workspaceId WorkspaceId, requestId RequestId, reqEditors ...RequestEditorFn) (*ConfirmFamilyPaymentResponse, error) {
+	rsp, err := c.ConfirmFamilyPayment(ctx, workspaceId, requestId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmFamilyPaymentResponse(rsp)
+}
+
+// ListFamilyReceiptsWithResponse A parent's receipts, newest first
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts (the `ListFamilyReceipts` operationId).
+func (c *ClientWithResponses) ListFamilyReceiptsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyReceiptsResponse, error) {
+	rsp, err := c.ListFamilyReceipts(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFamilyReceiptsResponse(rsp)
+}
+
+// GetFamilyReceiptPdfWithResponse One of a parent's receipts as a PDF
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf (the `GetFamilyReceiptPdf` operationId).
+func (c *ClientWithResponses) GetFamilyReceiptPdfWithResponse(ctx context.Context, workspaceId WorkspaceId, receiptId ReceiptId, reqEditors ...RequestEditorFn) (*GetFamilyReceiptPdfResponse, error) {
+	rsp, err := c.GetFamilyReceiptPdf(ctx, workspaceId, receiptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetFamilyReceiptPdfResponse(rsp)
+}
+
+// ListFamilyStudentsWithResponse The students a family account is linked to
+//
+// A student sees themselves; a parent sees their children in the team.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/workspaces/{workspaceId}/family/students (the `ListFamilyStudents` operationId).
+func (c *ClientWithResponses) ListFamilyStudentsWithResponse(ctx context.Context, workspaceId WorkspaceId, reqEditors ...RequestEditorFn) (*ListFamilyStudentsResponse, error) {
+	rsp, err := c.ListFamilyStudents(ctx, workspaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListFamilyStudentsResponse(rsp)
 }
 
 // ListLessonsWithResponse List lessons in a time range
@@ -15217,6 +16863,44 @@ func (c *ClientWithResponses) UpdateContactWithResponse(ctx context.Context, wor
 	return ParseUpdateContactResponse(rsp)
 }
 
+// SetContactSignInWithBodyWithResponse Give a contact a parent account, or take it away
+//
+// Owners only (ADR 025). Giving access invites the contact's email to
+// the team as a parent, who after first signing in sees this student's
+// lessons and payments, read-only. One account covers all of a
+// parent's children in the team. A contact who can sign in keeps their
+// email until access is taken away.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+func (c *ClientWithResponses) SetContactSignInWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetContactSignInResponse, error) {
+	rsp, err := c.SetContactSignInWithBody(ctx, workspaceId, studentId, contactId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetContactSignInResponse(rsp)
+}
+
+// SetContactSignInWithResponse Give a contact a parent account, or take it away
+//
+// Owners only (ADR 025). Giving access invites the contact's email to
+// the team as a parent, who after first signing in sees this student's
+// lessons and payments, read-only. One account covers all of a
+// parent's children in the team. A contact who can sign in keeps their
+// email until access is taken away.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in (the `SetContactSignIn` operationId).
+func (c *ClientWithResponses) SetContactSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contactId ContactId, body SetContactSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetContactSignInResponse, error) {
+	rsp, err := c.SetContactSignIn(ctx, workspaceId, studentId, contactId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetContactSignInResponse(rsp)
+}
+
 // ExportStudentDataWithResponse Download everything the team holds about a student
 //
 // For a PDPA access request from a student or their family, for the
@@ -15294,6 +16978,53 @@ func (c *ClientWithResponses) UpdateGoalWithResponse(ctx context.Context, worksp
 		return nil, err
 	}
 	return ParseUpdateGoalResponse(rsp)
+}
+
+// RemoveStudentSignInWithResponse Take the student's account away
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `RemoveStudentSignIn` operationId).
+func (c *ClientWithResponses) RemoveStudentSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, reqEditors ...RequestEditorFn) (*RemoveStudentSignInResponse, error) {
+	rsp, err := c.RemoveStudentSignIn(ctx, workspaceId, studentId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRemoveStudentSignInResponse(rsp)
+}
+
+// SetStudentSignInWithBodyWithResponse Give the student their own account, at an email address
+//
+// Owners only (ADR 025). Penny invites the address to the team as a
+// student, who then sees their own lessons, read-only, after they
+// first sign in with it. A new address replaces the old one.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+func (c *ClientWithResponses) SetStudentSignInWithBodyWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetStudentSignInResponse, error) {
+	rsp, err := c.SetStudentSignInWithBody(ctx, workspaceId, studentId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetStudentSignInResponse(rsp)
+}
+
+// SetStudentSignInWithResponse Give the student their own account, at an email address
+//
+// Owners only (ADR 025). Penny invites the address to the team as a
+// student, who then sees their own lessons, read-only, after they
+// first sign in with it. A new address replaces the old one.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in (the `SetStudentSignIn` operationId).
+func (c *ClientWithResponses) SetStudentSignInWithResponse(ctx context.Context, workspaceId WorkspaceId, studentId StudentId, body SetStudentSignInJSONRequestBody, reqEditors ...RequestEditorFn) (*SetStudentSignInResponse, error) {
+	rsp, err := c.SetStudentSignIn(ctx, workspaceId, studentId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetStudentSignInResponse(rsp)
 }
 
 // GetTimetableWithResponse The team timetable, one column per tutor
@@ -16013,6 +17744,309 @@ func ParseListBillableLessonsResponse(rsp *http.Response) (*ListBillableLessonsR
 			return nil, err
 		}
 		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListFamilyLessonsResponse parses an HTTP response from a ListFamilyLessonsWithResponse call
+func ParseListFamilyLessonsResponse(rsp *http.Response) (*ListFamilyLessonsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFamilyLessonsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FamilyLessonList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListFamilyPaymentRequestsResponse parses an HTTP response from a ListFamilyPaymentRequestsWithResponse call
+func ParseListFamilyPaymentRequestsResponse(rsp *http.Response) (*ListFamilyPaymentRequestsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFamilyPaymentRequestsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FamilyPaymentRequestList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseConfirmFamilyPaymentResponse parses an HTTP response from a ConfirmFamilyPaymentWithResponse call
+func ParseConfirmFamilyPaymentResponse(rsp *http.Response) (*ConfirmFamilyPaymentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ConfirmFamilyPaymentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FamilyPaymentRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListFamilyReceiptsResponse parses an HTTP response from a ListFamilyReceiptsWithResponse call
+func ParseListFamilyReceiptsResponse(rsp *http.Response) (*ListFamilyReceiptsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFamilyReceiptsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ReceiptList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetFamilyReceiptPdfResponse parses an HTTP response from a GetFamilyReceiptPdfWithResponse call
+func ParseGetFamilyReceiptPdfResponse(rsp *http.Response) (*GetFamilyReceiptPdfResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetFamilyReceiptPdfResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListFamilyStudentsResponse parses an HTTP response from a ListFamilyStudentsWithResponse call
+func ParseListFamilyStudentsResponse(rsp *http.Response) (*ListFamilyStudentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListFamilyStudentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest FamilyStudentList
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest Problem
@@ -18850,6 +20884,74 @@ func ParseUpdateContactResponse(rsp *http.Response) (*UpdateContactResponse, err
 	return response, nil
 }
 
+// ParseSetContactSignInResponse parses an HTTP response from a SetContactSignInWithResponse call
+func ParseSetContactSignInResponse(rsp *http.Response) (*SetContactSignInResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetContactSignInResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Contact
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseExportStudentDataResponse parses an HTTP response from a ExportStudentDataWithResponse call
 func ParseExportStudentDataResponse(rsp *http.Response) (*ExportStudentDataResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -19026,6 +21128,128 @@ func ParseUpdateGoalResponse(rsp *http.Response) (*UpdateGoalResponse, error) {
 	return response, nil
 }
 
+// ParseRemoveStudentSignInResponse parses an HTTP response from a RemoveStudentSignInWithResponse call
+func ParseRemoveStudentSignInResponse(rsp *http.Response) (*RemoveStudentSignInResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RemoveStudentSignInResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Student
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSetStudentSignInResponse parses an HTTP response from a SetStudentSignInWithResponse call
+func ParseSetStudentSignInResponse(rsp *http.Response) (*SetStudentSignInResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetStudentSignInResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Student
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetTimetableResponse parses an HTTP response from a GetTimetableWithResponse call
 func ParseGetTimetableResponse(rsp *http.Response) (*GetTimetableResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -19137,6 +21361,24 @@ type ServerInterface interface {
 	// ListBillableLessons Billable lessons not yet on a payment request
 	// (GET /v1/workspaces/{workspaceId}/billable-lessons)
 	ListBillableLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListBillableLessonsParams)
+	// ListFamilyLessons The linked students' lessons in a range
+	// (GET /v1/workspaces/{workspaceId}/family/lessons)
+	ListFamilyLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListFamilyLessonsParams)
+	// ListFamilyPaymentRequests A parent's open and paid payment requests
+	// (GET /v1/workspaces/{workspaceId}/family/payment-requests)
+	ListFamilyPaymentRequests(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// ConfirmFamilyPayment Say "I've paid" as a signed-in parent
+	// (POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid)
+	ConfirmFamilyPayment(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId)
+	// ListFamilyReceipts A parent's receipts, newest first
+	// (GET /v1/workspaces/{workspaceId}/family/receipts)
+	ListFamilyReceipts(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
+	// GetFamilyReceiptPdf One of a parent's receipts as a PDF
+	// (GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf)
+	GetFamilyReceiptPdf(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId)
+	// ListFamilyStudents The students a family account is linked to
+	// (GET /v1/workspaces/{workspaceId}/family/students)
+	ListFamilyStudents(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId)
 	// ListLessons List lessons in a time range
 	// (GET /v1/workspaces/{workspaceId}/lessons)
 	ListLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListLessonsParams)
@@ -19281,6 +21523,9 @@ type ServerInterface interface {
 	// UpdateContact Change a contact
 	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
 	UpdateContact(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId)
+	// SetContactSignIn Give a contact a parent account, or take it away
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in)
+	SetContactSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId)
 	// ExportStudentData Download everything the team holds about a student
 	// (GET /v1/workspaces/{workspaceId}/students/{studentId}/export)
 	ExportStudentData(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
@@ -19290,6 +21535,12 @@ type ServerInterface interface {
 	// UpdateGoal Rename a goal, or mark it achieved or dropped
 	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
 	UpdateGoal(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, goalId GoalId)
+	// RemoveStudentSignIn Take the student's account away
+	// (DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in)
+	RemoveStudentSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
+	// SetStudentSignIn Give the student their own account, at an email address
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in)
+	SetStudentSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId)
 	// GetTimetable The team timetable, one column per tutor
 	// (GET /v1/workspaces/{workspaceId}/timetable)
 	GetTimetable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params GetTimetableParams)
@@ -19644,6 +21895,209 @@ func (siw *ServerInterfaceWrapper) ListBillableLessons(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListBillableLessons(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyLessons operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyLessons(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListFamilyLessonsParams
+
+	// ------------- Required query parameter "from" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "from", r.URL.Query(), &params.From, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "from"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "from", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "to" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "to", r.URL.Query(), &params.To, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "to"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "to", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyLessons(w, r, workspaceId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyPaymentRequests operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyPaymentRequests(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyPaymentRequests(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ConfirmFamilyPayment operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmFamilyPayment(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "requestId" -------------
+	var requestId RequestId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "requestId", r.PathValue("requestId"), &requestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "requestId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmFamilyPayment(w, r, workspaceId, requestId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyReceipts operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyReceipts(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyReceipts(w, r, workspaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetFamilyReceiptPdf operation middleware
+func (siw *ServerInterfaceWrapper) GetFamilyReceiptPdf(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "receiptId" -------------
+	var receiptId ReceiptId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "receiptId", r.PathValue("receiptId"), &receiptId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "receiptId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetFamilyReceiptPdf(w, r, workspaceId, receiptId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFamilyStudents operation middleware
+func (siw *ServerInterfaceWrapper) ListFamilyStudents(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFamilyStudents(w, r, workspaceId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -21774,6 +24228,50 @@ func (siw *ServerInterfaceWrapper) UpdateContact(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// SetContactSignIn operation middleware
+func (siw *ServerInterfaceWrapper) SetContactSignIn(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "contactId" -------------
+	var contactId ContactId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "contactId", r.PathValue("contactId"), &contactId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contactId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetContactSignIn(w, r, workspaceId, studentId, contactId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ExportStudentData operation middleware
 func (siw *ServerInterfaceWrapper) ExportStudentData(w http.ResponseWriter, r *http.Request) {
 
@@ -21879,6 +24377,76 @@ func (siw *ServerInterfaceWrapper) UpdateGoal(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateGoal(w, r, workspaceId, studentId, goalId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveStudentSignIn operation middleware
+func (siw *ServerInterfaceWrapper) RemoveStudentSignIn(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveStudentSignIn(w, r, workspaceId, studentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetStudentSignIn operation middleware
+func (siw *ServerInterfaceWrapper) SetStudentSignIn(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "workspaceId" -------------
+	var workspaceId WorkspaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workspaceId", r.PathValue("workspaceId"), &workspaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workspaceId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "studentId" -------------
+	var studentId StudentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "studentId", r.PathValue("studentId"), &studentId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "studentId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetStudentSignIn(w, r, workspaceId, studentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -22095,9 +24663,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}", wrapper.GetStudent)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}", wrapper.UpdateStudent)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/export", wrapper.ExportStudentData)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/sign-in", wrapper.RemoveStudentSignIn)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/sign-in", wrapper.SetStudentSignIn)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts", wrapper.AddContact)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}", wrapper.RemoveContact)
 	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}", wrapper.UpdateContact)
+	m.HandleFunc(http.MethodPut+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in", wrapper.SetContactSignIn)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/goals", wrapper.AddGoal)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId}", wrapper.UpdateGoal)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/locations", wrapper.ListLocations)
@@ -22142,6 +24713,12 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}", wrapper.GetReceipt)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf", wrapper.GetReceiptPdf)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/receipts/{receiptId}/void", wrapper.VoidReceipt)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/students", wrapper.ListFamilyStudents)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/lessons", wrapper.ListFamilyLessons)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/payment-requests", wrapper.ListFamilyPaymentRequests)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid", wrapper.ConfirmFamilyPayment)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/receipts", wrapper.ListFamilyReceipts)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf", wrapper.GetFamilyReceiptPdf)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/pay/{token}", wrapper.GetPublicPaymentRequest)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/pay/{token}/paid", wrapper.ConfirmPaidByPayer)
 
@@ -23172,6 +25749,485 @@ type ListBillableLessonsdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response ListBillableLessonsdefaultApplicationProblemPlusJSONResponse) VisitListBillableLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyLessonsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	Params      ListFamilyLessonsParams
+}
+
+type ListFamilyLessonsResponseObject interface {
+	VisitListFamilyLessonsResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyLessons200JSONResponse FamilyLessonList
+
+func (response ListFamilyLessons200JSONResponse) VisitListFamilyLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyLessons400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListFamilyLessons400ApplicationProblemPlusJSONResponse) VisitListFamilyLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyLessons401ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFamilyLessons401ApplicationProblemPlusJSONResponse) VisitListFamilyLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyLessons403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFamilyLessons403ApplicationProblemPlusJSONResponse) VisitListFamilyLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyLessonsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListFamilyLessonsdefaultApplicationProblemPlusJSONResponse) VisitListFamilyLessonsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyPaymentRequestsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListFamilyPaymentRequestsResponseObject interface {
+	VisitListFamilyPaymentRequestsResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyPaymentRequests200JSONResponse FamilyPaymentRequestList
+
+func (response ListFamilyPaymentRequests200JSONResponse) VisitListFamilyPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyPaymentRequests401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListFamilyPaymentRequests401ApplicationProblemPlusJSONResponse) VisitListFamilyPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyPaymentRequests403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFamilyPaymentRequests403ApplicationProblemPlusJSONResponse) VisitListFamilyPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyPaymentRequestsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListFamilyPaymentRequestsdefaultApplicationProblemPlusJSONResponse) VisitListFamilyPaymentRequestsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPaymentRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	RequestId   RequestId   `json:"requestId"`
+}
+
+type ConfirmFamilyPaymentResponseObject interface {
+	VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error
+}
+
+type ConfirmFamilyPayment200JSONResponse FamilyPaymentRequest
+
+func (response ConfirmFamilyPayment200JSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPayment401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ConfirmFamilyPayment401ApplicationProblemPlusJSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPayment403ApplicationProblemPlusJSONResponse Problem
+
+func (response ConfirmFamilyPayment403ApplicationProblemPlusJSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPayment404ApplicationProblemPlusJSONResponse Problem
+
+func (response ConfirmFamilyPayment404ApplicationProblemPlusJSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPayment409ApplicationProblemPlusJSONResponse Problem
+
+func (response ConfirmFamilyPayment409ApplicationProblemPlusJSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmFamilyPaymentdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ConfirmFamilyPaymentdefaultApplicationProblemPlusJSONResponse) VisitConfirmFamilyPaymentResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyReceiptsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListFamilyReceiptsResponseObject interface {
+	VisitListFamilyReceiptsResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyReceipts200JSONResponse ReceiptList
+
+func (response ListFamilyReceipts200JSONResponse) VisitListFamilyReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyReceipts401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListFamilyReceipts401ApplicationProblemPlusJSONResponse) VisitListFamilyReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyReceipts403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFamilyReceipts403ApplicationProblemPlusJSONResponse) VisitListFamilyReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyReceiptsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListFamilyReceiptsdefaultApplicationProblemPlusJSONResponse) VisitListFamilyReceiptsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamilyReceiptPdfRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	ReceiptId   ReceiptId   `json:"receiptId"`
+}
+
+type GetFamilyReceiptPdfResponseObject interface {
+	VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error
+}
+
+type GetFamilyReceiptPdf200ApplicationpdfResponse struct {
+	Body          io.Reader
+	ContentLength int64
+}
+
+func (response GetFamilyReceiptPdf200ApplicationpdfResponse) VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "application/pdf")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetFamilyReceiptPdf401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response GetFamilyReceiptPdf401ApplicationProblemPlusJSONResponse) VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamilyReceiptPdf403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetFamilyReceiptPdf403ApplicationProblemPlusJSONResponse) VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamilyReceiptPdf404ApplicationProblemPlusJSONResponse Problem
+
+func (response GetFamilyReceiptPdf404ApplicationProblemPlusJSONResponse) VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetFamilyReceiptPdfdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetFamilyReceiptPdfdefaultApplicationProblemPlusJSONResponse) VisitGetFamilyReceiptPdfResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyStudentsRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+}
+
+type ListFamilyStudentsResponseObject interface {
+	VisitListFamilyStudentsResponse(w http.ResponseWriter) error
+}
+
+type ListFamilyStudents200JSONResponse FamilyStudentList
+
+func (response ListFamilyStudents200JSONResponse) VisitListFamilyStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyStudents401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response ListFamilyStudents401ApplicationProblemPlusJSONResponse) VisitListFamilyStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyStudents403ApplicationProblemPlusJSONResponse Problem
+
+func (response ListFamilyStudents403ApplicationProblemPlusJSONResponse) VisitListFamilyStudentsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFamilyStudentsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListFamilyStudentsdefaultApplicationProblemPlusJSONResponse) VisitListFamilyStudentsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -27737,6 +30793,120 @@ func (response UpdateContactdefaultApplicationProblemPlusJSONResponse) VisitUpda
 	return err
 }
 
+type SetContactSignInRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	ContactId   ContactId   `json:"contactId"`
+	Body        *SetContactSignInJSONRequestBody
+}
+
+type SetContactSignInResponseObject interface {
+	VisitSetContactSignInResponse(w http.ResponseWriter) error
+}
+
+type SetContactSignIn200JSONResponse Contact
+
+func (response SetContactSignIn200JSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIn400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SetContactSignIn400ApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIn401ApplicationProblemPlusJSONResponse Problem
+
+func (response SetContactSignIn401ApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIn403ApplicationProblemPlusJSONResponse Problem
+
+func (response SetContactSignIn403ApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIn404ApplicationProblemPlusJSONResponse Problem
+
+func (response SetContactSignIn404ApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIn409ApplicationProblemPlusJSONResponse Problem
+
+func (response SetContactSignIn409ApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetContactSignIndefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SetContactSignIndefaultApplicationProblemPlusJSONResponse) VisitSetContactSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ExportStudentDataRequestObject struct {
 	WorkspaceId WorkspaceId `json:"workspaceId"`
 	StudentId   StudentId   `json:"studentId"`
@@ -28020,6 +31190,203 @@ func (response UpdateGoaldefaultApplicationProblemPlusJSONResponse) VisitUpdateG
 	return err
 }
 
+type RemoveStudentSignInRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+}
+
+type RemoveStudentSignInResponseObject interface {
+	VisitRemoveStudentSignInResponse(w http.ResponseWriter) error
+}
+
+type RemoveStudentSignIn200JSONResponse Student
+
+func (response RemoveStudentSignIn200JSONResponse) VisitRemoveStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveStudentSignIn401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveStudentSignIn401ApplicationProblemPlusJSONResponse) VisitRemoveStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveStudentSignIn403ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveStudentSignIn403ApplicationProblemPlusJSONResponse) VisitRemoveStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveStudentSignIn404ApplicationProblemPlusJSONResponse Problem
+
+func (response RemoveStudentSignIn404ApplicationProblemPlusJSONResponse) VisitRemoveStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveStudentSignIndefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RemoveStudentSignIndefaultApplicationProblemPlusJSONResponse) VisitRemoveStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignInRequestObject struct {
+	WorkspaceId WorkspaceId `json:"workspaceId"`
+	StudentId   StudentId   `json:"studentId"`
+	Body        *SetStudentSignInJSONRequestBody
+}
+
+type SetStudentSignInResponseObject interface {
+	VisitSetStudentSignInResponse(w http.ResponseWriter) error
+}
+
+type SetStudentSignIn200JSONResponse Student
+
+func (response SetStudentSignIn200JSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIn400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response SetStudentSignIn400ApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIn401ApplicationProblemPlusJSONResponse Problem
+
+func (response SetStudentSignIn401ApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIn403ApplicationProblemPlusJSONResponse Problem
+
+func (response SetStudentSignIn403ApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIn404ApplicationProblemPlusJSONResponse Problem
+
+func (response SetStudentSignIn404ApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIn409ApplicationProblemPlusJSONResponse Problem
+
+func (response SetStudentSignIn409ApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStudentSignIndefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response SetStudentSignIndefaultApplicationProblemPlusJSONResponse) VisitSetStudentSignInResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetTimetableRequestObject struct {
 	WorkspaceId WorkspaceId `json:"workspaceId"`
 	Params      GetTimetableParams
@@ -28168,6 +31535,24 @@ type StrictServerInterface interface {
 	// ListBillableLessons Billable lessons not yet on a payment request
 	// (GET /v1/workspaces/{workspaceId}/billable-lessons)
 	ListBillableLessons(ctx context.Context, request ListBillableLessonsRequestObject) (ListBillableLessonsResponseObject, error)
+	// ListFamilyLessons The linked students' lessons in a range
+	// (GET /v1/workspaces/{workspaceId}/family/lessons)
+	ListFamilyLessons(ctx context.Context, request ListFamilyLessonsRequestObject) (ListFamilyLessonsResponseObject, error)
+	// ListFamilyPaymentRequests A parent's open and paid payment requests
+	// (GET /v1/workspaces/{workspaceId}/family/payment-requests)
+	ListFamilyPaymentRequests(ctx context.Context, request ListFamilyPaymentRequestsRequestObject) (ListFamilyPaymentRequestsResponseObject, error)
+	// ConfirmFamilyPayment Say "I've paid" as a signed-in parent
+	// (POST /v1/workspaces/{workspaceId}/family/payment-requests/{requestId}/paid)
+	ConfirmFamilyPayment(ctx context.Context, request ConfirmFamilyPaymentRequestObject) (ConfirmFamilyPaymentResponseObject, error)
+	// ListFamilyReceipts A parent's receipts, newest first
+	// (GET /v1/workspaces/{workspaceId}/family/receipts)
+	ListFamilyReceipts(ctx context.Context, request ListFamilyReceiptsRequestObject) (ListFamilyReceiptsResponseObject, error)
+	// GetFamilyReceiptPdf One of a parent's receipts as a PDF
+	// (GET /v1/workspaces/{workspaceId}/family/receipts/{receiptId}/pdf)
+	GetFamilyReceiptPdf(ctx context.Context, request GetFamilyReceiptPdfRequestObject) (GetFamilyReceiptPdfResponseObject, error)
+	// ListFamilyStudents The students a family account is linked to
+	// (GET /v1/workspaces/{workspaceId}/family/students)
+	ListFamilyStudents(ctx context.Context, request ListFamilyStudentsRequestObject) (ListFamilyStudentsResponseObject, error)
 	// ListLessons List lessons in a time range
 	// (GET /v1/workspaces/{workspaceId}/lessons)
 	ListLessons(ctx context.Context, request ListLessonsRequestObject) (ListLessonsResponseObject, error)
@@ -28312,6 +31697,9 @@ type StrictServerInterface interface {
 	// UpdateContact Change a contact
 	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId})
 	UpdateContact(ctx context.Context, request UpdateContactRequestObject) (UpdateContactResponseObject, error)
+	// SetContactSignIn Give a contact a parent account, or take it away
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in)
+	SetContactSignIn(ctx context.Context, request SetContactSignInRequestObject) (SetContactSignInResponseObject, error)
 	// ExportStudentData Download everything the team holds about a student
 	// (GET /v1/workspaces/{workspaceId}/students/{studentId}/export)
 	ExportStudentData(ctx context.Context, request ExportStudentDataRequestObject) (ExportStudentDataResponseObject, error)
@@ -28321,6 +31709,12 @@ type StrictServerInterface interface {
 	// UpdateGoal Rename a goal, or mark it achieved or dropped
 	// (PATCH /v1/workspaces/{workspaceId}/students/{studentId}/goals/{goalId})
 	UpdateGoal(ctx context.Context, request UpdateGoalRequestObject) (UpdateGoalResponseObject, error)
+	// RemoveStudentSignIn Take the student's account away
+	// (DELETE /v1/workspaces/{workspaceId}/students/{studentId}/sign-in)
+	RemoveStudentSignIn(ctx context.Context, request RemoveStudentSignInRequestObject) (RemoveStudentSignInResponseObject, error)
+	// SetStudentSignIn Give the student their own account, at an email address
+	// (PUT /v1/workspaces/{workspaceId}/students/{studentId}/sign-in)
+	SetStudentSignIn(ctx context.Context, request SetStudentSignInRequestObject) (SetStudentSignInResponseObject, error)
 	// GetTimetable The team timetable, one column per tutor
 	// (GET /v1/workspaces/{workspaceId}/timetable)
 	GetTimetable(ctx context.Context, request GetTimetableRequestObject) (GetTimetableResponseObject, error)
@@ -28791,6 +32185,165 @@ func (sh *strictHandler) ListBillableLessons(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListBillableLessonsResponseObject); ok {
 		if err := validResponse.VisitListBillableLessonsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyLessons operation middleware
+func (sh *strictHandler) ListFamilyLessons(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params ListFamilyLessonsParams) {
+	var request ListFamilyLessonsRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyLessons(ctx, request.(ListFamilyLessonsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyLessons")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyLessonsResponseObject); ok {
+		if err := validResponse.VisitListFamilyLessonsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyPaymentRequests operation middleware
+func (sh *strictHandler) ListFamilyPaymentRequests(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListFamilyPaymentRequestsRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyPaymentRequests(ctx, request.(ListFamilyPaymentRequestsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyPaymentRequests")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyPaymentRequestsResponseObject); ok {
+		if err := validResponse.VisitListFamilyPaymentRequestsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ConfirmFamilyPayment operation middleware
+func (sh *strictHandler) ConfirmFamilyPayment(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, requestId RequestId) {
+	var request ConfirmFamilyPaymentRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.RequestId = requestId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmFamilyPayment(ctx, request.(ConfirmFamilyPaymentRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmFamilyPayment")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmFamilyPaymentResponseObject); ok {
+		if err := validResponse.VisitConfirmFamilyPaymentResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyReceipts operation middleware
+func (sh *strictHandler) ListFamilyReceipts(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListFamilyReceiptsRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyReceipts(ctx, request.(ListFamilyReceiptsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyReceipts")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyReceiptsResponseObject); ok {
+		if err := validResponse.VisitListFamilyReceiptsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetFamilyReceiptPdf operation middleware
+func (sh *strictHandler) GetFamilyReceiptPdf(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, receiptId ReceiptId) {
+	var request GetFamilyReceiptPdfRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.ReceiptId = receiptId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetFamilyReceiptPdf(ctx, request.(GetFamilyReceiptPdfRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetFamilyReceiptPdf")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetFamilyReceiptPdfResponseObject); ok {
+		if err := validResponse.VisitGetFamilyReceiptPdfResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFamilyStudents operation middleware
+func (sh *strictHandler) ListFamilyStudents(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId) {
+	var request ListFamilyStudentsRequestObject
+
+	request.WorkspaceId = workspaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListFamilyStudents(ctx, request.(ListFamilyStudentsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFamilyStudents")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFamilyStudentsResponseObject); ok {
+		if err := validResponse.VisitListFamilyStudentsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -30257,6 +33810,41 @@ func (sh *strictHandler) UpdateContact(w http.ResponseWriter, r *http.Request, w
 	}
 }
 
+// SetContactSignIn operation middleware
+func (sh *strictHandler) SetContactSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId, contactId ContactId) {
+	var request SetContactSignInRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+	request.ContactId = contactId
+
+	var body SetContactSignInJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetContactSignIn(ctx, request.(SetContactSignInRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetContactSignIn")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetContactSignInResponseObject); ok {
+		if err := validResponse.VisitSetContactSignInResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ExportStudentData operation middleware
 func (sh *strictHandler) ExportStudentData(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
 	var request ExportStudentDataRequestObject
@@ -30353,6 +33941,67 @@ func (sh *strictHandler) UpdateGoal(w http.ResponseWriter, r *http.Request, work
 	}
 }
 
+// RemoveStudentSignIn operation middleware
+func (sh *strictHandler) RemoveStudentSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request RemoveStudentSignInRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveStudentSignIn(ctx, request.(RemoveStudentSignInRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveStudentSignIn")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveStudentSignInResponseObject); ok {
+		if err := validResponse.VisitRemoveStudentSignInResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetStudentSignIn operation middleware
+func (sh *strictHandler) SetStudentSignIn(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, studentId StudentId) {
+	var request SetStudentSignInRequestObject
+
+	request.WorkspaceId = workspaceId
+	request.StudentId = studentId
+
+	var body SetStudentSignInJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetStudentSignIn(ctx, request.(SetStudentSignInRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetStudentSignIn")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetStudentSignInResponseObject); ok {
+		if err := validResponse.VisitSetStudentSignInResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetTimetable operation middleware
 func (sh *strictHandler) GetTimetable(w http.ResponseWriter, r *http.Request, workspaceId WorkspaceId, params GetTimetableParams) {
 	var request GetTimetableRequestObject
@@ -30385,255 +34034,275 @@ func (sh *strictHandler) GetTimetable(w http.ResponseWriter, r *http.Request, wo
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"7L15cxs3tjj6VVB8t8rJvdTiLZModes9jR0nvrETXcuZvKkwL4LYhyJGTYADoCVz8vzdf3XOAbrRJJqb",
+	"RMn2+C9b7G6sZ1//7A3NZGo0aO96R3/2ptLKCXiw9Nczo70c+pcF/qF076g3lX7c6/e0nEDvqDesn/d7",
+	"Fv5ZKQtF78jbCvo9NxzDROKHI2Mn0veOelWl8E0/m+LHzlulL3rv3/d7zyrrjMV3C3BDq6ZeGZzt7RjE",
+	"mYZ3nl84E2Yk/BjE1MKVMpUTU3kB+70+r+2fFdhZsjgeNF3JRL57BfrCj3tHjw4Pcyv53siyc7sX/PBm",
+	"e31ZwGRqPOjh7EeYLe75WFRa/bMCcSXLCsQUrFDagy6gEMOx1BfQF64ajoV0Qopffnn5XExkAeJ6DJoO",
+	"B5cw0GYKGop98Qa8nSl9Ia6VH9NzJycgLmEmLPjKascfKeu8sOCq0gulnQdZCDMa6MLgx8oLf62GsD/Q",
+	"8bTHIAuwzeEk+9rDjS07peQeHuI9TJSOf3+dPbPRa+mH4zyAlOCc0Q+cOLsC65TRZ3g0paT9yKI5rbNB",
+	"7/Ggd7YvjsM34TyLgXZKD0EoJyyMKgcFn9aTh4/6whmhzbkpZsJcgb22ygMePH+KZzcTY3kFA62NFw5A",
+	"Lzuj0R5vZNnhZLbvYdIJlIof3gwoX9F5dM5Rxsc3nEVNlM9f4sQ4L3ArTngTILMLsUsaJp26gJGsSh+g",
+	"qV6I0v7xo14fwU1Nqknv6GkANv7rYb1GRLALsLxIM5ReLTuM5oWbHcdrmJyDfVksnsixmNAzN1ZToRit",
+	"PchJfSLtFU3iQDdbz4mcvTWXoPM35GBowYuptB7JsBRTOZuA9qJU+rJjYZ6G24QSLK7qDQxBTbt5kK2f",
+	"32z3b+CfFbhl88TnN5vnFKwC1zmNi49vOIuvCtDdu3H185vN86uxl24qh/CyyIMNga347grszI+RlVS6",
+	"QJbmxTmURl8Qvvux9MsA/DqZ5SbrfY8fu6nRDki+ObHmvIQJ/hdFGdBEneR0WirG8YMpv/Ff/3CG8KKZ",
+	"6z8sjHpHvf/roBGgDvipO4jj0oyLZxJASYykKpFH42/EYZycOXE9nu3T2YbRcLLjomBqEaAUf5taMwXr",
+	"FW+lUG5aytlPdGCZi1BW4GEiH4zURFyrshQOAG+j0l6VzM6cutBCEfldwqgfLhxvvwcTqcrWRfAvmVet",
+	"KWHVMb6uieAbfPv9+/Tuf2ttOc79ez2VOf8HDD1Odew96ELqIU0IGmn/b72pBQfa9/o9eR7+U0oPvd8z",
+	"i/2rKkt5XgKzycXDH5q3sroYZ3jbKVyBlaXwlTfWCU+vCeW/pVsoUco6V2XphNQF/eSmpfIoiUhrSTgR",
+	"pvJOFSBOQOvZfnOW58aUIDWub1hZi4JXRnzo90YAz6J4n7LGr570Fhlgv+H1q/Gp35vKGax5jW9ghF84",
+	"L613x741fCE97Hk1gdwczktfuVWT8NWc8rvv+5HA0XckV6w7AH3We18vBO9hRn8rzyC7SAVTqExkpXqv",
+	"9SaSdSUXk1xgPNIcHLeh8JXKkYF6q2vtuT1ibtON8rV65zxlbuXPZIkYaF8AFItrrmyZ5x1Tq66kB5Yw",
+	"xFsLElFHlOoSSP5w7trYYr/XX7EwnCC/LD2EkjffSVgn8hKq6UoYp7feIggTWlg/W/UJz14SnzmhD2jZ",
+	"MlCYhPQ+PTxctUWesXuTPM3i7uQGiEjkceGiwvhQiPMZUzCG8AdOENkiTQqRQmjj1RBVJqkb6keE8YET",
+	"U1Oq4UxId+lQg83Tuds41+XnKH0vTrPAD/JnehLX1D6WX8dGDCWdi6+VVGFGI9xZ5EG0+YYoZHlPay46",
+	"pAzWu+dRA8rKYDiNGEu6AuHAI/bQUKTeEmN54ETQogTJP+DyV4Bnki4pkpDkaJO3GzVmTYaizenYXC8f",
+	"lOHoB1NZt7jfsLba4pGBPOWQv+JGcIsL2uIiS3TVZCLtrINIMeBGLS2AMxIm1xdubK41SrhTaUF7t5pW",
+	"tU6svdclh79wcM2i+wl0rIRl2stLPa0yhHCzm9/iIrv19sePv0r09sMVd7QZ5dz2hNc7y9NloJMhgH0U",
+	"0AOwBNEcYea+b2Lpee/mfJsp8ic9leeqVDnS+7MGYc11NBbLyo+NVf+i+cREeqveIboWZugOpB2OlYeh",
+	"ryzsT4qUOF8puP7DXOs/mHbj6uknD3LyB/JIH9Y5kVpeAP3e/NV8ZEE6VKmSn5BrleBhbngolE9++oMF",
+	"qnrIRHSs15b8Ft4KZpnkF3wv+ZW+RZEKivmthV/rl7P8qJQuY4k91saPwQpt9N6wFgki27sCW8rpFKky",
+	"0V+jyU7d2KOZRRkbpYdFoAddbKQ2bKTHzPOpLh56bswlFGwL7ws1EkFX48ctdtI11TYKUGLLWVxZeNy9",
+	"tuRIV67uemyWmQ/6dGuD3lu8xPblOvFGXqkHTjz86ujwMDzcH/RWcry8whSum1eUpQABh1aI77Kl/Lf3",
+	"dQINvImg+eG2Rh6VbiEtCAtDY9H1gmSZLQZko1pHuwojJuaHBQXrfXZj5FTL2BLMBBBxrsdGXIBPrvaB",
+	"ExYmShdgHSJRsIm6RSwaSn2qLvTLDiOvudZgxYW8Is+GCP49IQNLEnI4NJX24ovj52/E4aOnX+aFxA3s",
+	"QGpNuTDYteCdxGvHy7NqJsVPUtnc+9Ox0XMf/NdXT8U3Dx89Fk+efvWX3Dd0alfgkAXhT1lOGV86YRr5",
+	"Jh774nnWj4Q8R3BCPCnQo8dfRiugQ9Az0ykUYmTNREgt6LAeuNqy3r2K1vS515jLImFbqTbxXb9JP0Hi",
+	"oy40FF3wEgEEdQt+EzlrcDXKGl5ym5g3HhTR3Du37NxmF+/q925E6hBnN4DRCHwbWkNrGEy+e3y4HuDV",
+	"Hi02cW8Kh2t+vOlXN4Smeckwc9tL7vHN3PS1IZdIU6/fu6ikLZTUvX7PQTnq9XskkuSlGB6TaWEHhLRo",
+	"5Qrwbd7N7sCC9FD7SjqZle6y3pO9/oELPHheqxRGL1AVMiinfKAhhD+asfi+Ul5aYnrKbG7o92oC/zI6",
+	"s9hjLV4e/3Qs4hu05H0RNFDy9hw7JQ9Olb6QU2Ohvbb2s5WyAx1Y7sS/Q1x+Jj1cGJsNsrhUGgMcmNai",
+	"Pz9QsomcCefNFCMn+PBIDkDDCe6GdYpJqicEYd0m1ClcRvJbDga/0wU7A7uFl5GHjrAYim8o5EzIxrbE",
+	"4jQNKZyXM9cS+QrpVx8oz5g90XfeyldKQ2aZEyTy3U6GZR73Of/YYozOUkicW306VL+1rNyOXsiJKmed",
+	"Pp05u+m6Jsfe+1p4XVvCX1MI2sy4n24PI0hy5v0Yy7CecySGRvTeB9J6mjhZ2iD6g7kWE6lngt6Lcirj",
+	"ktJC+b6oNGJvsa4N7m79Ri8L1yHxoE0X7TX1lpROLLwt5WDlha7rYuqzpbh99ytGy8lXyebmbzCvfNVu",
+	"qzB/f4mTZwHeFlAKfdzZlQ+JPxab3G4RuM+imIKUfdWt4/p+xPfmj4k+7vNKwyTp8lbt+zaccul4q691",
+	"xXXU4mHNYWRZ/jzqHf22IoKhOi/VcO7r9/0FIrn5xa1J64LosuqwApOuncsEzWsq5vTREjRZcfO/dxzy",
+	"7cHAwvHfDBZOm9Nprw3jWtdfG4bI5ojXhpr8Cl9yog7y8lbu6/bOvTMIYO0DpzPKGnA4CKq23AgKbRLe",
+	"XEtbOLIRCBdiRoJxdtGII4djBVebod3uMHU9Posn0nDZmtEl9pxSzsRrWcqLCrQU0ouHjw7F+XSyUmbl",
+	"ZdGICcdaTrRxOc8ohNctwsyNdrSp/JpdWodGuvUk6XHxIF2HclrvPeo3cujVFfT6Ndj1+r3CksUqq9b8",
+	"ALL044xAPYbhpcu7a0B7O6NY9wKmoAvQw5mgDzA+7rvJ1M/I8lyqK9Dg3No2WF7MMxwpR7PWu2keJN71",
+	"3HE2AMf7yx1suoqFcynAB0vUfAQBx1PQuHWs4E9IHFhbVdqFqNycXzlnMy2kl+fS3UBcXnoUgV6HkboP",
+	"YhHGzCVqAVLN2fISoFLOGzv7DuEko4AOoxLT7DXI49HVliVdcuiNzYdMHlNQIAEdh/o7jpPgZAvl0cKU",
+	"PfVaZ5dFoXAwWZ4ki20Z15qD2SQO5xxGxsKGU8zr+cOoJOfpYzjv2+CpravbWYhZLdEnUOWluwzyA4dS",
+	"5KM78dO/Kae6/MkYykNmIWCvCC5CnINTBTTBtKQRytHoSJwF1n4W8hmkhYF2ALoOkCJD+Z7SUQjoi7Ng",
+	"fnLxo3YsFRrzBtqTG675Olr/GmcMZZ7E3dNy2tJsmCR7Cl12kPMkcKB9Ls+Nhj66m6TQZg+NkvhHKT1q",
+	"yY1BpDPWC0fuiDK6ifFlmA2YWjtirBW2gcOhvxvWB3f2j2fgvKZEG4ltSWRv+/Rfnv4snjx6+Je2/fT0",
+	"++e5YTY1SKUxw4s2kOuxKZO8qxFAny6ziQFsrnvevNM2CGZDeTa1hs0tEEMI+4KUBjKCI967ffGzLmdN",
+	"klywmSpcvR+OoUAbukJT+rVeW7hYbltbxw7BI7Al4ibWOA5SfWHsq42iHuir9JPFu8Z39qppjC4IB9h4",
+	"/6+lE3W8x3oBEEkCzOJ8FhDkUUcKE9BkZhgQAZK0kZ2FW3xg8eYNdrPXpi++tyiEPM2tvjEUdsSbUabn",
+	"hiD+FgfNrTFkXObyHjS5gs9iyuMZgw7JUhwGlJpMVxqA82aaJQbLYMir7ZYr4+7Pm8CzSPKb/eUkDj6a",
+	"TiXyJiR3Q4JZtlIWdxmB1Abv7e3bK9L+svbuZWBKAMpK83s6rZf81cN1Am4CAewIE7i7a9yeYWxE7zfl",
+	"Eh8XuLTJ0Hfv5NCXM3LdniH5O1ub8m0CUnP2gAWqNE+F8GS6SUreecJhrBvlWu3C3zLHVRRaaCitQZDg",
+	"JYwuO5LUcIRNZryoSzF0xzziOyGiH5WyljF1LfFgTVlzM58SRtOm6uSqrxLlM8vo2k6pZOzaQxWAY5XV",
+	"s4GvTrYVYaZtYVwdEdLtj7vRWSzZQgfB3nYDDbh9uNCQAkL3/c6bQSxcVKW0vcgAcEtWyXKJGeA27D67",
+	"Tiqc04IyZhuw0Fb2KLtCeVJaSBxlrSbjYSkKC65DjA4PUWNEvlIqDf2mvMrUOC9LMTQF7G8LPHFT2/J5",
+	"AK/0xS+cV7mlBy7AWmeEVUsBSqAN91BUJRlcU+NrrSTioOYPNBctAcBOX2U7nnvZIbbjrjs2PRddv7rg",
+	"QZvVx09XnhNrUKuy9lfmJay8+nXS6mkt2Yz6ueSzdoI9DZ3dYYKCWTTCqLGH2f0lLzzKvnCL/HkBqaRX",
+	"eIGtCQpTsQ4YptAVngjjoL7Y5P02ErapyAvMddFIOFIn7xoOHI7XFNaYiXiU+4SpzzNT5Fwawql3e4W6",
+	"UF7UIZbz9KqZ69Hjr79++s163tfg+aFrWAYiHTx7Hk5W1OlahJuVH9w+gNTJid+kNYX2vjncHHbqoR5+",
+	"3Rrr4de5wdqAtSLZcfvg9RYgTaX3YHXvqPf//Xa4983vf371/j/WC85dAyjm5RWl/5iCdeSeYizJM4rw",
+	"+a3IKoktdTfSSlIg4MY2hk018pUaanbBmYU2/CGna2ONHy4sQ3IQXWFqrg1+fHZfCqPPjbSF0hdrq+RN",
+	"PZjcPVUOVqrHv7iMMZE+7Lc2lz+QyTnPME9Ww1aVxkRAkJN+q8pOqZynkH1Xh44vFQIaCvwalHiltHhL",
+	"OQ03qbajuqz79Z7Fy+f7gmUVdNApdDr65Pl66vQ/jNLRrrAgjWsuL3QOQypERGEl+yI42q/HqgSh9JXy",
+	"c36EpaiwTRmhdU38/F1HrINaFJDi6dOaloZB8Mi3Qbh4pNVkay7xUTpHFRGHoa5mzMXFj7ioZryX6L+V",
+	"ztfVNremgbVxKoNEhCsMb4Q/HDjO+ZdOTEBHX/JqDLqpGL2+VNy9y0Yxam/0LID4Wai45UJSJ7r1XZI8",
+	"F3HzgYspKizy7A/0G5iYKyjCC01+ChIaKNpBAHXwVpg2y0kTuppJgwiJ9goyu/mVCreh/S3QQIyTKAzH",
+	"xCsXqr89KxXXMwghAmNVwEAPjfbWlI7THul1IpXksw1RTpMpbg4RivKIHG9uPT98UyFg+2DV7chLXa5u",
+	"1ad1RlievDTj1ESldR3d0FevZtEx10SU1Em9eMTgwCJQ4e9Dae1MaCPS2cQMfJr2RKnCeGYgh2OwrUAT",
+	"HjgLaydyBnDMaaEbVrE7bdLeZgT37GJEXPnfN6TA9IlnGefFo6foarRy6MHmlauNVeupNe9mb2fTlbd6",
+	"Ur8Yv/qbLKvFbGRMRu7KRXagi+PKm4n0ClNOZh0uVg3XScofkushJPV7xSVAqLoAE6SqhZUj3xF048H5",
+	"EzkrjcyWJD2Rs5/MNZ0zEyltBKdY9fFS3FDq+So4eF/nUl/iCuR0mr2HK7BqpLguWMZ4HJ5uLezOEe/m",
+	"EltXM8/KF48/WWj7pHJImAJ5h8o7B+mpAvt0tXJ2C6DYUpnXh8CQIzySpYOVSd1rnXbHAU6g8+xulm84",
+	"AT82K40BYQWv+WU8PamKn/UCFK7OqEwWW49Sr2LJ5l/X62wynWfaXPf6PcSpP7yV2o2I8g6lGy9Nd64z",
+	"SVCa2vxA7/4Q+71YeWMTxTh+89eugmxGj5SdQBHKKt3k5lqztZa75E43z8NqfdeEJa5fgfSYHBRcCSY4",
+	"QlyuKClXJEXWCqEkqfIh0o8DTB9+3VHtA8dfX2OZT5bSkNVejM+L8sT7n8V73AQ4QlL22usjVNk6E40K",
+	"v2zJs/hA+82l5pPP2ifZxWcqWBPhICZ4r3+XTU44RZe8CyESjw4XLzRW+dkwJKQZ9OFhZtQIJiutoATX",
+	"awe83IpHKE7ZD3ewmixsl12/MqN+Pn4wkIG+eDuuxMNvxE/m6oYFtG6Uhn/72ZNdRHNHpt256RY8oiRz",
+	"9/o9MwUdGEnLH7qUYbe2cAuwsUXoz9Lq0uvTlzVV7lAmKZMnNgUd1FbqFeFEUQGVwEg6JDxwdeWRrhKy",
+	"m1astjAC3P98vuJPf9/7y4+P//eb/3f7IOIs5GyXx9zvXUuFfqEXq4PEfm3ezNodmh23lXo8uf6cWJRE",
+	"0DIoJDG48SpXhSW1j+FX5cevlM5kypXh10wRVh4hmC7ZUICRaEKb629D4haqwigEjaUbo2qcFQH7sc/D",
+	"Zle3cI5xlOx2yVQmy+fSy+/eTY31XRlt3Ra32r9SKDKC0Bb7aA6gxgIbxXi/iaLrsMsFFlbz1lZ6iPe4",
+	"uKzXxrJJH90H8A7teHWdZ6A9knGvw/LAb2woztH+MwbLLWIbV5iPa0fLdjQth2LRV9A2OyxHE6RvG4RE",
+	"g5wkELYqlz25gvps45Q1APQyoJCF8KavxkJ1qDcvnolvnjz9iwitNRrz8LmVejhGj8MZjnjWD2Zg+kH5",
+	"Es6EsQN9xgmzZ330GWFnJ8u1RKdgpiUQh0ArNGdtssF43YRb6cU1OaOswaZXC8knWYKhtPP5+pJpr4+p",
+	"jDXxptYU1TDUBY+HsIQS5WJg/7cyHnh1FMdmAW8v5lUsG9R1+CVwrT+8fXsi+IXFeJAnh0/WKtRTB20v",
+	"BJ+MkQqEor5crUq5ug5XsuZ6yt5PBjNwK70kWjwzD9XlFaoA7dFgZ4N3a9VkldVHUySjR+HxkTZ+r2P6",
+	"OeyhpwtFCDpQozHdLdZMktHMGittKhc9P9CqTjwx54rmqkDnJci0gsuONItbVQNyFWduQ+DNpoNmRQiA",
+	"B66duhqLcrOEqSzXdc8iVmqB2bBDy/oy9IamlgUQyPB22ncn62ubW/J7Y7Nkp+cADzcAdXDT4Clzu6XE",
+	"zTzEK1AF+gdb+YQZspjI47sRvF8o63znmSBT/GmtGNr6zfSYM7MsEapTWTwK2NE+VAvac7e01HJUd1S7",
+	"FeTiazwdy0dPv8pQNHgnTn843nv09KtYnjBY0x44cfL8xf7G6ua6ucHOVZvJgLswYm5pJA+hfhmH3z8r",
+	"0F7JkoScCzml5hboi5vrEdgwtTd7h4dP8pGi65vit9GZp6Ucomm81b5vtLrqF33nNv2qg1usXWusm6Is",
+	"149z6LWV8n5lVAErQeVv/FZ2UQFqEthfQlUWnRlRu2/0/Xiq/cQenWL7EtJyG0a8MNTOrXeJ3X5b+GkQ",
+	"dh3Ea656rZLY8VrDZ0u2cJtWwnuhwc053kqjuRuh4UZ3sw7KLRrSlt9oapK5vYJHG9wGaK/8bE0SzC9H",
+	"vWZ+UbkvkFdt41yQvrZC9FrzJivOHSmXWs7lC2IK2C/a50wCMSCWLVrVlJuVKodmZ3aYYowWcGMQJ0aV",
+	"pahFOQZZrFF8eaVeYEkNea105WHdzjwb9ntcE5u3r03CFT2WCezWx7j4/FO3ppyyixocTZ3zRQjepFrv",
+	"DYpsVBE2Vx5AUo7jBhU1ohE/XMsiHLbuNDmkjcptJGi3vM4GI25nwvI6SNIk2Dx5kmbYPN0Yf5ZXcMBI",
+	"1rwCzP310VnFJf1wM7HRnvCmv8SHtdoosEX5jzoRpUns+eK3w4e/U3bP///ot8O9x79/efTb4d5T/uk/",
+	"PvmyICky0D12w2JnqMWHA4kbwkSbRmdt9k+fPnkqbFVy8Cc2tHn+9vTt8Zu3feEqNMM78eLNd//7379+",
+	"992Pr/7+7V///vz47//99oe2Opp7o9dfnb7XgtlMQTJZlnvD0gwvBb3ZLGnQo3ZUg95+r39TYG840RL8",
+	"vhEmfzoIlXCtJb0rQvIr+WtGsiyF0fsC/fx7oAsoIqRt3sZiS0a2ZpmWU7BXYP/WMNv5WLzJRHW0YsXc",
+	"W34em3WghwvrEZxXqvSUC0E1FQe9Sl9qc60HvTYKPR49Gj6U36xg/4szWyhBOhDhpTBJAVeDHjlIpECa",
+	"UdI6ivaUh/sP9w9XnnmcvR8PIHt0nXn92IjxqsvEXFeuXLsKI3+QQ44Podo5R65l3HAnoeW1NykRoVKe",
+	"+/mkBIU6/9uQhLGRgkz9ir6bdPhCY/GMulC5dOICyy8HTwiGWCxrB9escXkLsTj+7bYQq8EpgZ1lleQX",
+	"e/XdWuWJWwonTKZfsoFOMXk5fm2ZJF4D8UKxnRWAuu5hdG1zWejMNsEkgRF1JTXXpSgbcFVOKCSiZVEH",
+	"3IQiMMpzNSq3YZHFDudc4mfY1j+RGzm2BtvUHpsbazNT22YutFZcim/8aY05relhO39ayS6XoExX97ct",
+	"WU4jHSWhy4tndj8YtzQDnMht5SpM9hGc1tekrG9GuDqr4dxir44w1M4dBImFeGsHwYY9T5YsY2nHwu6K",
+	"AK38sierro+/WraKTlfDUjazdbPXY/uPSnc3e91WCFpHgMidwlxs3dLecRRzkk2ejk/ScE4H/lsBVCeD",
+	"KyJQyYTK0X9ESL/bXz8HeiH2JYMmS5NukUZo6tAd61mgVtJa8/lsf2l5iltIvZ1LGl7B+pp3t07hXts7",
+	"sQkvm8tFDXO02FpI884XlsiCVRY+6+70GbZWVpOcpPMz5nO7KMl4KtfBCOX6WNad+niuXTw1LuAZTbfK",
+	"tN7Z7zS+FGM9uSk17eABWhCcGJmyNNerk/kSI3U8gqUnFxa+GIPeSIo3lO18LAm3HbHizxvxJ7ubxlyz",
+	"pJbPfZSW6ywm14zQXcI89OKnJMWkvmMrTbHpzipxPumccr6ru8wv2lXnONV5DmOSLrJLk+FaLWdJAHSX",
+	"UHQo2Ekhyb6YSotViseqKEA3xsvpf/7nf/4/gQmiX3d/FflZzHh1oAs6JAdcR8StRpV6wy3KlO4md3G/",
+	"TAvp4XV3c+P12Ezd27hhMA+4jshcF+PnUisoxY9mvGn74rntrspFjxtjROzY3DZcZm4dnSjBC1i/e/SG",
+	"KkVsUvyDqWxHJ1cs4RXrdtVZxN4I/pQ03qgu7YtD4SurnbB1/3vDxqslzpCvvl7l0Ni04/R65oRfQs2w",
+	"zcoJbVx465YSRHLAgSFhMVquS5G1Fobr+O5bVRdoUdIZncuv3QS/wihdi4dcPYJNumHlYyeata8RThJe",
+	"psFy6/y1lVqXobJelSVZMH1dZKDGFy3MlFI0OBFEOYpzTnnUufHjJC4I/82Xcfg1LSyUK6C1L5CQ/vJS",
+	"OJSNBqSoDHocqXJ8En6uywotFtJS6xYYRkr2LIrjcyuhklPRsLAveGUY/4vIOeauWfjLCKSvLLTp+tdr",
+	"JZksaoi5pva3RupSAhfKJdFABVI7ZrHaNASvtaFH66bNbNhRP4YmSRuZZl10K3E5bt1ZP9WFE9k5vfn5",
+	"8/w913TOoYNN+dkp0pjgFFcWzqWDl8VbcwmEo+cgLdgX8Zj+59e3vf4CgL8I34njyo/Fy+fC4+d17bqk",
+	"MRqJDbh9omxkhKAJml2PvZ/23r+n9K2R6Wj1bbS3cujFOfhrCI2jOJd0SClrFIbNLjxGvO9N+BPNxOeu",
+	"btsmnkvr648siAvQYKWHIil+NlIlfBtDQ5QX5IFJ1LGBthVmwkl3id+f7Q/0QD8z+opL4znxRWGG7oAM",
+	"Fx6GiFr7k6IvBj3E/HozuGaq4RTWoIwe9L48wsH2BJu7KVcN3g1hyl7KMXVtpKwpcEjAgqsPClHh9Yuz",
+	"g6uHuJ49gQRnzw3NFAphwZnKDsFR287k1YOaArmDP+v/vyzeH+zv7/M431lrQmm7OmHwjOJlOK7hIORo",
+	"/dc/nNFnbHiXMfWL0wd5PWoCzsvJtBnr8ePH3yCu/PL22b54bTTM2JhPqCiGlIo4LSu8PRGbrA20EDF4",
+	"iVPjcPD/Of35JxEIKCvIPMtQTqB8Jh18K5DEiytZVuGR0/IS/hhKFzITg6e+x2B1fPIyCYaKjtf3XDpA",
+	"ThW6f/cP9x9zLMOYsOkAD/df+L8LyFDj02o4BCg4T5DSKUOG4BAcJTsxxFLu37546WPpPWpmOtB1O1YF",
+	"ri+cEVLEJqLCVF5egCgMOKo/aIF87QIYiEwoRYjHU8ei9L4H/4oW3O9ZcFOjHROFR4eH0eoeXAnpbf8j",
+	"8HKWVNZrUsrovYjWce/KCVtpTQVoU0rVO/rt937PRQtn7w3lVrJ13Ge/x3uUFw7JJqNK73cc8MCCLGZr",
+	"Xg0NXR8tjo3GFwJnGURs3h4+CysJgIIkRnEAQYHJ1kBi+I/VOVgNHpxw3kydsKbiDFG8xKkpeEfYdBX9",
+	"VR139Ya3cC+XxcSI299OJSdAvu/3nh4+voPJjz3aGpwnoaXVgncdYLkeAwUCJzEeiGpeXoLwVo5GatgF",
+	"NFcPD4ayBF1Ie/Ancbj3nRDECX5HNE2lLypwjiAGCyUgnODvQwsFZw01MgMxnceHZEEbaHlhECgefs0/",
+	"cPRycGbGOM4HIcIpEDkdspcxWYcKLfQHmgkHOagoiS8qhHnAehb2+AKgWA1eHt75+lja1zsvxrzvL4lf",
+	"i0MQID05fNIFH/VyDmIqO77/6JuN3q+L5a39zRLAOq6LKsagKUkcSsWDFCM+yQhUtV2Q7OdWTsCDdVRw",
+	"bJEmchtpskOhoC7rgyJQIrMvvopMJ4qFRz0Czl4qNnLn4eZuVoSfvf89AHy0CJXgMwIw17t1bYsQGYsQ",
+	"DkN1XPwfyuHMfBprYw30/YEO/mGG3+gaZjKY1hemSiFcA5sKVzKxldro2UQ5KAaai731qZQ1+2aMg6ZW",
+	"ceU8iiJYmAZRYF+8gVHlQjybeHL4Dft2BrrZUcRWKlpCpVX5HkI5dcnxMVwTOWyO0H420DTdOKIkfYCF",
+	"V0IREJJLg+TJB8wTcXq8n+1NrblSBdiBjtE81MGaW2hlcPc5DfIaFpH2SYeVs8lk5wUUAfseboZ9h3eB",
+	"fTW+8TazisUDF/eUoFs8T8K3LLFuwkSxnCafMo2tuNYEF/8IbcYfuABOMW+Wp+4P9CXM6j67yi7eIxdy",
+	"l55YDlrICZpRfmBMUXqgnYdp0rEofMmw0qo2zbB8TqIGFT/toOavYTUN355Lv4YuWW5R59sKsh7fJWR9",
+	"Dz4LVv1wo2TrJhJ1HUTOWVJWG6XCLrCbYqNVXFb7fqIBu8np/GvokXYrtzNv+H///v08T3h/L8BR0cKK",
+	"NmgcbggaD+8SNDh6r4voRGvM4tXXbPQA6oiELA16QYG+J89PjpGEIYIHiDhqc9epNWiOiCCZBAkh+UAY",
+	"ZEZT0xBcW59pR3++hAmXFG9c1wMdGsCzSoXjjE1ZuGjJmfTnoL9QxVxpKyyCz8w2sEgu7rXAyhtfWpSa",
+	"aECueNofaO5Okkbbfhu7gAeRnQ+UOfy++A53Hn5SbqCvrfIean+VrArlRWkucmSSg0VezzBwZJfUMlNe",
+	"rEsTjteNeuf+PcD7c3OtsWgIS21+jJyQLSEMEPIc80xy6LAUD6ZytlJ1OtYz1OxqACY5lyrHuaYQbp+B",
+	"UCFAhNr4vq5mMtCh5Dz1mBcTshg3Cw5xolQFTSbaUwcHzZa/2SWU5ObrgJNAIz4+pYmAnDbaqhAYID6B",
+	"ofA0qy3lltG8gk4zNmO//30R/A6o2Cfl2W05JnfiyilFTP8YVi1o/8BF1xPXLiJohbJM4HlfxDY8/PdA",
+	"j2X9VahINiGLqDeGiP+826rGgaA+ERXk9PeYBfDkyxyIh+o0J1IVf52dkIfrw4Lu2LMJDwbNGNfCAZBl",
+	"bCuwP/zmI0MT2jb5B4lFjuUViFCqNoMlAdSrJnBmI2NVSPToslNhChip3vwG+0TcQGtDPIIM0aSmuKHU",
+	"FLbGtkyKBaNvyLSNRulkhQMtiejHSueYgesuXQh2O/n59G2Hwsufp0FCOwTddJoMxNb1P+lkyLL78dHl",
+	"Uzljzip1ekG8p2tTlQXtrF+nmuJf1MdEpTq3Nljgj095XUMXA17wHKIZFGU8hKUHbmEpt2H3epq1e3VR",
+	"dcYRlilk6ViqROvl14dPvxZGw96wVMNL4aW9AB/1wbiBAfVC3EsgCF13pNm/idaugBbnwGcKBZuRyDnl",
+	"xzDQjdlBRqaZw4p5bFhHr3y3d319vYfO8L3KlkDyU9HGjHY4wvx28uEc807nBZx5TRaN6dQ9SI4QlyG+",
+	"OJuf4r9/1rD3DN84+3JfvLzQxgaD1X1h/Cnf00eI5d5MyX0Sy26yaWlEzW8hOgiW4HNgMklaa2AsC9Jz",
+	"zMXd4S21k367ZAl2CMYk2ts+0doVGb1KD6Lbr0m+jYfpZs7DpDnFxudOeJYlPz/XPTkfYPTQcyNmpuIw",
+	"cKzCOzMV5X1S7jAGI7Dy/X8PerXx0mgYaFBkp76WsyN0ypvShJDdC/C1xs7xQDGwm8OCoG4hOtAhOmiu",
+	"TR6UDgR2mcyy6me0il/Ttmk7MHjNzbKR3evhLdq9mmaoeWBE8y+BSMt8E/o8XodigR+BUYyOO4JNrbDz",
+	"7rihfzDYJNCP77oc8LcDTpbRlDYY7YiqpB0As5eY3NKmVu0nd23Vlk3333A7TfffzN1sqmn/2lwcK8bR",
+	"3N0+tZ8opuJsIrW8gD9wsrP9RfGlHVO9U9P4dpTiDmEsGsrvjCJs6nG5Y1h+A+xdDozKNkF5TXDl5rTm",
+	"ABNWMDxjL8khymrKz5HThZeifXGPO0jjHyWSw9SgHrNgYmrMA1eb2HFO0nClRyMlRSIby6acaPgYorvY",
+	"7YuQAeYAmBEPdKiJ/W2dCcb+6ZYtHafN8WIUrP8advwqSdFuYTxpV/+sgJJNgnqVFj1oAHxlCP2iLNNa",
+	"qWqxQVy0q9W7uQU0jZvWn/73HeJv+xTxXHOI/CrCS1qSYP8TxM54HPXloj47A2pVXausoqleews23jbn",
+	"WYXnIzlR5exgFZZjaN0e4tO++Jnk5QD4jhvJX1hTTcMeOaoUnWmAnjDDnoSijxatgnGSkhHFBKT2dUR0",
+	"FJEsCKWHZVU0RtqnX3bh7AtafSfGdtTH1AXZ6yimgZCNu2L4LhyjCmvLTCjrtc3rWg8Foqomkr+1JHEc",
+	"mgR/9SgEvNGyz3BNZ10L9ubmy90lkUivrYtEvB0nbCVDJj4spn9DMvE22EihSIIYI8kgDLPI1BMCwXh7",
+	"V+QhkKM9m9R2ydIJsviSCh5eRf984s2i7A+XFJ9pNWrmQDPk+/2aLjT+orEqCwt6X/zU9q4voQwnmSIr",
+	"O4XpTH/A5Z4c9zFEAR03t2CaxnaqmGdg7oMB0IM/64ZE2/o1W+vor3w9djYtlvhBa9/VvPuz9kb2BbyT",
+	"Q8yvbjx8DfLEoE3uBpf1WbbA8K7hfT2f/Icl4N1xqCZ6kwa9lw+Cw3LQw4uWacgIYVoOkdZEhbRYVtZc",
+	"1JDH6GjZJZykXRY6wYOX8ZGRwrjsdrjXvZHAuJyDP8P/8Nm0GC0zG7bA4KQYbQYIYfCMYHmutLSzjFSZ",
+	"vf+T5y84fsOhJeN85sFF8hdKqwzNdPYpqoc/a4jOyzmgYrJw8vzFrcPTOqwswM/6wJdWs8+HsNVBZhSp",
+	"4scwcVBegfu23n39RNla2BNzzYK6KNlpU8J9xxwvLQrXAc/xMPY/Es2j1uWl4OtM0yCCWtIyit8RYVtl",
+	"lAg2wC/OrhRck/H8Dx9LIp192dgGa8NE6LY5UqVHe/9soMkEmZgM8ZtFsyG9xfGVOKA487FO4dlAOzlz",
+	"Idg2zDOU1ipgX8+wlG4MrktN+Wy62IHpYjPzKl1up321vunbNvC2arN2zb61eXkFHoZCk2u8+UpNlO/t",
+	"1Bq0lqkYk4g4Yxsv/bPjh8lH20aEJ7NgKFqSWrmpCzOr07Y9mGG2M6ykQqQvVDvQnA3Ij0O2IEVZYJPk",
+	"BBW4NzCX1T4LtPOMvUpEec+xb4ITTl4h1QlF1L5B+3CTscYDl8r5mMVoDRZaQD/K2bJKbJ1BGq9iY6hd",
+	"+F158FDH6G7DMsK+OsQYjLsIfbo+o1vvuCjqGjtZ9FpTmjn4k//TDuhYzHyiIJHgUSVbKLEpESp7x3vJ",
+	"VaxogHWnBHu50f7jCQMJZKC2SHuOs6by+8Gfze03bpmirsF7A6CsH0ASyW8ozYM0MsANBehqfHmgzyxI",
+	"hxanhFyfQsiV4J8eOHEWwvTOiBa/HO29xhWcfSvkQEdBFyeBQjilh8ABc08ePspG4FLURg2amx3byxFN",
+	"HaSQXVHg2I3gjgNeliNTPOFPiA5vnG3y8NFdEoXX5gr6ImIIxp+Q6HKtXNMKjarbFFVZX8wtMYQDDpTZ",
+	"ua+iISz9jZBvYwkwbU/PVQCi3oONYlTBOY1MT5DOqiFwEuJ8jFBobk85MMQO0TIhPWc0DnSMVgrhBSOO",
+	"IQrfUJ6QM/viJKjPTbFP5800K/bRwncq9qVT3FOs3QrSExvbBxgPTtuzibyEahpB6AxPm5JTsS0U9Un8",
+	"TKXuIM6YLqeWXvrC0NVRNwy8BU5Iw6vaq6a3Rp1Ct96PjD6tK02LL87iDv8w141wFLXL8NY5DM0EnIg0",
+	"J59AyuPsloK0JkloyD3SjLCkzwLLHQos0l42akzRDve9Eb6PlfOhlvyu1NQfwhS7rNnHU6yOM3vgRNjx",
+	"x6C8xoKDXITFpKwgCZa7Z7V1C6CrG1XcoWp9U7YBhfIJy/iD9nD25SLcHxdFmNnDZLf2RA+Te7Qp0v6W",
+	"2BXxhD5bFaNVEU1ObHFCfVMb38Lo2yLnBJUHf+I/wfjYVcQwC/pjoFvDgnKVHxu731Ftbw7A16m6h+Oy",
+	"9R+LJxb7n2SaDm6NimDyydwjWV5DqCYYWWZ33J73p6bAOyGD92rYW0YIYyrbZ2IYRBosSBYwhNK2PdY+",
+	"MJbSqoeXgVDeFjkMaWqfqDK7L+rUo7piNxrUQsjLA9c2zqWmsiZ/z2aVW1Q4fjJYfewjdTL9W6uLXIur",
+	"qRAfne+FIk8XqvC3pkBaMFPumfERYViIKsNAMV6/kDrG7nA1Jg4wuB4bMZEWg+Na2jeFNAQcSkdRPtaP",
+	"UE7gs190Ybi/zWLR5YHmjpoLOYIhATbB9CP6qLDyOq2B1qdlXBnF5fhDWGm/O2nmDa3yvp3H846Vzxi+",
+	"OYafVOjWLqhgSYRDYxfs+eJcYnEm05z5dmhvYg2cZfkGr+q3dglaYZIuU88zaoriRb3kpFfoh2/wwV2l",
+	"MfFOXkHBXQ3c/cd7dUVOhaPelZAfhr8fS0fc27L4qfDOZ/EeU5+uiKEhxNaBi2M5nYK+GeU5+DP+d4Vd",
+	"o8tTfSIdV35mB2a9uFCNPmPH44bbLehex9AR10l9cXiMT9LawdXURiOw7IhMaNW9mD5q8GDCVm0QxfAq",
+	"hQXfNMLlzIBrsBCgZqBRDvu2nT4giwK4CIqtG6OzzX5JlNQHRzMP74xmRpPIZ7q5UGh/NRatIpgh6aHT",
+	"n5crRhU7YlK/UNAOY7fDOEJyfgdVuKVynNdjQw2dHKuRFJZuNJev/VacaXjnOfPgDAkgR3Q76MzhD1Xj",
+	"dtutA6foEhjb3UG5t5m+Uj5Kj2axDf3NBMrHH5MAmh7LNIRWJceziyJqa0ikAWyRmPACEdTOaF1QnM1V",
+	"aMQQP0dtIkKpPunr7jHt5jJRd8eQGk5fFGeSwOOMGjzM9UxS3AgnDFFSc72kwJyQYXE50D8uCgbLHTGA",
+	"evx7LQa5TGoOZ/PvGDxyO/5ETlpDYlQ3+96w/ltA7oM/+T8bCdYLKEhFYJJspVZLMxSsBnqug9kk04cs",
+	"eiED+SlxRKLAeXMW+tsSPFpHPG8IxofsibxjkIqey3g6xjYGR3TW1BT/tgn+arn+dYDNTStsihy9Vj5U",
+	"cy8BFdUIaQMd67pL3Q1usa/UDsl2OsW9ta9aRrmj7P6Zet9Y0q/JpjUl3Ar1rhuS7lHrzRYtn6ecV+YS",
+	"lrc87TJvYEsEbagvPdjg2/hUzRtSNJ7UpP8o7brdZ/nO7BxtethZgorWnZTgYF973Y+TaJw41jMB0pYK",
+	"wr4C+w0O5NCnOWyWmX3skMId/o0ewrehQxZ3PCPLiERVcjzQZtTRyJkNx8vh7+EtpmEk83Q5m5VmR0nd",
+	"qcJTe8PvjbkoAQ/veDotQTxrN+z9pED+NXaDliSdT6264qq+KdiPqFsfwcZNjBNtktVEKOxxhMKyFmlR",
+	"QGGfq0THJzbIayDSm1BpxglvzL54y3ET6MjFDkLUskc44Dba+Evd3jQc3pF49ESMTWXdg5Ct1Cfb3kC3",
+	"KxzjODE9oN/EUyzLGKAu080YJ7zbHfLyzGwd4M8n/xHVde8OcLl/olxtT5PFFy0pNhNefNoJRLvKX0sn",
+	"uheD8pZg/O/tiNsKTbYg4FScfC/2n+4i3Z3gXytc2R6UOPZx3dp6d9350nk6QCvs8FPk+7+OwUKEFjba",
+	"XEEs27uDguU7pac1QIlndXkE7in+biaGJUiL1RGiAfjsKIn2ckMZWhdwOxpycRQQC19hiFhaxS4v2p5m",
+	"wPb2KXM6xb3Q5M1R5t+eHF9vjmY3pccHBOeznUdnbqSUco/MAivsOcQVbLh8FopAKop8FudSc3rzdEqG",
+	"ZMeBj8oOtIUL5TxYKNgJJ6jsWu3QCRsnlhfPeKGEdQ5v/0Yn9SFxnPk9fYqsJ1S0DlJwJLioSoXuv1Zd",
+	"jPHihmqq2jWTN0CTtUvbz3eciRCTVI+kxuutFpXculiYUb546WJ9+rV6zkhfuVZFwBXglMxxyh9TkcB/",
+	"24qD61XpD4/n6jt/5lghEmBJ7f9b616zIkafbE56Fvvf13g4aol+Sa9v8bbpJq7JMSQbUhpaUUSKGiK/",
+	"0LoFTnh5yQhd54qPALj4zKRy1KO2LkJDfa+giBVvmAQ0ZQbFy1HyuwONNblk5c1EeoVtcGYL3cwdHrT0",
+	"wabaFCRi65YUhZWjJcbUhU79G9bfKmAyNR70cPYjzHZWhqu9ynsJ6W0v4Vflx6+UvlzR1oATsZR3wQDO",
+	"rkTJt/bZDbZFEINjc/K07mJxC3w97QiyrCT+Aq7cERfaTe+MezC/zicskY+dGqirOnspIkzaBMXdizUh",
+	"bdtyE5C6q9Jt67SZeRlJUctH11CpEIWDWlBgW6hIXEiVydZm++qHhhRNLtPn1jKNqa6OyqlxjwIaFTuk",
+	"qAvSrZPS+PCD6q8ELWtfv+6bdB2SXpUlKwI3I9sXv8YEabbgDfRY1qSJWh+YBYEMD5MQyjf9a/B35VwF",
+	"BcuFFHrXdDF88mU+Tg2X1vRr+pAls/syJq7PJZsqvgEsG9msvqSRODd+zP7d+pI/i2k3s89MjCajh8WM",
+	"ph1QGQf6w2jh9h0itZurZIosFDksArwcciMVC25MXHgxlGagW4z5qCtIBnMtcKJhyFs1GvJeBV3cF4Ne",
+	"U0WqsZByIvFQPuMP3VvU3YlhOfpBc4/F+uRQLtsOozKd4FaaNOmLvEkz8jbHPDZv0Uxaym2Gqx+UgXBF",
+	"07o32c5vny2DwTJoGxi4837WuS54y9T9cJV30AFxRffDj0fBj5IU0nQiG35MqV9eeIs3EgtL3JM+v37v",
+	"ujU6Js7jvS7Iu1g3K7yWs0A6qfnOyJpJqhJwQz9ji2+J+53+cLz36OlXAz3BXAXOI0tePQvgdjqWj55+",
+	"dUZ5lZJ6H0ZdvY5jPIeBrrQsydnZEU/4AbR1/BiAOsHBXNPFjwh0sdrPHQjJzSpX6uHtoJs3dW9LCyH7",
+	"FwrloTgiMLcWhjiAwH24gaY2aVRanlpIUU+G0MWPRBEX4pHxFTJ0WBiBBT3sjL/5m1FFQ/A/SFU7WeK9",
+	"qNsrmBVeDRRNOSluCWCBktKLv85q6KC+AK1bRY8Ii5Cfle3NqRTCRcN7W/X+8VC5zEY4bShEuwr4BjqD",
+	"A6vgpvWXt2gVwvOyN9NWJYgv3rx4Jp4+ffK0L+BKlpUMXeE4BYVTQJHn/sto+FJMy6rV1E15YWEK0mNr",
+	"TuLPZshq9BBwEuXdQCMvjUWzQ+UXOQZZCHRS4DoMq/VjY9W/uG3dw0fiGgD7QzkjUEei0H/q+DkjFo9j",
+	"auPB9YX0HnQhcUZumE+X0O2lPeWj3w1d4cHvxaka9rUk35svv08HyD386kzhmDr/6XQWuSEh+Ksxl0wI",
+	"KkvVdW5QJJrP/eBP/vdmHel4jGyodgLYO+Jay0EsLu0jUrBW3+2OhdFAL+6k91zT6EwQCIBrlSWsiQEL",
+	"fwOd9hEWXwx6JCgyVJaluVb6YtD7lq1p3hTY8NlYMejJshSjylcWYgM7N+h9ia2bg2mWf+uH+J3Yq1d6",
+	"kldDac/G9dgf6EaOtXBtlfeg98VbEzeDXwR+hFbdfvw9qdI70HXjPYbSB11997qzzmv0+rC66vGy7qn4",
+	"9joEAbU9DqAitT3Ak9GJQzBcGDUeDv2rUS+pRyhU0U8uD8dy01L54Bokh2CdNBDM95+C7HvHza5iWvw8",
+	"YeSLkwKxQBh9LW3hbocRHtyFv6mhsbtsw3e6QEcD/aR/zoi4hXIn3w50lu71k4ALY9l1SkJuYP4TxJBZ",
+	"jkJ9p4udirX1+PdUEWM5nQGNynJL/PiM+JvXWVhAewZgxvvt8J1dtys9Y3XGbfzg7MvEWxZ+bLxlA/3F",
+	"2ZWCa+oFNPdJ/HMuPcAq3GscQZjRQBvLf3JT91pQyLrbTuNGFrh/ez+vE4Mzt9E3Iwqdvja2iH5mLSfQ",
+	"F+pCGzrsoXTk5MumCQCWL23lCEzku1egL/y4d/Tw8DCbIzB3xujpro/lmhyN8+dB7FPVtebGatq1ovDF",
+	"5okL7UWRAyuWZm1Wp7TzZBkYpd5417WYOEBrLTUyjGTpoF7LuTElSP3xZVEE2OtykobHC0W2P/tHXYO0",
+	"kXTVP91NkcSaNnXV7Q6XtytjVEgyuhdrVNjZMnMUv/IZXmM9QVdDQwZe1+W1B3/WuWVLPfIp6O2WcnWq",
+	"h637/wgMRmHBIhQxBWWTUDRdUGe5XVCbNVSceOXr25Ea2iSOF/hwrMKtbFpMcqCDX8SJ84rVFm08FyAH",
+	"NlZS4Bl/scSSchdU774sIsthPhbv+0z7MnW3+Uw4qJxBUlCWvvOG5fjJ7ZHGg4i5uzc/tHHzZmLDcVE8",
+	"44XvrNs1jX4vMkPc2RKZIdzaZ7xhmSEW2MbaahdAEdFNuLSFidIFWCeMzQUL3hYGHfwZ/rdR9eIlQM6l",
+	"cFM4X6cqZljEv0mD07jd+xY31lCmI3Cs2xRkCWSw/PChUcDDu6KAUXr4TAUXpYel+HBr9O0Afap7St+l",
+	"1HArKBYsrZT2EjLlnn65L75XVxTTNByCc1xkPJgvw54fuNBdwRt2yVGhRArg5DS+PjEfNhVzUAkeETep",
+	"4CJdZFms2VLj+0iidVyfSonu4fKwnFBduKrOZC5LMqUONM+KBfXGqiws6BCtRAvDEKfIB3BZQ6lpOfgO",
+	"5/2EEka8J+5SETfP1Se0kNd5JwuWfeSxT9WFfql3S394jg+RCn1K1OeOwwu/VynvrnEoQjtXI8USKOjb",
+	"vpazW6Rm8G5qrF8aeYQx2SfHER9iZlRw/oahQr1UZcVIThRGW9QFq7l6qjfCAnpnYs2+qXQOyYHRR61O",
+	"uBkrykDXZpR+cP4EV1TtzVG6ST7FNtWOG/ozNeGIQB6FP5+vkpC0xNgXCU3sC6coZtELN5XaDTR/H6t3",
+	"0sgYwzIcCz5JpBchGAX3jDuTFXbWLs1F1kVLXwWy/lx6eQeWN5yG511hg8Pay9LLT1Fgfm6uNZa3S3No",
+	"aj42NmXhhDynvhPL7a93aMHbCr8JCz5kYwYTNxOcrj41AGesHN8bWe6IweLQ92LfoD0tMW7gFX6W6WPh",
+	"ZDwNjo8hihzNyrfIEgllDv7Ef4Lp4sMR6QlItzHnb4BmrE3vGNPuyQ6/DNeiGv0Z36JNScsJBJQj+MGG",
+	"+ySDDscKrjgcrbBmOm1Vnbgp/iW6dHeXHDR3BcxJ1K6P0WP5QcPA21h4sZEIowrerYjcrVdzA7MGV/pI",
+	"zRl1O2EjWlYMLBIS3E5oMKDmosFqESsh1wHrtYmiH+wdqJUMdGP1SLQTtEQgT4/zhtw9Xowpi+4qI34R",
+	"2nfmJL1HI8NGqPbZyLCpkSHVtBtQru0MkvrstVqvbkfYvZqAx3Ksq9odU8Amot0f9SdnMWmwjvUjCwIF",
+	"9YfARHZqDfTQlNVEh0TY0BoRlbYaN50RIwvA9QGUE1fKKewBJI7DO6H3rEM1UJas2DtMhAFpqYMyzhhC",
+	"NMkkgRO6jpz/t/Wu1yoljSaU3jxyZeMnUTDZwz2sE0R5zI2hxV9EIWd1vDnlV3SGb5odrIMiTP0YXCgv",
+	"7x7Ux9fr9+DdtDQF1PGYS6NK2/W2lYeJWyO+tI9RsS/55adNTKy0Vs7wqfOzku7B2MlugzUbwOigazXw",
+	"fxY8w4EgJ65PpU/ZXAw9Ygp2SaezGxa4wYXAsLLKz+jrkbJwLh28LN6aS9C9o99+R0hxYK/ysd7YY78U",
+	"BVxBaaZkZPziDC2Swlb6SE7V2Ze9fq+yZe+oN/Z+enRwUOIXY+P80deHXx8SIIZtzY+NxwVcYPvH6hys",
+	"Bg9s4qymROGGYxheuv0Gg8YgSz/uLSLnCw5PIxMX1UGpNHlneGPJCG7mPEwyIxA7Vhcaij1FlxLLQzCl",
+	"xAtMV6KQdeCpZkbCV/vhu7SvuTUlmldxpl9eCofUbEBvY4Yhrvr4JPxcM5/9FvWYuMx0TWg0DjEFMy3r",
+	"UImwiCZGIm2W3E+2R0aC/YXK/bn5XkVmxG1GyGY9Rg6DjAsNGfyHCx6rCU+z2BhKQTphhPj8xQAXymOB",
+	"l4qc86hjcx137LyhYL5JMqg2Xo0CicsNHYq0zxef78df2ucVBW5O0kSNzXGpwmTG+GFmsl/xbGQCY4mv",
+	"Ie32Y0aJKLPCi5hoAwkfJpcFYv//GQA=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

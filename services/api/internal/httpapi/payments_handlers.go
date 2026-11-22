@@ -124,11 +124,7 @@ func (s *server) ListReceipts(ctx context.Context, req gen.ListReceiptsRequestOb
 	}
 	out := gen.ListReceipts200JSONResponse{Items: make([]gen.ReceiptSummary, 0, len(receipts)), NextCursor: next}
 	for _, r := range receipts {
-		out.Items = append(out.Items, gen.ReceiptSummary{
-			Id: r.ID, Number: r.Number, IssuedAt: r.IssuedAt, AmountCents: r.AmountCents, Currency: r.Currency,
-			Student: gen.StudentRef{Id: r.Student.ID, Name: r.Student.Name},
-			Payee:   gen.MemberRef{MembershipId: r.Payee.MembershipID, DisplayName: r.Payee.DisplayName}, Voided: r.Voided != nil,
-		})
+		out.Items = append(out.Items, toReceiptSummary(r))
 	}
 	return out, nil
 }

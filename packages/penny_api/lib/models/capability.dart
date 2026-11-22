@@ -10,7 +10,9 @@ enum Capability {
   manageStudents._('manage_students'),
   viewOwnStudents._('view_own_students'),
   managePayments._('manage_payments'),
-  manageOwnPayments._('manage_own_payments');
+  manageOwnPayments._('manage_own_payments'),
+  viewLinkedLessons._('view_linked_lessons'),
+  viewLinkedPayments._('view_linked_payments');
 
   const Capability._(this.value);
 

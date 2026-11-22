@@ -17,6 +17,8 @@ class Contact {
     this.email,
     this.phone,
     this.receivesPaymentReminders,
+    this.canSignIn,
+    this.signedIn,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Contact].
@@ -35,6 +37,8 @@ class Contact {
         receivesReminders: json['receivesReminders'] as bool,
         receivesBilling: json['receivesBilling'] as bool,
         receivesPaymentReminders: json['receivesPaymentReminders'] as bool?,
+        canSignIn: json['canSignIn'] as bool?,
+        signedIn: json['signedIn'] as bool?,
       ),
     );
   }
@@ -63,6 +67,12 @@ class Contact {
   /// Reminders about overdue payment requests. Stopped from an email's link.
   final bool? receivesPaymentReminders;
 
+  /// The owner gave the contact a parent account (ADR 025).
+  final bool? canSignIn;
+
+  /// The contact has signed in with that account.
+  final bool? signedIn;
+
   /// Converts a [Contact] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -74,6 +84,8 @@ class Contact {
       'receivesReminders': receivesReminders,
       'receivesBilling': receivesBilling,
       'receivesPaymentReminders': ?receivesPaymentReminders,
+      'canSignIn': ?canSignIn,
+      'signedIn': ?signedIn,
     };
   }
 
@@ -87,6 +99,8 @@ class Contact {
     receivesReminders,
     receivesBilling,
     receivesPaymentReminders,
+    canSignIn,
+    signedIn,
   ]);
 
   @override
@@ -100,6 +114,8 @@ class Contact {
         relationship == other.relationship &&
         receivesReminders == other.receivesReminders &&
         receivesBilling == other.receivesBilling &&
-        receivesPaymentReminders == other.receivesPaymentReminders;
+        receivesPaymentReminders == other.receivesPaymentReminders &&
+        canSignIn == other.canSignIn &&
+        signedIn == other.signedIn;
   }
 }

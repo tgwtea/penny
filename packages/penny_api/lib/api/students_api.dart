@@ -9,6 +9,7 @@ import 'package:penny_api/api_client.dart';
 import 'package:penny_api/api_exception.dart';
 import 'package:penny_api/models/contact.dart';
 import 'package:penny_api/models/contact_input.dart';
+import 'package:penny_api/models/contact_sign_in_input.dart';
 import 'package:penny_api/models/goal.dart';
 import 'package:penny_api/models/goal_changes.dart';
 import 'package:penny_api/models/goal_input.dart';
@@ -18,6 +19,7 @@ import 'package:penny_api/models/student_changes.dart';
 import 'package:penny_api/models/student_data_export.dart';
 import 'package:penny_api/models/student_input.dart';
 import 'package:penny_api/models/student_list.dart';
+import 'package:penny_api/models/student_sign_in_input.dart';
 
 /// Students, the people who get their reminders and receipts, and their goals.
 class StudentsApi {
@@ -228,6 +230,81 @@ class StudentsApi {
     throw ApiException<Object?>.unhandled(response.statusCode);
   }
 
+  /// Give the student their own account, at an email address
+  /// Owners only (ADR 025). Penny invites the address to the team as a
+  /// student, who then sees their own lessons, read-only, after they
+  /// first sign in with it. A new address replaces the old one.
+  Future<Student> setStudentSignIn(
+    String workspaceId,
+    String studentId,
+    StudentSignInInput studentSignInInput,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.put,
+      path: '/v1/workspaces/{workspaceId}/students/{studentId}/sign-in'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{studentId}', Uri.encodeComponent(studentId)),
+      body: studentSignInInput.toJson(),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Student.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Take the student's account away
+  Future<Student> removeStudentSignIn(
+    String workspaceId,
+    String studentId,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.delete,
+      path: '/v1/workspaces/{workspaceId}/students/{studentId}/sign-in'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{studentId}', Uri.encodeComponent(studentId)),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Student.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
   /// Add someone who gets a student's reminders or receipts
   /// Needs `manage_students`.
   Future<Contact> addContact(
@@ -336,6 +413,51 @@ class StudentsApi {
         ),
       );
     }
+  }
+
+  /// Give a contact a parent account, or take it away
+  /// Owners only (ADR 025). Giving access invites the contact's email to
+  /// the team as a parent, who after first signing in sees this student's
+  /// lessons and payments, read-only. One account covers all of a
+  /// parent's children in the team. A contact who can sign in keeps their
+  /// email until access is taken away.
+  Future<Contact> setContactSignIn(
+    String workspaceId,
+    String studentId,
+    String contactId,
+    ContactSignInInput contactSignInInput,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.put,
+      path:
+          '/v1/workspaces/{workspaceId}/students/{studentId}/contacts/{contactId}/sign-in'
+              .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+              .replaceAll('{studentId}', Uri.encodeComponent(studentId))
+              .replaceAll('{contactId}', Uri.encodeComponent(contactId)),
+      body: contactSignInInput.toJson(),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return Contact.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
   }
 
   /// Set a goal that spans lessons

@@ -152,3 +152,14 @@ WHERE l.workspace_id = @workspace_id
   AND EXISTS (SELECT 1 FROM lesson_participants p
               WHERE p.workspace_id = l.workspace_id AND p.lesson_id = l.id AND p.student_id = @student_id)
 ORDER BY l.starts_at, l.id;
+
+-- name: ListLessonsForStudents :many
+-- Lessons any of the students is in, overlapping [from, to), for a family
+-- account's view.
+SELECT l.* FROM lessons l
+WHERE l.workspace_id = @workspace_id
+  AND l.starts_at < @range_to AND l.ends_at > @range_from
+  AND EXISTS (SELECT 1 FROM lesson_participants p
+              WHERE p.workspace_id = l.workspace_id AND p.lesson_id = l.id AND p.student_id = ANY(@student_ids::uuid[]))
+ORDER BY l.starts_at, l.id
+LIMIT 500;

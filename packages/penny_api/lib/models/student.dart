@@ -12,6 +12,8 @@ class Student {
     required this.archived,
     required this.contacts,
     required this.goals,
+    this.signInEmail,
+    this.signedIn,
     this.primaryTeacher,
     this.notes,
   });
@@ -22,6 +24,8 @@ class Student {
       'Student',
       json,
       () => Student(
+        signInEmail: json['signInEmail'] as String?,
+        signedIn: json['signedIn'] as bool?,
         id: json['id'] as String,
         name: json['name'] as String,
         primaryTeacher: MemberRef.maybeFromJson(
@@ -48,6 +52,11 @@ class Student {
     return Student.fromJson(json);
   }
 
+  /// Where the student was given their own account (ADR 025).
+  final String? signInEmail;
+
+  /// The student has signed in with that account.
+  final bool? signedIn;
   final String id;
   final String name;
 
@@ -63,6 +72,8 @@ class Student {
   /// Converts a [Student] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
+      'signInEmail': ?signInEmail,
+      'signedIn': ?signedIn,
       'id': id,
       'name': name,
       'primaryTeacher': ?primaryTeacher?.toJson(),
@@ -75,6 +86,8 @@ class Student {
 
   @override
   int get hashCode => Object.hashAll([
+    signInEmail,
+    signedIn,
     id,
     name,
     primaryTeacher,
@@ -88,6 +101,8 @@ class Student {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is Student &&
+        signInEmail == other.signInEmail &&
+        signedIn == other.signedIn &&
         id == other.id &&
         name == other.name &&
         primaryTeacher == other.primaryTeacher &&

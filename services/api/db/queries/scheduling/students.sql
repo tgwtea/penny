@@ -144,3 +144,80 @@ SELECT c.id, c.name, c.email, c.receives_payment_reminders FROM student_contacts
 WHERE c.workspace_id = @workspace_id AND c.student_id = @student_id
   AND c.receives_billing AND c.email IS NOT NULL
 ORDER BY c.created_at, c.id;
+
+-- Family accounts (ADR 025).
+
+-- name: SetContactSignIn :one
+-- Turning access off also unlinks the contact.
+UPDATE student_contacts
+SET can_sign_in = @can_sign_in,
+    user_id = CASE WHEN @can_sign_in::boolean THEN user_id END,
+    updated_at = now()
+WHERE workspace_id = @workspace_id AND student_id = @student_id AND id = @id
+RETURNING *;
+
+-- name: LinkContact :exec
+UPDATE student_contacts SET user_id = @user_id, updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @id AND can_sign_in;
+
+-- name: SetStudentSignIn :one
+-- A changed or removed address unlinks the student.
+UPDATE students
+SET sign_in_email = sqlc.narg('sign_in_email'),
+    user_id = CASE WHEN sign_in_email IS NOT DISTINCT FROM sqlc.narg('sign_in_email')::citext THEN user_id END,
+    updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @id
+RETURNING *;
+
+-- name: LinkStudent :exec
+UPDATE students SET user_id = @user_id, updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @id AND sign_in_email IS NOT NULL;
+
+-- name: LinkContactsByEmail :many
+-- At a parent's first sign-in: every contact in the team given access at
+-- their address.
+UPDATE student_contacts SET user_id = @user_id, updated_at = now()
+WHERE workspace_id = @workspace_id AND can_sign_in AND email = @email AND user_id IS NULL
+RETURNING id;
+
+-- name: LinkStudentsByEmail :many
+UPDATE students SET user_id = @user_id, updated_at = now()
+WHERE workspace_id = @workspace_id AND sign_in_email = @email AND user_id IS NULL
+RETURNING id;
+
+-- name: LinkedUsersOfStudent :many
+-- Who signs in to see a student: the student and their parents.
+SELECT c.user_id FROM student_contacts c
+WHERE c.workspace_id = @workspace_id AND c.student_id = @student_id AND c.user_id IS NOT NULL
+UNION
+SELECT s.user_id FROM students s
+WHERE s.workspace_id = @workspace_id AND s.id = @student_id AND s.user_id IS NOT NULL;
+
+-- name: UnlinkStudentAndContacts :exec
+-- Archiving a student ends every family account's access to them.
+UPDATE student_contacts SET can_sign_in = false, user_id = NULL, updated_at = now()
+WHERE workspace_id = @workspace_id AND student_id = @student_id AND can_sign_in;
+
+-- name: UnlinkStudent :exec
+UPDATE students SET sign_in_email = NULL, user_id = NULL, updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @student_id AND sign_in_email IS NOT NULL;
+
+-- name: CountLinksOfUser :one
+-- How many records still give a person family access in the team.
+SELECT (SELECT count(*) FROM student_contacts c WHERE c.workspace_id = @workspace_id AND c.user_id = @user_id)
+     + (SELECT count(*) FROM students s WHERE s.workspace_id = @workspace_id AND s.user_id = @user_id) AS links;
+
+-- name: CountAccessForEmail :one
+-- How many records give an address family access in the team, linked or not.
+SELECT (SELECT count(*) FROM student_contacts c WHERE c.workspace_id = @workspace_id AND c.can_sign_in AND c.email = @email)
+     + (SELECT count(*) FROM students s WHERE s.workspace_id = @workspace_id AND s.sign_in_email = @email) AS links;
+
+-- name: StudentsLinkedTo :many
+-- The students a person is linked to: as a contact (parent) or as the
+-- student.
+SELECT DISTINCT s.id, s.name FROM students s
+WHERE s.workspace_id = @workspace_id AND s.archived_at IS NULL
+  AND (s.user_id = @user_id OR EXISTS (
+       SELECT 1 FROM student_contacts c
+       WHERE c.workspace_id = s.workspace_id AND c.student_id = s.id AND c.user_id = @user_id))
+ORDER BY s.name, s.id;

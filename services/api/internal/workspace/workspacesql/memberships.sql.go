@@ -12,6 +12,37 @@ import (
 	"github.com/google/uuid"
 )
 
+const activeMembershipOfUserForUpdate = `-- name: ActiveMembershipOfUserForUpdate :one
+SELECT id, workspace_id, user_id, role, status, display_name, email, invited_by, joined_at, removed_at, created_at, updated_at FROM workspace_memberships
+WHERE workspace_id = $1 AND user_id = $2 AND status = 'active'
+FOR UPDATE
+`
+
+type ActiveMembershipOfUserForUpdateParams struct {
+	WorkspaceID uuid.UUID
+	UserID      *uuid.UUID
+}
+
+func (q *Queries) ActiveMembershipOfUserForUpdate(ctx context.Context, arg ActiveMembershipOfUserForUpdateParams) (WorkspaceMembership, error) {
+	row := q.db.QueryRow(ctx, activeMembershipOfUserForUpdate, arg.WorkspaceID, arg.UserID)
+	var i WorkspaceMembership
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.DisplayName,
+		&i.Email,
+		&i.InvitedBy,
+		&i.JoinedAt,
+		&i.RemovedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const claimInvitations = `-- name: ClaimInvitations :many
 UPDATE workspace_memberships
 SET user_id = $1,
@@ -211,7 +242,7 @@ SELECT
     w.timezone AS workspace_timezone,
     w.reminder_hours AS workspace_reminder_hours,
     (SELECT count(*)::int FROM workspace_memberships c
-     WHERE c.workspace_id = w.id AND c.status = 'active') AS member_count
+     WHERE c.workspace_id = w.id AND c.status = 'active' AND c.role IN ('owner', 'teacher')) AS member_count
 FROM workspace_memberships m
 JOIN workspaces w ON w.id = m.workspace_id
 WHERE m.user_id = $1 AND m.status = 'active'
@@ -260,11 +291,12 @@ func (q *Queries) ListActiveMembershipsOfUser(ctx context.Context, userID *uuid.
 
 const listMembers = `-- name: ListMembers :many
 SELECT id, workspace_id, user_id, role, status, display_name, email, invited_by, joined_at, removed_at, created_at, updated_at FROM workspace_memberships
-WHERE workspace_id = $1 AND status <> 'removed'
+WHERE workspace_id = $1 AND status <> 'removed' AND role IN ('owner', 'teacher')
 ORDER BY role, lower(display_name), id
 `
 
-// Owners first, then teachers, then by name; invitations among them.
+// The team's staff: owners first, then teachers, then by name;
+// invitations among them. Family accounts are listed with their students.
 func (q *Queries) ListMembers(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceMembership, error) {
 	rows, err := q.db.Query(ctx, listMembers, workspaceID)
 	if err != nil {
@@ -474,6 +506,37 @@ func (q *Queries) MembersByID(ctx context.Context, arg MembersByIDParams) ([]Mem
 		return nil, err
 	}
 	return items, nil
+}
+
+const membershipByEmail = `-- name: MembershipByEmail :one
+SELECT id, workspace_id, user_id, role, status, display_name, email, invited_by, joined_at, removed_at, created_at, updated_at FROM workspace_memberships
+WHERE workspace_id = $1 AND email = $2 AND status <> 'removed'
+`
+
+type MembershipByEmailParams struct {
+	WorkspaceID uuid.UUID
+	Email       string
+}
+
+// The team's current or invited membership for an address.
+func (q *Queries) MembershipByEmail(ctx context.Context, arg MembershipByEmailParams) (WorkspaceMembership, error) {
+	row := q.db.QueryRow(ctx, membershipByEmail, arg.WorkspaceID, arg.Email)
+	var i WorkspaceMembership
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.UserID,
+		&i.Role,
+		&i.Status,
+		&i.DisplayName,
+		&i.Email,
+		&i.InvitedBy,
+		&i.JoinedAt,
+		&i.RemovedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const removeAllMembershipsOfUser = `-- name: RemoveAllMembershipsOfUser :many
