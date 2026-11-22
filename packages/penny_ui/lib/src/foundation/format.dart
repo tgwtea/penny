@@ -21,6 +21,9 @@ abstract final class PennyFormat {
   /// "Thu 19 Nov", for tight spaces.
   static String shortDate(DateTime d) => DateFormat('EEE d MMM').format(d);
 
+  /// "Thursday", for a day within the coming week.
+  static String weekday(DateTime d) => DateFormat('EEEE').format(d);
+
   /// "Thursday 19 November", for titles.
   static String longDate(DateTime d) => DateFormat('EEEE d MMMM').format(d);
 

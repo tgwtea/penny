@@ -26,6 +26,7 @@ void main() {
     final thursday = DateTime(2026, 11, 19);
     expect(PennyFormat.shortDate(thursday), 'Thu 19 Nov');
     expect(PennyFormat.longDate(thursday), 'Thursday 19 November');
+    expect(PennyFormat.weekday(thursday), 'Thursday');
     expect(
       PennyFormat.weekRange(DateTime(2026, 11, 16), DateTime(2026, 11, 22)),
       '16 to 22 November',
