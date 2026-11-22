@@ -28,7 +28,16 @@ type Workspace struct {
 	Name        string
 	Timezone    string
 	MemberCount int
+	// ReminderHours is how long before a lesson its contacts are
+	// reminded; 0 sends none.
+	ReminderHours int
 }
+
+// DefaultReminderHours is a day ahead, as most studios remind.
+const DefaultReminderHours = 24
+
+// MaxReminderHours is a week.
+const MaxReminderHours = 168
 
 // Status is where a membership stands. Removed memberships are kept for
 // history but never listed.
@@ -70,6 +79,14 @@ type NewMember struct {
 
 // Changes are the team settings an owner may change. Nil leaves a value.
 type Changes struct {
-	Name     *string
-	Timezone *string
+	Name          *string
+	Timezone      *string
+	ReminderHours *int
+}
+
+// Settings are what other modules need to act for a team.
+type Settings struct {
+	Name          string
+	Location      *time.Location
+	ReminderHours int
 }

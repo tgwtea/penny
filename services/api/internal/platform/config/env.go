@@ -170,3 +170,16 @@ func (r *reader) publicURL(key, fallback string) string {
 	}
 	return v
 }
+
+// secret reads a required secret of at least minLength characters. Its
+// value is never echoed in errors.
+func (r *reader) secret(key string, minLength int) string {
+	v := r.value(key)
+	switch {
+	case v == "":
+		r.fail(key, "is required")
+	case len(v) < minLength:
+		r.fail(key, "must be at least %d characters", minLength)
+	}
+	return v
+}

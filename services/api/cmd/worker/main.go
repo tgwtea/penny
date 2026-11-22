@@ -24,6 +24,7 @@ import (
 	"github.com/tgwtea/penny/services/api/internal/app"
 	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/jobs"
+	"github.com/tgwtea/penny/services/api/internal/notify"
 	"github.com/tgwtea/penny/services/api/internal/platform/buildinfo"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
 	"github.com/tgwtea/penny/services/api/internal/platform/config"
@@ -32,6 +33,7 @@ import (
 	"github.com/tgwtea/penny/services/api/internal/platform/httpserver"
 	"github.com/tgwtea/penny/services/api/internal/platform/logging"
 	"github.com/tgwtea/penny/services/api/internal/platform/metrics"
+	"github.com/tgwtea/penny/services/api/internal/platform/queue"
 	"github.com/tgwtea/penny/services/api/internal/platform/schema"
 )
 
@@ -63,11 +65,22 @@ func run() error {
 	registry := metrics.NewRegistry()
 	registry.MustRegister(database.NewPoolCollector(pool))
 
-	// The worker verifies no tokens; jobs act as the system.
-	services, err := app.New(app.Deps{Pool: pool, Verifier: noTokens{}, Clock: clock.System{}, PublicURL: cfg.PublicURL})
+	// Jobs queue follow-up jobs in their own transactions, through an
+	// inserter separate from the client that runs them.
+	inserter, err := queue.NewInserter(pool)
 	if err != nil {
 		return err
 	}
+	// The worker verifies no tokens; jobs act as the system.
+	services, err := app.New(app.Deps{
+		Pool: pool, Verifier: noTokens{}, Clock: clock.System{}, PublicURL: cfg.PublicURL, AppURL: cfg.AppURL,
+		Queue: inserter, Mailer: newMailer(cfg.Mail), UnsubscribeSecret: cfg.UnsubscribeSecret,
+		NotifyMetrics: notify.NewMetrics(registry), Logger: logger,
+	})
+	if err != nil {
+		return err
+	}
+	logger.Info("sending email", slog.String("provider", cfg.Mail.Provider), slog.String("from", cfg.Mail.FromEmail))
 	client, err := jobs.NewWorkerClient(pool, services, logger)
 	if err != nil {
 		return err
@@ -100,6 +113,16 @@ func run() error {
 		return nil
 	})
 	return g.Wait()
+}
+
+// newMailer picks the email provider: SMTP to Mailpit locally and in CI,
+// Postmark elsewhere (ADR 014).
+func newMailer(cfg config.Mail) notify.Mailer {
+	from := notify.Address{Name: cfg.FromName, Email: cfg.FromEmail}
+	if cfg.Provider == "postmark" {
+		return notify.NewPostmarkMailer(cfg.PostmarkToken, from, "")
+	}
+	return notify.NewSMTPMailer(cfg.SMTPAddr, from, cfg.SMTPUsername, cfg.SMTPPassword, clock.System{})
 }
 
 // noTokens is the worker's verifier: it serves no signed-in requests.

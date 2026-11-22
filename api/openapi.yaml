@@ -33,6 +33,8 @@ tags:
     description: Students, the people who get their reminders and receipts, and their goals.
   - name: lessons
     description: Lessons, where they happen, what happens in them, and cancellation policies.
+  - name: notifications
+    description: The emails Penny sends, and how people stop them.
 
 paths:
   /livez:
@@ -1449,6 +1451,65 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/unsubscribe/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: The signed token from an email's unsubscribe link.
+        schema:
+          type: string
+          maxLength: 500
+    get:
+      operationId: describeUnsubscribe
+      tags: [notifications]
+      summary: Say what an unsubscribe link would stop, without stopping it
+      description: |
+        Public: the signed link is the credential. Opening a link changes
+        nothing, so mail scanners that follow links cannot unsubscribe
+        anyone; the page asks, then POSTs.
+      security: []
+      responses:
+        "200":
+          description: What the link stops.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unsubscribe"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: unsubscribe
+      tags: [notifications]
+      summary: Stop one kind of email for one contact
+      description: |
+        Public, and also the RFC 8058 one-click target in each email's
+        List-Unsubscribe header. Receipts cannot be stopped: they are the
+        record of a payment.
+      security: []
+      requestBody:
+        description: Mail apps' one-click form (`List-Unsubscribe=One-Click`). Ignored.
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                List-Unsubscribe:
+                  type: string
+      responses:
+        "200":
+          description: Stopped.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unsubscribe"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -1691,7 +1752,7 @@ components:
     Workspace:
       type: object
       description: A team. The UI says "Team"; the API says workspace.
-      required: [id, name, timezone, memberCount]
+      required: [id, name, timezone, memberCount, reminderHours]
       properties:
         id:
           type: string
@@ -1708,6 +1769,11 @@ components:
           format: int32
           description: Active members. A team of one hides team features.
           example: 8
+        reminderHours:
+          type: integer
+          format: int32
+          description: How long before a lesson its contacts are reminded. 0 sends no reminders.
+          example: 24
 
     CreateWorkspaceRequest:
       type: object
@@ -1734,6 +1800,12 @@ components:
         timezone:
           type: string
           description: An IANA timezone name.
+        reminderHours:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 168
+          description: How long before a lesson to remind its contacts. 0 turns reminders off.
 
     MemberStatus:
       type: string
@@ -1926,6 +1998,9 @@ components:
           type: boolean
         receivesBilling:
           type: boolean
+        receivesPaymentReminders:
+          type: boolean
+          description: Reminders about overdue payment requests. Stopped from an email's link.
 
     ContactInput:
       type: object
@@ -1947,6 +2022,9 @@ components:
           type: boolean
           default: true
         receivesBilling:
+          type: boolean
+          default: true
+        receivesPaymentReminders:
           type: boolean
           default: true
 
@@ -2705,6 +2783,24 @@ components:
         url:
           type: string
           description: The private link. Treat it like a password.
+
+    EmailCategory:
+      type: string
+      description: A kind of email a contact may stop. Receipts are not one of them.
+      enum: [lesson_reminders, payment_reminders]
+
+    Unsubscribe:
+      type: object
+      required: [category, teamName, maskedEmail]
+      properties:
+        category:
+          $ref: "#/components/schemas/EmailCategory"
+        teamName:
+          type: string
+          description: Who sends these emails.
+        maskedEmail:
+          type: string
+          description: The address, partly hidden, such as p***@example.com.
 
     MembershipRole:
       type: string

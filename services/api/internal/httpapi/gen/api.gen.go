@@ -130,6 +130,24 @@ func (e ContactRelationship) Valid() bool {
 	}
 }
 
+// Defines values for EmailCategory.
+const (
+	EmailCategoryLessonReminders  EmailCategory = "lesson_reminders"
+	EmailCategoryPaymentReminders EmailCategory = "payment_reminders"
+)
+
+// Valid indicates whether the value is a known member of the EmailCategory enum.
+func (e EmailCategory) Valid() bool {
+	switch e {
+	case EmailCategoryLessonReminders:
+		return true
+	case EmailCategoryPaymentReminders:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GoalStatus.
 const (
 	GoalStatusAchieved GoalStatus = "achieved"
@@ -442,20 +460,24 @@ type Contact struct {
 	Name string `json:"name"`
 
 	// Phone Example: +65 9123 4567
-	Phone             *string             `json:"phone,omitempty"`
-	ReceivesBilling   bool                `json:"receivesBilling"`
-	ReceivesReminders bool                `json:"receivesReminders"`
-	Relationship      ContactRelationship `json:"relationship"`
+	Phone           *string `json:"phone,omitempty"`
+	ReceivesBilling bool    `json:"receivesBilling"`
+
+	// ReceivesPaymentReminders Reminders about overdue payment requests. Stopped from an email's link.
+	ReceivesPaymentReminders *bool               `json:"receivesPaymentReminders,omitempty"`
+	ReceivesReminders        bool                `json:"receivesReminders"`
+	Relationship             ContactRelationship `json:"relationship"`
 }
 
 // ContactInput defines model for ContactInput.
 type ContactInput struct {
-	Email             *openapi_types.Email `json:"email,omitempty"`
-	Name              string               `json:"name"`
-	Phone             *string              `json:"phone,omitempty"`
-	ReceivesBilling   *bool                `json:"receivesBilling,omitempty"`
-	ReceivesReminders *bool                `json:"receivesReminders,omitempty"`
-	Relationship      ContactRelationship  `json:"relationship"`
+	Email                    *openapi_types.Email `json:"email,omitempty"`
+	Name                     string               `json:"name"`
+	Phone                    *string              `json:"phone,omitempty"`
+	ReceivesBilling          *bool                `json:"receivesBilling,omitempty"`
+	ReceivesPaymentReminders *bool                `json:"receivesPaymentReminders,omitempty"`
+	ReceivesReminders        *bool                `json:"receivesReminders,omitempty"`
+	Relationship             ContactRelationship  `json:"relationship"`
 }
 
 // ContactRelationship defines model for ContactRelationship.
@@ -473,6 +495,9 @@ type CreateWorkspaceRequest struct {
 	// Example: Asia/Singapore
 	Timezone *string `json:"timezone,omitempty"`
 }
+
+// EmailCategory A kind of email a contact may stop. Receipts are not one of them.
+type EmailCategory string
 
 // EndSeriesRequest defines model for EndSeriesRequest.
 type EndSeriesRequest struct {
@@ -1000,6 +1025,18 @@ type TutorInput struct {
 // TutorRole The lead tutor bills the lesson (ADR 018).
 type TutorRole string
 
+// Unsubscribe defines model for Unsubscribe.
+type Unsubscribe struct {
+	// Category A kind of email a contact may stop. Receipts are not one of them.
+	Category EmailCategory `json:"category"`
+
+	// MaskedEmail The address, partly hidden, such as p***@example.com.
+	MaskedEmail string `json:"maskedEmail"`
+
+	// TeamName Who sends these emails.
+	TeamName string `json:"teamName"`
+}
+
 // UpdateMeRequest defines model for UpdateMeRequest.
 type UpdateMeRequest struct {
 	// DisplayName The name shown to the person's teams.
@@ -1017,6 +1054,9 @@ type UpdateMemberRequest struct {
 // UpdateWorkspaceRequest defines model for UpdateWorkspaceRequest.
 type UpdateWorkspaceRequest struct {
 	Name *string `json:"name,omitempty"`
+
+	// ReminderHours How long before a lesson to remind its contacts. 0 turns reminders off.
+	ReminderHours *int32 `json:"reminderHours,omitempty"`
 
 	// Timezone An IANA timezone name.
 	Timezone *string `json:"timezone,omitempty"`
@@ -1040,6 +1080,11 @@ type Workspace struct {
 
 	// Name Example: Koh Guitar Studio
 	Name string `json:"name"`
+
+	// ReminderHours How long before a lesson its contacts are reminded. 0 sends no reminders.
+	//
+	// Example: 24
+	ReminderHours int32 `json:"reminderHours"`
 
 	// Timezone An IANA timezone name. Lessons are shown in this timezone.
 	//
@@ -1082,6 +1127,11 @@ type StudentId = openapi_types.UUID
 
 // WorkspaceId defines model for WorkspaceId.
 type WorkspaceId = openapi_types.UUID
+
+// UnsubscribeFormdataBody defines parameters for Unsubscribe.
+type UnsubscribeFormdataBody struct {
+	ListUnsubscribe *string `form:"List-Unsubscribe,omitempty" json:"List-Unsubscribe,omitempty"`
+}
 
 // ListLessonsParams defines parameters for ListLessons.
 type ListLessonsParams struct {
@@ -1191,6 +1241,9 @@ type GetTimetableParams struct {
 
 // UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
 type UpdateMeJSONRequestBody = UpdateMeRequest
+
+// UnsubscribeFormdataRequestBody defines body for Unsubscribe for application/x-www-form-urlencoded ContentType.
+type UnsubscribeFormdataRequestBody UnsubscribeFormdataBody
 
 // CreateWorkspaceJSONRequestBody defines body for CreateWorkspace for application/json ContentType.
 type CreateWorkspaceJSONRequestBody = CreateWorkspaceRequest
@@ -1391,6 +1444,37 @@ type ClientInterface interface {
 	//
 	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
 	UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
+	//
+	// Public: the signed link is the credential. Opening a link changes
+	// nothing, so mail scanners that follow links cannot unsubscribe
+	// anyone; the page asks, then POSTs.
+	//
+	// Corresponds with GET /v1/unsubscribe/{token} (the `DescribeUnsubscribe` operationId).
+	DescribeUnsubscribe(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnsubscribeWithBody Stop one kind of email for one contact
+	//
+	// Public, and also the RFC 8058 one-click target in each email's
+	// List-Unsubscribe header. Receipts cannot be stopped: they are the
+	// record of a payment.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+	UnsubscribeWithBody(ctx context.Context, token string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UnsubscribeWithFormdataBody Stop one kind of email for one contact
+	//
+	// Public, and also the RFC 8058 one-click target in each email's
+	// List-Unsubscribe header. Receipts cannot be stopped: they are the
+	// record of a payment.
+	//
+	// Takes a body of the `application/x-www-form-urlencoded` content type.
+	//
+	// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+	UnsubscribeWithFormdataBody(ctx context.Context, token string, body UnsubscribeFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVersion Report the server's build version
 	//
@@ -2100,6 +2184,67 @@ func (c *Client) UpdateMeWithBody(ctx context.Context, contentType string, body 
 // Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
 func (c *Client) UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateMeRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
+//
+// Public: the signed link is the credential. Opening a link changes
+// nothing, so mail scanners that follow links cannot unsubscribe
+// anyone; the page asks, then POSTs.
+//
+// Corresponds with GET /v1/unsubscribe/{token} (the `DescribeUnsubscribe` operationId).
+func (c *Client) DescribeUnsubscribe(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDescribeUnsubscribeRequest(c.Server, token)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnsubscribeWithBody Stop one kind of email for one contact
+//
+// Public, and also the RFC 8058 one-click target in each email's
+// List-Unsubscribe header. Receipts cannot be stopped: they are the
+// record of a payment.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+func (c *Client) UnsubscribeWithBody(ctx context.Context, token string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnsubscribeRequestWithBody(c.Server, token, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UnsubscribeWithFormdataBody Stop one kind of email for one contact
+//
+// Public, and also the RFC 8058 one-click target in each email's
+// List-Unsubscribe header. Receipts cannot be stopped: they are the
+// record of a payment.
+//
+// Takes a body of the `application/x-www-form-urlencoded` content type.
+//
+// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+func (c *Client) UnsubscribeWithFormdataBody(ctx context.Context, token string, body UnsubscribeFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnsubscribeRequestWithFormdataBody(c.Server, token, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3510,6 +3655,87 @@ func NewUpdateMeRequestWithBody(server string, contentType string, body io.Reade
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDescribeUnsubscribeRequest constructs an http.Request for the DescribeUnsubscribe method
+func NewDescribeUnsubscribeRequest(server string, token string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "token", token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/unsubscribe/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUnsubscribeRequestWithFormdataBody calls the generic Unsubscribe builder with application/x-www-form-urlencoded body
+func NewUnsubscribeRequestWithFormdataBody(server string, token string, body UnsubscribeFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewUnsubscribeRequestWithBody(server, token, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewUnsubscribeRequestWithBody constructs an http.Request for the Unsubscribe method, with any body, and a specified content type
+func NewUnsubscribeRequestWithBody(server string, token string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "token", token, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/unsubscribe/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -5852,6 +6078,39 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
 	UpdateMeWithResponse(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error)
 
+	// DescribeUnsubscribeWithResponse Say what an unsubscribe link would stop, without stopping it
+	//
+	// Public: the signed link is the credential. Opening a link changes
+	// nothing, so mail scanners that follow links cannot unsubscribe
+	// anyone; the page asks, then POSTs.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /v1/unsubscribe/{token} (the `DescribeUnsubscribe` operationId).
+	DescribeUnsubscribeWithResponse(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*DescribeUnsubscribeResponse, error)
+
+	// UnsubscribeWithBodyWithResponse Stop one kind of email for one contact
+	//
+	// Public, and also the RFC 8058 one-click target in each email's
+	// List-Unsubscribe header. Receipts cannot be stopped: they are the
+	// record of a payment.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+	UnsubscribeWithBodyWithResponse(ctx context.Context, token string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
+
+	// UnsubscribeWithFormdataBodyWithResponse Stop one kind of email for one contact
+	//
+	// Public, and also the RFC 8058 one-click target in each email's
+	// List-Unsubscribe header. Receipts cannot be stopped: they are the
+	// record of a payment.
+	//
+	// Takes a body of the `application/x-www-form-urlencoded` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+	UnsubscribeWithFormdataBodyWithResponse(ctx context.Context, token string, body UnsubscribeFormdataRequestBody, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error)
+
 	// GetVersionWithResponse Report the server's build version
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -6790,6 +7049,116 @@ func (r UpdateMeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DescribeUnsubscribeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Unsubscribe
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DescribeUnsubscribeResponse) GetJSON200() *Unsubscribe {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r DescribeUnsubscribeResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r DescribeUnsubscribeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DescribeUnsubscribeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DescribeUnsubscribeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DescribeUnsubscribeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DescribeUnsubscribeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UnsubscribeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Unsubscribe
+	// ApplicationproblemJSON404 the response for an HTTP 404 `application/problem+json` response
+	ApplicationproblemJSON404 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UnsubscribeResponse) GetJSON200() *Unsubscribe {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON404 returns the response for an HTTP 404 `application/problem+json` response
+func (r UnsubscribeResponse) GetApplicationproblemJSON404() *Problem {
+	return r.ApplicationproblemJSON404
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UnsubscribeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UnsubscribeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UnsubscribeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnsubscribeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnsubscribeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -9967,6 +10336,57 @@ func (c *ClientWithResponses) UpdateMeWithResponse(ctx context.Context, body Upd
 	return ParseUpdateMeResponse(rsp)
 }
 
+// DescribeUnsubscribeWithResponse Say what an unsubscribe link would stop, without stopping it
+//
+// Public: the signed link is the credential. Opening a link changes
+// nothing, so mail scanners that follow links cannot unsubscribe
+// anyone; the page asks, then POSTs.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /v1/unsubscribe/{token} (the `DescribeUnsubscribe` operationId).
+func (c *ClientWithResponses) DescribeUnsubscribeWithResponse(ctx context.Context, token string, reqEditors ...RequestEditorFn) (*DescribeUnsubscribeResponse, error) {
+	rsp, err := c.DescribeUnsubscribe(ctx, token, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDescribeUnsubscribeResponse(rsp)
+}
+
+// UnsubscribeWithBodyWithResponse Stop one kind of email for one contact
+//
+// Public, and also the RFC 8058 one-click target in each email's
+// List-Unsubscribe header. Receipts cannot be stopped: they are the
+// record of a payment.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+func (c *ClientWithResponses) UnsubscribeWithBodyWithResponse(ctx context.Context, token string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
+	rsp, err := c.UnsubscribeWithBody(ctx, token, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnsubscribeResponse(rsp)
+}
+
+// UnsubscribeWithFormdataBodyWithResponse Stop one kind of email for one contact
+//
+// Public, and also the RFC 8058 one-click target in each email's
+// List-Unsubscribe header. Receipts cannot be stopped: they are the
+// record of a payment.
+//
+// Takes a body of the `application/x-www-form-urlencoded` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /v1/unsubscribe/{token} (the `Unsubscribe` operationId).
+func (c *ClientWithResponses) UnsubscribeWithFormdataBodyWithResponse(ctx context.Context, token string, body UnsubscribeFormdataRequestBody, reqEditors ...RequestEditorFn) (*UnsubscribeResponse, error) {
+	rsp, err := c.UnsubscribeWithFormdataBody(ctx, token, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnsubscribeResponse(rsp)
+}
+
 // GetVersionWithResponse Report the server's build version
 //
 // Returns a wrapper object for the known response body format(s).
@@ -11194,6 +11614,86 @@ func ParseUpdateMeResponse(rsp *http.Response) (*UpdateMeResponse, error) {
 			return nil, err
 		}
 		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDescribeUnsubscribeResponse parses an HTTP response from a DescribeUnsubscribeWithResponse call
+func ParseDescribeUnsubscribeResponse(rsp *http.Response) (*DescribeUnsubscribeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DescribeUnsubscribeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Unsubscribe
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUnsubscribeResponse parses an HTTP response from a UnsubscribeWithResponse call
+func ParseUnsubscribeResponse(rsp *http.Response) (*UnsubscribeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnsubscribeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Unsubscribe
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
 		var dest Problem
@@ -13671,6 +14171,12 @@ type ServerInterface interface {
 	// UpdateMe Change the signed-in person's name
 	// (PATCH /v1/me)
 	UpdateMe(w http.ResponseWriter, r *http.Request)
+	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
+	// (GET /v1/unsubscribe/{token})
+	DescribeUnsubscribe(w http.ResponseWriter, r *http.Request, token string)
+	// Unsubscribe Stop one kind of email for one contact
+	// (POST /v1/unsubscribe/{token})
+	Unsubscribe(w http.ResponseWriter, r *http.Request, token string)
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(w http.ResponseWriter, r *http.Request)
@@ -13895,6 +14401,58 @@ func (siw *ServerInterfaceWrapper) UpdateMe(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DescribeUnsubscribe operation middleware
+func (siw *ServerInterfaceWrapper) DescribeUnsubscribe(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", r.PathValue("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DescribeUnsubscribe(w, r, token)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Unsubscribe operation middleware
+func (siw *ServerInterfaceWrapper) Unsubscribe(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", r.PathValue("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "token", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Unsubscribe(w, r, token)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -15824,6 +16382,8 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed", wrapper.RevokeCalendarFeed)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/workspaces/{workspaceId}/members/{memberId}/calendar-feed", wrapper.CreateCalendarFeed)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/calendar/{token}", wrapper.GetCalendarFeed)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/unsubscribe/{token}", wrapper.DescribeUnsubscribe)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/v1/unsubscribe/{token}", wrapper.Unsubscribe)
 
 	return m
 }
@@ -16135,6 +16695,117 @@ type UpdateMedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateMedefaultApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DescribeUnsubscribeRequestObject struct {
+	Token string `json:"token"`
+}
+
+type DescribeUnsubscribeResponseObject interface {
+	VisitDescribeUnsubscribeResponse(w http.ResponseWriter) error
+}
+
+type DescribeUnsubscribe200JSONResponse Unsubscribe
+
+func (response DescribeUnsubscribe200JSONResponse) VisitDescribeUnsubscribeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DescribeUnsubscribe404ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DescribeUnsubscribe404ApplicationProblemPlusJSONResponse) VisitDescribeUnsubscribeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DescribeUnsubscribedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DescribeUnsubscribedefaultApplicationProblemPlusJSONResponse) VisitDescribeUnsubscribeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnsubscribeRequestObject struct {
+	Token string `json:"token"`
+	Body  *UnsubscribeFormdataRequestBody
+}
+
+type UnsubscribeResponseObject interface {
+	VisitUnsubscribeResponse(w http.ResponseWriter) error
+}
+
+type Unsubscribe200JSONResponse Unsubscribe
+
+func (response Unsubscribe200JSONResponse) VisitUnsubscribeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Unsubscribe404ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response Unsubscribe404ApplicationProblemPlusJSONResponse) VisitUnsubscribeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UnsubscribedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UnsubscribedefaultApplicationProblemPlusJSONResponse) VisitUnsubscribeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -20075,6 +20746,12 @@ type StrictServerInterface interface {
 	// UpdateMe Change the signed-in person's name
 	// (PATCH /v1/me)
 	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
+	// DescribeUnsubscribe Say what an unsubscribe link would stop, without stopping it
+	// (GET /v1/unsubscribe/{token})
+	DescribeUnsubscribe(ctx context.Context, request DescribeUnsubscribeRequestObject) (DescribeUnsubscribeResponseObject, error)
+	// Unsubscribe Stop one kind of email for one contact
+	// (POST /v1/unsubscribe/{token})
+	Unsubscribe(ctx context.Context, request UnsubscribeRequestObject) (UnsubscribeResponseObject, error)
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(ctx context.Context, request GetVersionRequestObject) (GetVersionResponseObject, error)
@@ -20388,6 +21065,69 @@ func (sh *strictHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
 		if err := validResponse.VisitUpdateMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DescribeUnsubscribe operation middleware
+func (sh *strictHandler) DescribeUnsubscribe(w http.ResponseWriter, r *http.Request, token string) {
+	var request DescribeUnsubscribeRequestObject
+
+	request.Token = token
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DescribeUnsubscribe(ctx, request.(DescribeUnsubscribeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DescribeUnsubscribe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DescribeUnsubscribeResponseObject); ok {
+		if err := validResponse.VisitDescribeUnsubscribeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Unsubscribe operation middleware
+func (sh *strictHandler) Unsubscribe(w http.ResponseWriter, r *http.Request, token string) {
+	var request UnsubscribeRequestObject
+
+	request.Token = token
+
+	if err := r.ParseForm(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode formdata: %w", err))
+		return
+	}
+	var body UnsubscribeFormdataRequestBody
+	if err := runtime.BindForm(&body, r.Form, nil, nil); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't bind formdata: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Unsubscribe(ctx, request.(UnsubscribeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Unsubscribe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UnsubscribeResponseObject); ok {
+		if err := validResponse.VisitUnsubscribeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -21688,177 +22428,188 @@ func (sh *strictHandler) GetTimetable(w http.ResponseWriter, r *http.Request, wo
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"tDGoNl6NVazvePXh6v8PAA==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

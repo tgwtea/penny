@@ -60,14 +60,15 @@ SELECT count(*)::int AS found FROM students
 WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]) AND archived_at IS NULL;
 
 -- name: CreateContact :one
-INSERT INTO student_contacts (workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing)
-VALUES (@workspace_id, @student_id, @name, sqlc.narg('email'), sqlc.narg('phone'), @relationship, @receives_reminders, @receives_billing)
+INSERT INTO student_contacts (workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, receives_payment_reminders)
+VALUES (@workspace_id, @student_id, @name, sqlc.narg('email'), sqlc.narg('phone'), @relationship, @receives_reminders, @receives_billing, @receives_payment_reminders)
 RETURNING *;
 
 -- name: UpdateContact :one
 UPDATE student_contacts
 SET name = @name, email = sqlc.narg('email'), phone = sqlc.narg('phone'), relationship = @relationship,
-    receives_reminders = @receives_reminders, receives_billing = @receives_billing, updated_at = now()
+    receives_reminders = @receives_reminders, receives_billing = @receives_billing,
+    receives_payment_reminders = @receives_payment_reminders, updated_at = now()
 WHERE workspace_id = @workspace_id AND student_id = @student_id AND id = @id
 RETURNING *;
 
@@ -108,3 +109,27 @@ SELECT EXISTS (
     JOIN lesson_participants p ON p.student_id = g.student_id AND p.workspace_id = g.workspace_id
     WHERE g.workspace_id = @workspace_id AND g.id = @goal_id AND p.lesson_id = @lesson_id
 ) AS belongs;
+
+-- name: GetContact :one
+SELECT c.*, s.name AS student_name FROM student_contacts c
+JOIN students s ON s.workspace_id = c.workspace_id AND s.id = c.student_id
+WHERE c.workspace_id = @workspace_id AND c.id = @id;
+
+-- name: StopLessonReminders :exec
+UPDATE student_contacts SET receives_reminders = false, updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @id;
+
+-- name: StopPaymentReminders :exec
+UPDATE student_contacts SET receives_payment_reminders = false, updated_at = now()
+WHERE workspace_id = @workspace_id AND id = @id;
+
+-- name: ContactsToRemind :many
+-- Who gets a lesson's reminder: contacts with an email of every student in
+-- it who still want reminders.
+SELECT c.id, c.name, c.email, s.name AS student_name
+FROM lesson_participants p
+JOIN students s ON s.workspace_id = p.workspace_id AND s.id = p.student_id
+JOIN student_contacts c ON c.workspace_id = p.workspace_id AND c.student_id = p.student_id
+WHERE p.workspace_id = @workspace_id AND p.lesson_id = @lesson_id
+  AND c.receives_reminders AND c.email IS NOT NULL
+ORDER BY lower(s.name), c.created_at, c.id;

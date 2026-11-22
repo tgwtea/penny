@@ -202,7 +202,8 @@ func (s *Service) UpdateContact(ctx context.Context, userID, workspaceID, studen
 		row, err := st.q.UpdateContact(ctx, schedulingsql.UpdateContactParams{
 			Name: in.Name, Email: in.Email, Phone: in.Phone, Relationship: schedulingsql.ContactRelationship(in.Relationship),
 			ReceivesReminders: in.ReceivesReminders, ReceivesBilling: in.ReceivesBilling,
-			WorkspaceID: workspaceID, StudentID: studentID, ID: contactID,
+			ReceivesPaymentReminders: in.ReceivesPaymentReminders,
+			WorkspaceID:              workspaceID, StudentID: studentID, ID: contactID,
 		})
 		if err != nil {
 			return readErr(err, "contact")
@@ -385,6 +386,7 @@ func (st store) createContact(ctx context.Context, studentID uuid.UUID, in Conta
 		WorkspaceID: st.workspaceID, StudentID: studentID, Name: in.Name, Email: in.Email, Phone: in.Phone,
 		Relationship:      schedulingsql.ContactRelationship(in.Relationship),
 		ReceivesReminders: in.ReceivesReminders, ReceivesBilling: in.ReceivesBilling,
+		ReceivesPaymentReminders: in.ReceivesPaymentReminders,
 	})
 	if err != nil {
 		return Contact{}, fmt.Errorf("create contact: %w", err)

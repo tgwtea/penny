@@ -26,6 +26,8 @@ vars:
   # The Firebase Auth emulator in compose.yaml and its demo project.
   EMULATOR_HOST: localhost:9099
   EMULATOR_PROJECT: demo-penny
+  # Signs unsubscribe links locally. Real environments use a sealed secret.
+  DEV_UNSUBSCRIBE_SECRET: local-development-unsubscribe-secret-not-for-production
 
 tasks:
   default:
@@ -84,19 +86,22 @@ tasks:
       # Sign-in through the local Firebase Auth emulator (compose.yaml).
       PENNY_FIREBASE_PROJECT_ID: '{{.PENNY_FIREBASE_PROJECT_ID | default .EMULATOR_PROJECT}}'
       PENNY_FIREBASE_AUTH_EMULATOR_HOST: '{{.PENNY_FIREBASE_AUTH_EMULATOR_HOST | default .EMULATOR_HOST}}'
+      PENNY_UNSUBSCRIBE_SECRET: '{{.PENNY_UNSUBSCRIBE_SECRET | default .DEV_UNSUBSCRIBE_SECRET}}'
       # The web client under `task run:client:web` (port 5173).
       PENNY_CORS_ORIGINS: '{{.PENNY_CORS_ORIGINS | default "http://localhost:5173"}}'
     cmds:
       - go run ./cmd/api
 
   run:worker:
-    desc: Migrate the local database, then run background jobs (metrics on http://localhost:9091)
+    desc: Migrate the local database, then run background jobs; emails land in Mailpit (http://localhost:8025)
     dir: "{{.API_DIR}}"
     deps: [db:migrate]
     env:
       PENNY_DATABASE_URL: '{{.PENNY_DATABASE_URL | default .LOCAL_DATABASE_URL}}'
       PENNY_LOG_FORMAT: text
       PENNY_LOG_LEVEL: debug
+      PENNY_UNSUBSCRIBE_SECRET: '{{.PENNY_UNSUBSCRIBE_SECRET | default .DEV_UNSUBSCRIBE_SECRET}}'
+      PENNY_MAIL_FROM: Penny <reminders@penny.invalid>
     cmds:
       - go run ./cmd/worker
 
@@ -201,6 +206,7 @@ tasks:
     dir: "{{.API_DIR}}"
     env:
       PENNY_TEST_FIREBASE_AUTH_EMULATOR_HOST: '{{.PENNY_TEST_FIREBASE_AUTH_EMULATOR_HOST | default ""}}'
+      PENNY_TEST_MAILPIT_URL: '{{.PENNY_TEST_MAILPIT_URL | default ""}}'
     cmds:
       - go test -race ./...
 

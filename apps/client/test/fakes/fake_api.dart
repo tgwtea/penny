@@ -132,6 +132,7 @@ class FakeApi {
     'id': id,
     'name': teams[id]!.name,
     'timezone': 'Asia/Singapore',
+    'reminderHours': 24,
     'memberCount': teams[id]!.members
         .where((m) => m['status'] == 'active')
         .length,
@@ -310,6 +311,7 @@ class FakeApi {
       'id': teamId,
       'name': teamName,
       'timezone': 'Asia/Singapore',
+      'reminderHours': 24,
       'memberCount': memberCount,
     },
     'role': role,

@@ -721,18 +721,19 @@ type Student struct {
 
 // Who gets a student's reminders and receipts: parents, guardians, or the student.
 type StudentContact struct {
-	ID                uuid.UUID
-	WorkspaceID       uuid.UUID
-	StudentID         uuid.UUID
-	Name              string
-	Email             *string
-	Phone             *string
-	Relationship      ContactRelationship
-	ReceivesReminders bool
-	ReceivesBilling   bool
-	UserID            *uuid.UUID
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	ID                       uuid.UUID
+	WorkspaceID              uuid.UUID
+	StudentID                uuid.UUID
+	Name                     string
+	Email                    *string
+	Phone                    *string
+	Relationship             ContactRelationship
+	ReceivesReminders        bool
+	ReceivesBilling          bool
+	UserID                   *uuid.UUID
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	ReceivesPaymentReminders bool
 }
 
 type StudentGoal struct {

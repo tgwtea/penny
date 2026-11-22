@@ -15,13 +15,17 @@ func env(vars map[string]string) LookupFunc {
 	}
 }
 
-const testDatabaseURL = "postgres://penny:secret@localhost:5432/penny"
+const (
+	testDatabaseURL = "postgres://penny:secret@localhost:5432/penny"
+	testSecret      = "0123456789abcdef0123456789abcdef"
+)
 
 // minimalAPI is the smallest valid API environment, plus extra.
 func minimalAPI(extra map[string]string) LookupFunc {
 	vars := map[string]string{
 		"PENNY_DATABASE_URL":        testDatabaseURL,
 		"PENNY_FIREBASE_PROJECT_ID": "penny-dev",
+		"PENNY_UNSUBSCRIBE_SECRET":  testSecret,
 	}
 	for k, v := range extra {
 		vars[k] = v
@@ -58,9 +62,14 @@ func TestLoadAPIReadsEveryVariable(t *testing.T) {
 		"PENNY_LOG_LEVEL":           "debug",
 		"PENNY_LOG_FORMAT":          "TEXT",
 		"PENNY_FIREBASE_PROJECT_ID": "penny-prod",
+		"PENNY_UNSUBSCRIBE_SECRET":  testSecret,
+		"PENNY_APP_URL":             "https://app.example.com",
 	}))
 	if err != nil {
 		t.Fatalf("LoadAPI: %v", err)
+	}
+	if cfg.AppURL != "https://app.example.com" || cfg.UnsubscribeSecret != testSecret {
+		t.Errorf("AppURL, secret = %q, %q", cfg.AppURL, cfg.UnsubscribeSecret)
 	}
 	want := []string{"https://app.example.com", "http://localhost:5173"}
 	if !slices.Equal(cfg.CORSOrigins, want) {
@@ -233,7 +242,7 @@ func TestPublicURL(t *testing.T) {
 }
 
 func TestLoadWorker(t *testing.T) {
-	cfg, err := LoadWorker(env(map[string]string{"PENNY_DATABASE_URL": testDatabaseURL}))
+	cfg, err := LoadWorker(env(map[string]string{"PENNY_DATABASE_URL": testDatabaseURL, "PENNY_UNSUBSCRIBE_SECRET": testSecret}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,5 +251,34 @@ func TestLoadWorker(t *testing.T) {
 	}
 	if _, err := LoadWorker(env(nil)); err == nil {
 		t.Error("LoadWorker without a database succeeded")
+	}
+}
+
+func TestMailSettings(t *testing.T) {
+	base := map[string]string{"PENNY_DATABASE_URL": testDatabaseURL, "PENNY_UNSUBSCRIBE_SECRET": testSecret}
+	cfg, err := LoadWorker(env(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Mail.Provider != "smtp" || cfg.Mail.SMTPAddr != "localhost:1025" || cfg.Mail.FromEmail != "no-reply@penny.invalid" {
+		t.Errorf("default mail = %+v, want SMTP to Mailpit", cfg.Mail)
+	}
+
+	postmark := map[string]string{"PENNY_MAIL_PROVIDER": "postmark", "PENNY_MAIL_FROM": "Koh Guitar Studio <hello@kohguitar.example>"}
+	for k, v := range base {
+		postmark[k] = v
+	}
+	if _, err := LoadWorker(env(postmark)); err == nil || !strings.Contains(err.Error(), "PENNY_POSTMARK_TOKEN") {
+		t.Errorf("postmark without a token = %v, want it refused", err)
+	}
+	postmark["PENNY_POSTMARK_TOKEN"] = "server-token"
+	cfg, err = LoadWorker(env(postmark))
+	if err != nil || cfg.Mail.FromName != "Koh Guitar Studio" {
+		t.Errorf("postmark = %+v, %v", cfg.Mail, err)
+	}
+
+	short := map[string]string{"PENNY_DATABASE_URL": testDatabaseURL, "PENNY_UNSUBSCRIBE_SECRET": "short"}
+	if _, err := LoadWorker(env(short)); err == nil || strings.Contains(err.Error(), "short") {
+		t.Errorf("a short secret = %v, want refused without echoing it", err)
 	}
 }

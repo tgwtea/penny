@@ -31,6 +31,19 @@ The migrate Job is a Sync hook rather than the PreSync hook the architecture des
 
 The image also carries the `worker` binary (`services/api/cmd/worker`), which books recurring lessons ahead and, from Phase 7, sends reminders. It needs a Deployment of its own (one replica is enough; River elects a leader if there are more), with the same database credentials as the API and probes on `:9091/livez` and `:9091/readyz`. That manifest is part of the deployment work and is not in `base/` yet.
 
+### Settings added since the manifests were written
+
+The binaries refuse to start without their required settings, listing every one missing. The base manifests predate these:
+
+| Variable | Binary | Notes |
+| --- | --- | --- |
+| `PENNY_PUBLIC_URL` | api, worker | The API's public address (`https://api.<domain>`), for calendar-feed and unsubscribe links |
+| `PENNY_APP_URL` | api, worker | The web client's address (`https://app.<domain>`), for links in emails |
+| `PENNY_UNSUBSCRIBE_SECRET` | api, worker | Required, at least 32 characters, the same value in both. Signs unsubscribe links; rotating it breaks links in emails already sent. Seal it like the database passwords |
+| `PENNY_MAIL_PROVIDER` | worker | `postmark` outside local development (ADR 014) |
+| `PENNY_POSTMARK_TOKEN` | worker | The Postmark server token. Sealed |
+| `PENNY_MAIL_FROM` | worker | The sender, on the domain with SPF, DKIM and DMARC set (build plan, Phase 7) |
+
 ## Cluster prerequisites
 
 Installed once per cluster, outside this repository:

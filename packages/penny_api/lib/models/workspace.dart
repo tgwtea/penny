@@ -12,6 +12,7 @@ class Workspace {
     required this.name,
     required this.timezone,
     required this.memberCount,
+    required this.reminderHours,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Workspace].
@@ -24,6 +25,7 @@ class Workspace {
         name: json['name'] as String,
         timezone: json['timezone'] as String,
         memberCount: json['memberCount'] as int,
+        reminderHours: json['reminderHours'] as int,
       ),
     );
   }
@@ -50,6 +52,11 @@ class Workspace {
   /// Example: `8`
   final int memberCount;
 
+  /// How long before a lesson its contacts are reminded. 0 sends no
+  /// reminders.
+  /// Example: `24`
+  final int reminderHours;
+
   /// Converts a [Workspace] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -57,11 +64,13 @@ class Workspace {
       'name': name,
       'timezone': timezone,
       'memberCount': memberCount,
+      'reminderHours': reminderHours,
     };
   }
 
   @override
-  int get hashCode => Object.hashAll([id, name, timezone, memberCount]);
+  int get hashCode =>
+      Object.hashAll([id, name, timezone, memberCount, reminderHours]);
 
   @override
   bool operator ==(Object other) {
@@ -70,6 +79,7 @@ class Workspace {
         id == other.id &&
         name == other.name &&
         timezone == other.timezone &&
-        memberCount == other.memberCount;
+        memberCount == other.memberCount &&
+        reminderHours == other.reminderHours;
   }
 }

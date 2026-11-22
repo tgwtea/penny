@@ -27,9 +27,12 @@ func (s *server) GetWorkspace(ctx context.Context, req gen.GetWorkspaceRequestOb
 }
 
 func (s *server) UpdateWorkspace(ctx context.Context, req gen.UpdateWorkspaceRequestObject) (gen.UpdateWorkspaceResponseObject, error) {
-	w, err := s.Teams.Update(ctx, userFrom(ctx).ID, req.WorkspaceId, workspace.Changes{
-		Name: req.Body.Name, Timezone: req.Body.Timezone,
-	})
+	c := workspace.Changes{Name: req.Body.Name, Timezone: req.Body.Timezone}
+	if req.Body.ReminderHours != nil {
+		h := int(*req.Body.ReminderHours)
+		c.ReminderHours = &h
+	}
+	w, err := s.Teams.Update(ctx, userFrom(ctx).ID, req.WorkspaceId, c)
 	if err != nil {
 		return nil, err
 	}

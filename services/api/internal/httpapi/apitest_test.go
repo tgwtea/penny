@@ -17,8 +17,10 @@ import (
 	"github.com/tgwtea/penny/services/api/internal/httpapi/gen"
 	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/identity/identitytest"
+	"github.com/tgwtea/penny/services/api/internal/notify/notifytest"
 	"github.com/tgwtea/penny/services/api/internal/platform/buildinfo"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
+	"github.com/tgwtea/penny/services/api/internal/platform/queue"
 	"github.com/tgwtea/penny/services/api/internal/platform/schema/schematest"
 )
 
@@ -33,8 +35,12 @@ type apiTest struct {
 	Pool     *pgxpool.Pool
 	Verifier *identitytest.Verifier
 	Clock    *clock.Fixed
+	Mailer   *notifytest.Mailer
 	services *app.Services
 }
+
+// testSecret signs unsubscribe links in API tests.
+const testSecret = "test-unsubscribe-secret-0123456789abcdef"
 
 // testNow is the fixed "now" of API tests: Thursday 19 November 2026,
 // 16:20 in Singapore, the moment the designs show.
@@ -46,7 +52,15 @@ func newAPITest(t *testing.T) *apiTest {
 	verifier := identitytest.NewVerifier()
 	clk := clock.NewFixed(testNow)
 
-	services, err := app.New(app.Deps{Pool: pool, Verifier: verifier, Clock: clk, PublicURL: "http://localhost:8080"})
+	inserter, err := queue.NewInserter(pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mailer := &notifytest.Mailer{}
+	services, err := app.New(app.Deps{
+		Pool: pool, Verifier: verifier, Clock: clk, PublicURL: "http://localhost:8080", AppURL: "http://localhost:5173",
+		Queue: inserter, Mailer: mailer, UnsubscribeSecret: testSecret,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +80,7 @@ func newAPITest(t *testing.T) *apiTest {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &apiTest{t: t, Client: client, URL: srv.URL, Pool: pool, Verifier: verifier, Clock: clk, services: services}
+	return &apiTest{t: t, Client: client, URL: srv.URL, Pool: pool, Verifier: verifier, Clock: clk, Mailer: mailer, services: services}
 }
 
 var tokenSeq atomic.Int64

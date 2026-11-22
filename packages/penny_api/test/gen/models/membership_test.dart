@@ -12,6 +12,7 @@ void main() {
           name: 'Koh Guitar Studio',
           timezone: 'Asia/Singapore',
           memberCount: 8,
+          reminderHours: 24,
         ),
         role: MembershipRole.owner,
         capabilities: <Capability>[Capability.viewOwnLessons],

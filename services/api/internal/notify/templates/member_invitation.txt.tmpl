@@ -1,0 +1,10 @@
+{{define "subject"}}{{.InviterName}} added you to {{.TeamName}} on Penny{{end}}
+{{define "text"}}Hi {{.InviteeName}},
+
+{{.InviterName}} added you to {{.TeamName}} as a {{.Role}}. Penny keeps the team's lessons, timetable and payments in order.
+
+Sign in or create an account with this email address, {{.Email}}, to see your lessons:
+{{.SignInURL}}
+
+{{.TeamName}}, via Penny.
+{{end}}

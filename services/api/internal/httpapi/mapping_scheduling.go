@@ -38,6 +38,7 @@ func toContact(c scheduling.Contact) gen.Contact {
 	out := gen.Contact{
 		Id: c.ID, Name: c.Name, Phone: c.Phone, Relationship: gen.ContactRelationship(c.Relationship),
 		ReceivesReminders: c.ReceivesReminders, ReceivesBilling: c.ReceivesBilling,
+		ReceivesPaymentReminders: &c.ReceivesPaymentReminders,
 	}
 	if c.Email != nil {
 		e := openapi_types.Email(*c.Email)
@@ -49,8 +50,9 @@ func toContact(c scheduling.Contact) gen.Contact {
 func fromContactInput(c gen.ContactInput) scheduling.ContactInput {
 	in := scheduling.ContactInput{
 		Name: c.Name, Phone: c.Phone, Relationship: string(c.Relationship),
-		ReceivesReminders: c.ReceivesReminders == nil || *c.ReceivesReminders,
-		ReceivesBilling:   c.ReceivesBilling == nil || *c.ReceivesBilling,
+		ReceivesReminders:        c.ReceivesReminders == nil || *c.ReceivesReminders,
+		ReceivesBilling:          c.ReceivesBilling == nil || *c.ReceivesBilling,
+		ReceivesPaymentReminders: c.ReceivesPaymentReminders == nil || *c.ReceivesPaymentReminders,
 	}
 	if c.Email != nil {
 		e := string(*c.Email)

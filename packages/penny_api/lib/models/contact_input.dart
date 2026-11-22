@@ -12,6 +12,7 @@ class ContactInput {
     this.phone,
     this.receivesReminders = true,
     this.receivesBilling = true,
+    this.receivesPaymentReminders = true,
   }) {
     name.validate(minLength: 1, maxLength: 100);
     phone?.validate(maxLength: 30);
@@ -31,6 +32,8 @@ class ContactInput {
         ),
         receivesReminders: (json['receivesReminders'] as bool?) ?? true,
         receivesBilling: (json['receivesBilling'] as bool?) ?? true,
+        receivesPaymentReminders:
+            (json['receivesPaymentReminders'] as bool?) ?? true,
       ),
     );
   }
@@ -50,6 +53,7 @@ class ContactInput {
   final ContactRelationship relationship;
   final bool receivesReminders;
   final bool receivesBilling;
+  final bool receivesPaymentReminders;
 
   /// Converts a [ContactInput] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
@@ -60,6 +64,7 @@ class ContactInput {
       'relationship': relationship.toJson(),
       'receivesReminders': receivesReminders,
       'receivesBilling': receivesBilling,
+      'receivesPaymentReminders': receivesPaymentReminders,
     };
   }
 
@@ -71,6 +76,7 @@ class ContactInput {
     relationship,
     receivesReminders,
     receivesBilling,
+    receivesPaymentReminders,
   ]);
 
   @override
@@ -82,6 +88,7 @@ class ContactInput {
         phone == other.phone &&
         relationship == other.relationship &&
         receivesReminders == other.receivesReminders &&
-        receivesBilling == other.receivesBilling;
+        receivesBilling == other.receivesBilling &&
+        receivesPaymentReminders == other.receivesPaymentReminders;
   }
 }

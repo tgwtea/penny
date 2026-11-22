@@ -59,6 +59,8 @@ PENNY_ADMIN_ADDR=":${admin_port}" \
 PENNY_CORS_ORIGINS="http://localhost:${web_port}" \
 PENNY_FIREBASE_PROJECT_ID=demo-penny \
 PENNY_FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 \
+PENNY_UNSUBSCRIBE_SECRET=end-to-end-unsubscribe-secret-not-for-production \
+PENNY_APP_URL="http://localhost:${web_port}" \
   "$work/api" >"$work/api.log" 2>&1 &
 pids+=($!)
 
