@@ -5,7 +5,7 @@ Each row is one artboard in the [Penny key screens](https://claude.ai/artifact/V
 | Artboard | Width | Route | Who sees it | State shown | Components used |
 | --- | --- | --- | --- | --- | --- |
 | Sign in | 390 | `/sign-in` | Signed out | Populated | Button, TextField |
-| Onboarding: solo or team | 390 | `/onboarding/team` | New user | "I run a team" selected | Button, TextField, option rows (radio) |
+| Onboarding: solo or team | 390 | `/onboarding` | New user | "I run a team" selected | Button, TextField, OptionRow |
 | Today, owner (`Main`) | 390 | `/today` | Everyone | Populated, with now line, clash and overdue notices | LessonRow, StatusBadge, SegmentedControl, Notice, BottomNav |
 | Today, empty (solo tutor) | 390 | `/today` | Solo tutor | Empty | EmptyState, BottomNav (4 items) |
 | Today, loading and error | 390 | `/today` | Everyone | Loading skeleton, then refresh-failed notice | Skeleton rows, Notice |
@@ -25,7 +25,7 @@ Each row is one artboard in the [Penny key screens](https://claude.ai/artifact/V
 The design track's definition of done is every key screen in all five states at both widths. This first pass covers each screen once, plus the empty, loading, error and no-permission states on Today and Team. Still to draw, before or during Phase 2:
 
 - Laptop versions of Today, Students, Lesson details (as a side panel) and Payment request.
-- Phone versions of Team list and Payments.
+- Phone version of Payments. (Team list at phone width, onboarding's single-choice question and the add-teacher sheet were designed while building Phase 4, from PennyListRow, PennyOptionRow and PennySheet.)
 - Empty, loading and error states for Calendar, Students and Payments.
 - Create and edit flows: add lesson (sheet on phone, panel on laptop), reschedule, cancel with make-up, record payment, add student.
 - Month view.

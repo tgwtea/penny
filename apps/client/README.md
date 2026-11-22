@@ -22,6 +22,12 @@ The web image is built once and promoted between environments, so it reads the A
 
 Every session state has one page (`app/routes.dart`, `redirectFor`): loading or a failed load, signed out, email not verified, signed in. In `http` mode `FirebaseIdentityProvider` (the only Firebase code, in `features/auth/data/`) signs people in and `HttpSessionRepository` turns that plus `GET /v1/me` into the session; `ApiConnection` (`data/`) attaches a fresh ID token to every API call. In `demo` mode the sign-in page offers the demo personas instead, and the shell shows "Viewing as".
 
+## Teams
+
+Someone signed in without a team is sent to `/onboarding`: "Do you teach on your own, or run a team?". Either answer creates a team they own; a team of one hides every team feature, and its owner reaches the team list from the Account page. `/team` (owners only) lists members and adds teachers by email: they stay "Invited" until they sign in to Penny with that address, then join automatically. People in several teams switch from the sidebar's team name or the Account page.
+
+`TeamRepository` (`features/team/domain/`) has `HttpTeamRepository` and, in `lib/demo/`, `DemoTeamRepository` over `DemoStore`, the in-memory data every demo repository shares. Both keep the server's rules (owners first, no duplicate emails, never a team without an owner); `test/contract/team_repository_contract.dart` checks them against both.
+
 ## Structure
 
 ```text
@@ -49,7 +55,7 @@ lib/
 
 ## Navigation and permissions
 
-Routes live in `app/routes.dart`. The guard (`redirectFor`) sends signed-out people to sign-in and back again afterwards; it is a pure function with its own tests. Screens needing a capability are wrapped in `CapabilityGate`, which shows "Only the team owner can see this" rather than bouncing. Both are for clarity only: the server refuses unauthorised requests regardless.
+Routes live in `app/routes.dart`. The guard (`redirectFor`) sends each session state to its one page (loading, sign-in, "Check your email", onboarding) and back to where the person was headed afterwards; it is a pure function with its own tests. Screens needing a capability are wrapped in `CapabilityGate`, which shows "Only the team owner can see this" rather than bouncing. Both are for clarity only: the server refuses unauthorised requests regardless.
 
 Under 600 px wide the shell has a top bar and bottom navigation; from 600 px a sidebar. A team of one hides every team feature.
 
@@ -64,6 +70,6 @@ The app icon is pixel art generated from `tools/brand/penny_icon.py`; see `asset
 | Folder | What it tests |
 | --- | --- |
 | `test/contract/` | Each repository contract, against the demo and the HTTP implementation (the latter on `test/fakes/`) |
-| `test/app/` | The router guard, and the whole app driven as a person would, at phone and laptop widths |
+| `test/app/`, `test/features/` | The router guard, and the whole app driven as a person would, at phone and laptop widths (`test/support/pump_app.dart` starts it on demo data) |
 | `test/data/` | HTTP plumbing and repositories against a fake API and identity provider |
 | `integration_test/` | End to end in a real browser against the real API, a fresh database and the Auth emulator: `task test:e2e` (`tools/e2e/run.sh`) |

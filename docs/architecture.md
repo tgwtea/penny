@@ -593,14 +593,16 @@ Code done on 22 Nov 2026 for web, against the Firebase Auth emulator; mobile bui
 
 ### Phase 4: Teams, roles, onboarding
 
-- [ ] Migrations: `workspaces`, `workspace_memberships`, role enum including reserved values
-- [ ] `authz` package with the capability matrix and table tests; capabilities returned by `/v1/me`
-- [ ] Onboarding step "Do you teach on your own, or run a team?" (PRD R6); creates the team
-- [ ] Team list and "Add teacher" for owners (PRD R5): in-memory in demo mode, a membership row in HTTP mode (invitations later)
-- [ ] `SessionController`, capability-driven guards and navigation; team UI hidden for a team of one
-- [ ] Widget tests for visibility rules per persona; API tests that a teacher gets 403 on owner endpoints
+- [x] Migrations: `workspaces`, `workspace_memberships`, role enum including reserved values
+- [x] `authz` package with the capability matrix and table tests; capabilities returned by `/v1/me`
+- [x] Onboarding step "Do you teach on your own, or run a team?" (PRD R6); creates the team
+- [x] Team list and "Add teacher" for owners (PRD R5): in-memory in demo mode, a membership row in HTTP mode (invitations later)
+- [x] `SessionController`, capability-driven guards and navigation; team UI hidden for a team of one
+- [x] Widget tests for visibility rules per persona; API tests that a teacher gets 403 on owner endpoints
 
 Done when: owner, teacher and solo personas see exactly what the PRD describes, in both modes, and typing an owner URL as a teacher redirects in the client and is refused by the server.
+
+Code done on 22 Nov 2026. An added teacher is an `invited` membership matched by email: it becomes active the first time someone signs in with that verified address, so invitation emails (Phase 7) only need to tell them. Memberships keep copies of the person's name and email, kept in step by the `account` module, because the workspace module does not read `users`. Team changes are written to the `audit_events` log, created here rather than in Phase 5. A person who signs up without a team is sent to `/onboarding`; a team of one reaches its team list from the Account page. The demo gained a fourth persona, new to Penny, to show onboarding, and a `DemoStore` that every demo repository shares. `task test:e2e` covers an owner adding a teacher who then signs up and joins.
 
 ### Phase 5: Students, lessons, lesson items
 
