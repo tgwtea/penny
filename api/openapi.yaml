@@ -90,6 +90,10 @@ paths:
       operationId: getMe
       tags: [identity]
       summary: Get the signed-in person, their teams and what they may do in each
+      description: |
+        The first call after signing in creates Penny's record of the person,
+        keyed by their identity-provider ID. Later calls keep its email in
+        step with the provider. The email address must be verified.
       responses:
         "200":
           description: The signed-in person.
@@ -98,6 +102,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/Me"
         "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    patch:
+      operationId: updateMe
+      tags: [identity]
+      summary: Change the signed-in person's name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: The updated person.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    delete:
+      operationId: deleteMe
+      tags: [identity]
+      summary: Delete the signed-in person's account
+      description: |
+        Removes the person's name and email and ends every membership. Lessons,
+        payments and receipts that mention them keep pointing at the anonymised
+        record, because those records must stay intact. Refused with 409 while
+        the person is the only owner of a team that has other members: they
+        must hand the team over first. The client deletes the identity-provider
+        account afterwards.
+      responses:
+        "204":
+          description: The account is deleted.
+        "401":
+          $ref: "#/components/responses/Problem"
+        "409":
           $ref: "#/components/responses/Problem"
         default:
           $ref: "#/components/responses/Problem"
@@ -202,6 +251,17 @@ components:
           description: Every team the person belongs to. Empty before onboarding.
           items:
             $ref: "#/components/schemas/Membership"
+
+    UpdateMeRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: The name shown to the person's teams.
+          example: Daniel Koh
 
     User:
       type: object

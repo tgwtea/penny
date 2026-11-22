@@ -8,6 +8,9 @@ generate:
   std-http-server: true
   strict-server: true
   client: true
+  # The handler reads each operation's security from the spec, so which
+  # routes need a signed-in person is decided by the contract alone.
+  embedded-spec: true
 compatibility:
   # HealthStatusOk rather than Ok, so enums added later cannot collide.
   always-prefix-enum-values: true

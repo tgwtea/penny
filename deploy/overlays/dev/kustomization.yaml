@@ -75,6 +75,10 @@ patches:
                 env:
                   - name: PENNY_CORS_ORIGINS
                     value: https://app.dev.penny.invalid
+                  # Not a valid project ID on purpose, so nobody can own it.
+                  # Replace before the first sync (deploy/README.md).
+                  - name: PENNY_FIREBASE_PROJECT_ID
+                    value: REPLACE_WITH_DEV_FIREBASE_PROJECT_ID
 
   # Backups: a dev-only prefix in the off-site bucket.
   - target:

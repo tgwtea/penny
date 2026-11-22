@@ -86,6 +86,10 @@ class PennyCatalogue extends StatelessWidget {
               'Disabled': (_) =>
                   const PennyTextField(label: 'Team name', enabled: false),
             }),
+            _component('PennyDivider', {
+              'Plain': (_) => const PennyDivider(),
+              'With a word': (_) => const PennyDivider(label: 'or'),
+            }),
             _component('PennySegmented', {
               'Phone': (_) => _SegmentedDemo(compact: false),
               'Laptop toolbar': (_) => _SegmentedDemo(compact: true),
@@ -143,6 +147,47 @@ class PennyCatalogue extends StatelessWidget {
                   variant: PennyButtonVariant.secondary,
                   onPressed: () {},
                 ),
+              ),
+            }),
+            _component('PennyDialog', {
+              'Destructive confirmation': (_) => PennyDialog(
+                title: 'Delete your account?',
+                body: const Text(
+                  'Your name and email are removed from Penny and you leave '
+                  'every team. This cannot be undone.',
+                ),
+                actions: [
+                  PennyButton(
+                    label: 'Cancel',
+                    variant: PennyButtonVariant.secondary,
+                    onPressed: () {},
+                  ),
+                  PennyButton(
+                    label: 'Delete account',
+                    variant: PennyButtonVariant.danger,
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+              'Opened from a button': (context) => PennyButton(
+                label: 'Cancel lesson',
+                variant: PennyButtonVariant.danger,
+                onPressed: () => showPennyConfirmation(
+                  context,
+                  title: 'Cancel this lesson?',
+                  body: 'Arjun\'s parents are emailed that it is cancelled.',
+                  confirmLabel: 'Cancel lesson',
+                  cancelLabel: 'Keep lesson',
+                  destructive: true,
+                ),
+              ),
+            }),
+            _component('PennyDemoChip', {
+              'Label': (_) =>
+                  const PennyDemoChip(label: 'Choose who to view Penny as'),
+              'Switcher': (_) => PennyDemoChip(
+                label: 'Viewing as Daniel Koh',
+                onPressed: () {},
               ),
             }),
             _component('PennySnackbar', {

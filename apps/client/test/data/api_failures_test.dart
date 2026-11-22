@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:penny/data/api_connection.dart';
 import 'package:penny/data/api_settings.dart';
 import 'package:penny/core/failure.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
@@ -13,9 +14,11 @@ HttpServerInfoRepository _repositoryAnswering(
   Future<http.Response> Function(http.Request) handler,
 ) {
   return HttpServerInfoRepository(
-    ApiSettings(
-      baseUrl: Uri.parse('https://api.example.com'),
-      client: MockClient(handler),
+    ApiConnection(
+      ApiSettings(
+        baseUrl: Uri.parse('https://api.example.com'),
+        client: MockClient(handler),
+      ),
     ),
   );
 }

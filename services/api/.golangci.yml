@@ -24,8 +24,10 @@ linters:
       # Import boundaries from docs/architecture.md, "Backend (Go)".
       rules:
         http-layer-has-no-sql:
+          # Tests may read the database to check what a request changed.
           files:
             - "**/internal/httpapi/**"
+            - "!$test"
           deny:
             - pkg: github.com/tgwtea/penny/services/api/db
               desc: handlers call services; only stores and platform/schema touch the database package
@@ -39,6 +41,16 @@ linters:
               desc: authorization decisions are pure functions of actor, action and resource
             - pkg: github.com/jackc/pgx/v5
               desc: authorization decisions are pure functions of actor, action and resource
+        # Each module's sqlc package is private to that module (ADR 002):
+        # other modules call its service instead of reading its tables.
+        # Add one rule per module.
+        identity-queries-are-private:
+          files:
+            - "$all"
+            - "!**/internal/identity/**"
+          deny:
+            - pkg: github.com/tgwtea/penny/services/api/internal/identity/identitysql
+              desc: only the identity module reads the users table; call identity.Service
         no-global-logger:
           files:
             - "$all"
@@ -67,6 +79,7 @@ linters:
       - std-error-handling
     paths:
       - internal/httpapi/gen
+      - internal/.*/.*sql$
 
 formatters:
   enable:
@@ -80,3 +93,4 @@ formatters:
     generated: strict
     paths:
       - internal/httpapi/gen
+      - internal/.*/.*sql$

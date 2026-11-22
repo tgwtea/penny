@@ -14,8 +14,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tgwtea/penny/services/api/internal/app"
 	"github.com/tgwtea/penny/services/api/internal/httpapi"
+	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/platform/buildinfo"
+	"github.com/tgwtea/penny/services/api/internal/platform/clock"
 	"github.com/tgwtea/penny/services/api/internal/platform/config"
 	"github.com/tgwtea/penny/services/api/internal/platform/database"
 	"github.com/tgwtea/penny/services/api/internal/platform/health"
@@ -60,18 +63,42 @@ func run() error {
 	registry := metrics.NewRegistry()
 	registry.MustRegister(database.NewPoolCollector(pool))
 
-	handler := httpapi.NewHandler(httpapi.Options{
+	verifier, err := newVerifier(cfg.Firebase, logger)
+	if err != nil {
+		return err
+	}
+	services, err := app.New(app.Deps{Pool: pool, Verifier: verifier, Clock: clock.System{}})
+	if err != nil {
+		return err
+	}
+
+	handler, err := httpapi.NewHandler(httpapi.Options{
 		Logger:          logger,
 		Build:           build,
 		ReadinessChecks: []health.Check{database.PingCheck(pool), schema.Check(pool)},
 		CORSOrigins:     cfg.CORSOrigins,
 		Metrics:         metrics.NewHTTP(registry),
+		Services:        services,
 	})
+	if err != nil {
+		return err
+	}
 
 	return httpserver.Run(ctx, logger, cfg.ShutdownTimeout,
 		httpserver.New(cfg.HTTPAddr, handler),
 		httpserver.New(cfg.AdminAddr, metrics.Handler(registry)),
 	)
+}
+
+// newVerifier picks how bearer tokens are checked: Google-signed Firebase
+// tokens, or the Auth emulator's unsigned ones for local work and CI.
+func newVerifier(cfg config.Firebase, logger *slog.Logger) (identity.Verifier, error) {
+	if cfg.UsesEmulator() {
+		logger.Warn("accepting unsigned Firebase Auth emulator tokens",
+			slog.String("project", cfg.ProjectID), slog.String("emulator", cfg.AuthEmulatorHost))
+		return identity.NewEmulatorVerifier(cfg.ProjectID, clock.System{})
+	}
+	return identity.NewFirebaseVerifier(identity.FirebaseOptions{ProjectID: cfg.ProjectID})
 }
 
 func flushTelemetry(logger *slog.Logger, shutdown telemetry.Shutdown) {

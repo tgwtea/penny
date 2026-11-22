@@ -7,14 +7,19 @@ package gen
 
 import (
 	"bytes"
+	"compress/flate"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
@@ -190,6 +195,14 @@ type ServerVersion struct {
 	Version string `json:"version"`
 }
 
+// UpdateMeRequest defines model for UpdateMeRequest.
+type UpdateMeRequest struct {
+	// DisplayName The name shown to the person's teams.
+	//
+	// Example: Daniel Koh
+	DisplayName string `json:"displayName"`
+}
+
 // User defines model for User.
 type User struct {
 	DisplayName string              `json:"displayName"`
@@ -214,6 +227,9 @@ type Workspace struct {
 	// Example: Asia/Singapore
 	Timezone string `json:"timezone"`
 }
+
+// UpdateMeJSONRequestBody defines body for UpdateMe for application/json ContentType.
+type UpdateMeJSONRequestBody = UpdateMeRequest
 
 // RequestEditorFn is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -305,10 +321,40 @@ type ClientInterface interface {
 	// Corresponds with GET /readyz (the `GetReadyz` operationId).
 	GetReadyz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// DeleteMe Delete the signed-in person's account
+	//
+	// Removes the person's name and email and ends every membership. Lessons,
+	// payments and receipts that mention them keep pointing at the anonymised
+	// record, because those records must stay intact. Refused with 409 while
+	// the person is the only owner of a team that has other members: they
+	// must hand the team over first. The client deletes the identity-provider
+	// account afterwards.
+	//
+	// Corresponds with DELETE /v1/me (the `DeleteMe` operationId).
+	DeleteMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetMe Get the signed-in person, their teams and what they may do in each
+	//
+	// The first call after signing in creates Penny's record of the person,
+	// keyed by their identity-provider ID. Later calls keep its email in
+	// step with the provider. The email address must be verified.
 	//
 	// Corresponds with GET /v1/me (the `GetMe` operationId).
 	GetMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMeWithBody Change the signed-in person's name
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+	UpdateMeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMe Change the signed-in person's name
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+	UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetVersion Report the server's build version
 	//
@@ -352,11 +398,71 @@ func (c *Client) GetReadyz(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
+// DeleteMe Delete the signed-in person's account
+//
+// Removes the person's name and email and ends every membership. Lessons,
+// payments and receipts that mention them keep pointing at the anonymised
+// record, because those records must stay intact. Refused with 409 while
+// the person is the only owner of a team that has other members: they
+// must hand the team over first. The client deletes the identity-provider
+// account afterwards.
+//
+// Corresponds with DELETE /v1/me (the `DeleteMe` operationId).
+func (c *Client) DeleteMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteMeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // GetMe Get the signed-in person, their teams and what they may do in each
+//
+// The first call after signing in creates Penny's record of the person,
+// keyed by their identity-provider ID. Later calls keep its email in
+// step with the provider. The email address must be verified.
 //
 // Corresponds with GET /v1/me (the `GetMe` operationId).
 func (c *Client) GetMe(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMeRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMeWithBody Change the signed-in person's name
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+func (c *Client) UpdateMeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// UpdateMe Change the signed-in person's name
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+func (c *Client) UpdateMe(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateMeRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -436,6 +542,33 @@ func NewGetReadyzRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewDeleteMeRequest constructs an http.Request for the DeleteMe method
+func NewDeleteMeRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetMeRequest constructs an http.Request for the GetMe method
 func NewGetMeRequest(server string) (*http.Request, error) {
 	var err error
@@ -459,6 +592,46 @@ func NewGetMeRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateMeRequest calls the generic UpdateMe builder with application/json body
+func NewUpdateMeRequest(server string, body UpdateMeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewUpdateMeRequestWithBody constructs an http.Request for the UpdateMe method, with any body, and a specified content type
+func NewUpdateMeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -554,12 +727,44 @@ type ClientWithResponsesInterface interface {
 	// Corresponds with GET /readyz (the `GetReadyz` operationId).
 	GetReadyzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetReadyzResponse, error)
 
+	// DeleteMeWithResponse Delete the signed-in person's account
+	//
+	// Removes the person's name and email and ends every membership. Lessons,
+	// payments and receipts that mention them keep pointing at the anonymised
+	// record, because those records must stay intact. Refused with 409 while
+	// the person is the only owner of a team that has other members: they
+	// must hand the team over first. The client deletes the identity-provider
+	// account afterwards.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /v1/me (the `DeleteMe` operationId).
+	DeleteMeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteMeResponse, error)
+
 	// GetMeWithResponse Get the signed-in person, their teams and what they may do in each
+	//
+	// The first call after signing in creates Penny's record of the person,
+	// keyed by their identity-provider ID. Later calls keep its email in
+	// step with the provider. The email address must be verified.
 	//
 	// Returns a wrapper object for the known response body format(s).
 	//
 	// Corresponds with GET /v1/me (the `GetMe` operationId).
 	GetMeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMeResponse, error)
+
+	// UpdateMeWithBodyWithResponse Change the signed-in person's name
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+	UpdateMeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error)
+
+	// UpdateMeWithResponse Change the signed-in person's name
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+	UpdateMeWithResponse(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error)
 
 	// GetVersionWithResponse Report the server's build version
 	//
@@ -658,6 +863,61 @@ func (r GetReadyzResponse) ContentType() string {
 	return ""
 }
 
+type DeleteMeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON409 the response for an HTTP 409 `application/problem+json` response
+	ApplicationproblemJSON409 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r DeleteMeResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON409 returns the response for an HTTP 409 `application/problem+json` response
+func (r DeleteMeResponse) GetApplicationproblemJSON409() *Problem {
+	return r.ApplicationproblemJSON409
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r DeleteMeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteMeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteMeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteMeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -665,6 +925,8 @@ type GetMeResponse struct {
 	JSON200 *Me
 	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
 	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSON403 the response for an HTTP 403 `application/problem+json` response
+	ApplicationproblemJSON403 *Problem
 	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
 	ApplicationproblemJSONDefault *Problem
 }
@@ -677,6 +939,11 @@ func (r GetMeResponse) GetJSON200() *Me {
 // GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
 func (r GetMeResponse) GetApplicationproblemJSON401() *Problem {
 	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSON403 returns the response for an HTTP 403 `application/problem+json` response
+func (r GetMeResponse) GetApplicationproblemJSON403() *Problem {
+	return r.ApplicationproblemJSON403
 }
 
 // GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
@@ -707,6 +974,68 @@ func (r GetMeResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetMeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *Me
+	// ApplicationproblemJSON400 the response for an HTTP 400 `application/problem+json` response
+	ApplicationproblemJSON400 *Problem
+	// ApplicationproblemJSON401 the response for an HTTP 401 `application/problem+json` response
+	ApplicationproblemJSON401 *Problem
+	// ApplicationproblemJSONDefault the response for an HTTP default `application/problem+json` response
+	ApplicationproblemJSONDefault *Problem
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r UpdateMeResponse) GetJSON200() *Me {
+	return r.JSON200
+}
+
+// GetApplicationproblemJSON400 returns the response for an HTTP 400 `application/problem+json` response
+func (r UpdateMeResponse) GetApplicationproblemJSON400() *Problem {
+	return r.ApplicationproblemJSON400
+}
+
+// GetApplicationproblemJSON401 returns the response for an HTTP 401 `application/problem+json` response
+func (r UpdateMeResponse) GetApplicationproblemJSON401() *Problem {
+	return r.ApplicationproblemJSON401
+}
+
+// GetApplicationproblemJSONDefault returns the response for an HTTP default `application/problem+json` response
+func (r UpdateMeResponse) GetApplicationproblemJSONDefault() *Problem {
+	return r.ApplicationproblemJSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r UpdateMeResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -793,7 +1122,31 @@ func (c *ClientWithResponses) GetReadyzWithResponse(ctx context.Context, reqEdit
 	return ParseGetReadyzResponse(rsp)
 }
 
+// DeleteMeWithResponse Delete the signed-in person's account
+//
+// Removes the person's name and email and ends every membership. Lessons,
+// payments and receipts that mention them keep pointing at the anonymised
+// record, because those records must stay intact. Refused with 409 while
+// the person is the only owner of a team that has other members: they
+// must hand the team over first. The client deletes the identity-provider
+// account afterwards.
+//
+// Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /v1/me (the `DeleteMe` operationId).
+func (c *ClientWithResponses) DeleteMeWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteMeResponse, error) {
+	rsp, err := c.DeleteMe(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteMeResponse(rsp)
+}
+
 // GetMeWithResponse Get the signed-in person, their teams and what they may do in each
+//
+// The first call after signing in creates Penny's record of the person,
+// keyed by their identity-provider ID. Later calls keep its email in
+// step with the provider. The email address must be verified.
 //
 // Returns a wrapper object for the known response body format(s).
 //
@@ -804,6 +1157,32 @@ func (c *ClientWithResponses) GetMeWithResponse(ctx context.Context, reqEditors 
 		return nil, err
 	}
 	return ParseGetMeResponse(rsp)
+}
+
+// UpdateMeWithBodyWithResponse Change the signed-in person's name
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+func (c *ClientWithResponses) UpdateMeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error) {
+	rsp, err := c.UpdateMeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMeResponse(rsp)
+}
+
+// UpdateMeWithResponse Change the signed-in person's name
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /v1/me (the `UpdateMe` operationId).
+func (c *ClientWithResponses) UpdateMeWithResponse(ctx context.Context, body UpdateMeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMeResponse, error) {
+	rsp, err := c.UpdateMe(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMeResponse(rsp)
 }
 
 // GetVersionWithResponse Report the server's build version
@@ -878,6 +1257,49 @@ func ParseGetReadyzResponse(rsp *http.Response) (*GetReadyzResponse, error) {
 	return response, nil
 }
 
+// ParseDeleteMeResponse parses an HTTP response from a DeleteMeWithResponse call
+func ParseDeleteMeResponse(rsp *http.Response) (*DeleteMeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteMeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetMeResponse parses an HTTP response from a GetMeWithResponse call
 func ParseGetMeResponse(rsp *http.Response) (*GetMeResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -898,6 +1320,60 @@ func ParseGetMeResponse(rsp *http.Response) (*GetMeResponse, error) {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMeResponse parses an HTTP response from a UpdateMeWithResponse call
+func ParseUpdateMeResponse(rsp *http.Response) (*UpdateMeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Me
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Problem
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.ApplicationproblemJSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Problem
@@ -959,9 +1435,15 @@ type ServerInterface interface {
 	// GetReadyz Report whether the server can take traffic
 	// (GET /readyz)
 	GetReadyz(w http.ResponseWriter, r *http.Request)
+	// DeleteMe Delete the signed-in person's account
+	// (DELETE /v1/me)
+	DeleteMe(w http.ResponseWriter, r *http.Request)
 	// GetMe Get the signed-in person, their teams and what they may do in each
 	// (GET /v1/me)
 	GetMe(w http.ResponseWriter, r *http.Request)
+	// UpdateMe Change the signed-in person's name
+	// (PATCH /v1/me)
+	UpdateMe(w http.ResponseWriter, r *http.Request)
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(w http.ResponseWriter, r *http.Request)
@@ -1004,11 +1486,39 @@ func (siw *ServerInterfaceWrapper) GetReadyz(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteMe operation middleware
+func (siw *ServerInterfaceWrapper) DeleteMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetMe operation middleware
 func (siw *ServerInterfaceWrapper) GetMe(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetMe(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateMe operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMe(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateMe(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1155,7 +1665,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/livez", wrapper.GetLivez)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/readyz", wrapper.GetReadyz)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/version", wrapper.GetVersion)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/v1/me", wrapper.DeleteMe)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/v1/me", wrapper.GetMe)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/v1/me", wrapper.UpdateMe)
 
 	return m
 }
@@ -1218,6 +1730,68 @@ func (response GetReadyz503JSONResponse) VisitGetReadyzResponse(w http.ResponseW
 	return err
 }
 
+type DeleteMeRequestObject struct {
+}
+
+type DeleteMeResponseObject interface {
+	VisitDeleteMeResponse(w http.ResponseWriter) error
+}
+
+type DeleteMe204Response struct {
+}
+
+func (response DeleteMe204Response) VisitDeleteMeResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteMe401ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteMe401ApplicationProblemPlusJSONResponse) VisitDeleteMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMe409ApplicationProblemPlusJSONResponse Problem
+
+func (response DeleteMe409ApplicationProblemPlusJSONResponse) VisitDeleteMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteMedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteMedefaultApplicationProblemPlusJSONResponse) VisitDeleteMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetMeRequestObject struct {
 }
 
@@ -1255,12 +1829,95 @@ func (response GetMe401ApplicationProblemPlusJSONResponse) VisitGetMeResponse(w 
 	return err
 }
 
+type GetMe403ApplicationProblemPlusJSONResponse Problem
+
+func (response GetMe403ApplicationProblemPlusJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetMedefaultApplicationProblemPlusJSONResponse struct {
 	Body       Problem
 	StatusCode int
 }
 
 func (response GetMedefaultApplicationProblemPlusJSONResponse) VisitGetMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMeRequestObject struct {
+	Body *UpdateMeJSONRequestBody
+}
+
+type UpdateMeResponseObject interface {
+	VisitUpdateMeResponse(w http.ResponseWriter) error
+}
+
+type UpdateMe200JSONResponse Me
+
+func (response UpdateMe200JSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMe400ApplicationProblemPlusJSONResponse struct {
+	ProblemApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateMe400ApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMe401ApplicationProblemPlusJSONResponse Problem
+
+func (response UpdateMe401ApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateMedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateMedefaultApplicationProblemPlusJSONResponse) VisitUpdateMeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -1318,9 +1975,15 @@ type StrictServerInterface interface {
 	// GetReadyz Report whether the server can take traffic
 	// (GET /readyz)
 	GetReadyz(ctx context.Context, request GetReadyzRequestObject) (GetReadyzResponseObject, error)
+	// DeleteMe Delete the signed-in person's account
+	// (DELETE /v1/me)
+	DeleteMe(ctx context.Context, request DeleteMeRequestObject) (DeleteMeResponseObject, error)
 	// GetMe Get the signed-in person, their teams and what they may do in each
 	// (GET /v1/me)
 	GetMe(ctx context.Context, request GetMeRequestObject) (GetMeResponseObject, error)
+	// UpdateMe Change the signed-in person's name
+	// (PATCH /v1/me)
+	UpdateMe(ctx context.Context, request UpdateMeRequestObject) (UpdateMeResponseObject, error)
 	// GetVersion Report the server's build version
 	// (GET /v1/version)
 	GetVersion(ctx context.Context, request GetVersionRequestObject) (GetVersionResponseObject, error)
@@ -1413,6 +2076,30 @@ func (sh *strictHandler) GetReadyz(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteMe operation middleware
+func (sh *strictHandler) DeleteMe(w http.ResponseWriter, r *http.Request) {
+	var request DeleteMeRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteMe(ctx, request.(DeleteMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteMeResponseObject); ok {
+		if err := validResponse.VisitDeleteMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetMe operation middleware
 func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	var request GetMeRequestObject
@@ -1430,6 +2117,37 @@ func (sh *strictHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetMeResponseObject); ok {
 		if err := validResponse.VisitGetMeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMe operation middleware
+func (sh *strictHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
+	var request UpdateMeRequestObject
+
+	var body UpdateMeJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMe(ctx, request.(UpdateMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMe")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateMeResponseObject); ok {
+		if err := validResponse.VisitUpdateMeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -1459,4 +2177,146 @@ func (sh *strictHandler) GetVersion(w http.ResponseWriter, r *http.Request) {
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
+// Stored as a slice of fixed-width chunks rather than one concatenated
+// const string: with thousands of chunks the chained `+` fold is several
+// times slower for the Go compiler than parsing a slice literal.
+var swaggerSpec = []string{
+	"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",
+}
+
+// decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
+// after base64-decoding and flate-decompressing the embedded blob.
+func decodeSpec() ([]byte, error) {
+	encoded := strings.Join(swaggerSpec, "")
+	compressed, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr := flate.NewReader(bytes.NewReader(compressed))
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(zr); err != nil {
+		return nil, fmt.Errorf("read flate: %w", err)
+	}
+	if err := zr.Close(); err != nil {
+		return nil, fmt.Errorf("close flate reader: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cache of the decoded OpenAPI spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSpec returns the OpenAPI specification corresponding to the generated
+// code in this file. External references in the spec are resolved through
+// PathToRawSpec; externally-referenced files must be embedded in their
+// corresponding Go packages (via the import-mapping feature). URL-based
+// external refs are not supported.
+func GetSpec() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// GetSpecJSON returns the raw JSON bytes of the embedded OpenAPI
+// specification: decompressed but not unmarshaled. External references
+// are not resolved here; the bytes are the spec exactly as embedded by
+// codegen. The result is cached at package init time, so repeated calls
+// are cheap.
+func GetSpecJSON() ([]byte, error) {
+	return rawSpec()
+}
+
+// GetSwagger returns the OpenAPI specification corresponding to the
+// generated code in this file.
+//
+// Deprecated: GetSwagger predates kin-openapi renaming openapi3.Swagger
+// to openapi3.T. Use [GetSpec] instead. This wrapper is retained for
+// backwards compatibility.
+func GetSwagger() (*openapi3.T, error) {
+	return GetSpec()
 }

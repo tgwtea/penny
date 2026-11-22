@@ -53,8 +53,9 @@ These depend on open questions in `docs/architecture.md` and cannot be committed
 2. **Tunnel.** `cloudflared tunnel create penny-dev`, put the tunnel ID in `overlays/dev/cloudflared.yaml`, seal the credentials file (below) and add a DNS CNAME for each hostname to `<tunnel-id>.cfargotunnel.com`.
 3. **Backup bucket.** Create the bucket and an access key limited to it. Set the endpoint and path in the overlay's `ObjectStore` patch.
 4. **Secrets.** Replace every placeholder in `overlays/dev/secrets/`.
-5. **Prometheus selector.** If Prometheus only picks up monitors with a label (kube-prometheus-stack uses `release: <name>`), add it in the overlay.
-6. Apply the Application: `kubectl apply -n argocd -f deploy/argocd/penny-dev.yaml`.
+5. **Firebase.** Create the environment's Firebase project and set `PENNY_FIREBASE_PROJECT_ID` in the overlay's API patch, and the web client's Firebase settings (`docs/runbooks/firebase-auth-setup.md`).
+6. **Prometheus selector.** If Prometheus only picks up monitors with a label (kube-prometheus-stack uses `release: <name>`), add it in the overlay.
+7. Apply the Application: `kubectl apply -n argocd -f deploy/argocd/penny-dev.yaml`.
 
 ## Secrets
 

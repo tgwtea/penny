@@ -28,5 +28,39 @@ void main() {
     final config = await loadAppConfig();
     expect(config.backend, BackendKind.demo);
     expect(config.apiBaseUrl, Uri.parse('http://localhost:8080'));
+    expect(config.firebase.usesEmulator, isTrue);
+  });
+
+  group('Firebase settings', () {
+    test('without an API key, the local Auth emulator', () {
+      final f = FirebaseSettings.parse();
+      expect(f.projectId, 'demo-penny');
+      expect(f.authEmulatorHost, 'localhost:9099');
+    });
+
+    test('a real project needs every value and turns the emulator off', () {
+      final f = FirebaseSettings.parse(
+        projectId: 'penny-dev',
+        apiKey: 'AIza-test',
+        appId: '1:123:web:abc',
+        authDomain: 'penny-dev.firebaseapp.com',
+        messagingSenderId: '123',
+      );
+      expect(f.usesEmulator, isFalse);
+      expect(f.authDomain, 'penny-dev.firebaseapp.com');
+    });
+
+    test('a half-configured project fails at start', () {
+      expect(
+        () => FirebaseSettings.parse(projectId: 'penny-dev', apiKey: 'AIza'),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('PENNY_FIREBASE_APP_ID'),
+          ),
+        ),
+      );
+    });
   });
 }

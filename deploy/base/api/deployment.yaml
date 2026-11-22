@@ -73,6 +73,10 @@ spec:
             # Overlays set this to the web client's origin.
             - name: PENNY_CORS_ORIGINS
               value: ""
+            # Overlays set this to the environment's Firebase project
+            # (docs/runbooks/firebase-auth-setup.md). Empty fails startup.
+            - name: PENNY_FIREBASE_PROJECT_ID
+              value: ""
             - name: GOMEMLIMIT
               valueFrom:
                 resourceFieldRef:

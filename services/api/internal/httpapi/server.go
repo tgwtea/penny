@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/tgwtea/penny/services/api/internal/apperr"
+	"github.com/tgwtea/penny/services/api/internal/app"
 	"github.com/tgwtea/penny/services/api/internal/httpapi/gen"
 	"github.com/tgwtea/penny/services/api/internal/platform/buildinfo"
 	"github.com/tgwtea/penny/services/api/internal/platform/health"
@@ -17,9 +17,13 @@ const readinessTimeout = 2 * time.Second
 // server implements the generated strict interface. Each method decodes
 // nothing itself (the generated code does), calls at most one service and
 // maps the result; business rules never live here.
+//
+// Handlers are grouped by the contract's tags, one file each
+// (identity_handlers.go, ...).
 type server struct {
 	build           buildinfo.Info
 	readinessChecks []health.Check
+	*app.Services
 }
 
 var _ gen.StrictServerInterface = (*server)(nil)
@@ -48,10 +52,4 @@ func (s *server) GetReadyz(ctx context.Context, _ gen.GetReadyzRequestObject) (g
 
 func (s *server) GetVersion(context.Context, gen.GetVersionRequestObject) (gen.GetVersionResponseObject, error) {
 	return gen.GetVersion200JSONResponse{Version: s.build.Version, Commit: s.build.Commit}, nil
-}
-
-// GetMe is a stub until token verification exists (build plan, Phase 3).
-// No token can be verified yet, so every caller is unauthenticated.
-func (s *server) GetMe(context.Context, gen.GetMeRequestObject) (gen.GetMeResponseObject, error) {
-	return nil, apperr.New(apperr.ErrUnauthenticated, "This server does not accept sign-ins yet.")
 }

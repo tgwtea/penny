@@ -1,43 +1,30 @@
 // Runs each repository contract against every implementation: the demo
 // backend, and the HTTP backend against a fake server speaking the contract
-// in api/openapi.yaml.
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
-import 'package:penny/data/api_settings.dart';
+// in api/openapi.yaml with a fake identity provider.
+import 'package:flutter_test/flutter_test.dart';
 import 'package:penny/demo/demo_personas.dart';
 import 'package:penny/demo/demo_repositories.dart';
 import 'package:penny/features/auth/data/http_session_repository.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
 
+import '../fakes/fake_api.dart';
+import '../fakes/fake_identity_provider.dart';
+import 'auth_repository_contract.dart';
 import 'server_info_repository_contract.dart';
 import 'session_repository_contract.dart';
 
-/// A fake Penny API answering the contract's example responses.
-MockClient fakeApi() => MockClient((request) async {
-  return switch ((request.method, request.url.path)) {
-    ('GET', '/v1/version') => http.Response(
-      jsonEncode({'version': '0.1.0', 'commit': '3f2c1a9'}),
-      200,
-      headers: {'content-type': 'application/json'},
-    ),
-    _ => http.Response(
-      jsonEncode({
-        'type': 'urn:penny:problem:not-found',
-        'title': 'Not found',
-        'status': 404,
-      }),
-      404,
-      headers: {'content-type': 'application/problem+json'},
-    ),
-  };
-});
-
-ApiSettings fakeApiSettings() => ApiSettings(
-  baseUrl: Uri.parse('https://api.example.com'),
-  client: fakeApi(),
-);
+/// An HTTP session signed in as a verified person, settled.
+Future<SignedInRepositories> httpSignedIn() async {
+  final identity = FakeIdentityProvider()
+    ..seed('hana@example.com', 'secret-password');
+  final repo = HttpSessionRepository(
+    identity: identity,
+    api: FakeApi().connection(idToken: identity.idToken),
+  );
+  identity.restore(signedInAs: 'hana@example.com');
+  await pumpEventQueue();
+  return (auth: repo, session: repo);
+}
 
 void main() {
   serverInfoRepositoryContract(
@@ -46,7 +33,7 @@ void main() {
   );
   serverInfoRepositoryContract(
     'HttpServerInfoRepository',
-    () => HttpServerInfoRepository(fakeApiSettings()),
+    () => HttpServerInfoRepository(FakeApi().connection()),
   );
 
   for (final persona in DemoPersona.values) {
@@ -55,5 +42,17 @@ void main() {
       () => DemoSessionRepository(persona: persona),
     );
   }
-  sessionRepositoryContract('HttpSessionRepository', HttpSessionRepository.new);
+  sessionRepositoryContract(
+    'HttpSessionRepository',
+    () => HttpSessionRepository(
+      identity: FakeIdentityProvider(),
+      api: FakeApi().connection(),
+    ),
+  );
+
+  authRepositoryContract('DemoSessionRepository', () async {
+    final repo = DemoSessionRepository();
+    return (auth: repo, session: repo);
+  });
+  authRepositoryContract('HttpSessionRepository', httpSignedIn);
 }

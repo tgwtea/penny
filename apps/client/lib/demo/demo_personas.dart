@@ -2,18 +2,24 @@ import '../core/capability.dart';
 import '../features/auth/domain/session.dart';
 
 /// The people a demo can be viewed as (PRD R2). The studio matches the
-/// designs: Koh Guitar Studio with eight tutors. The persona switcher that
-/// chooses between them arrives in Phase 3; until then demos start as the
-/// owner.
+/// designs: Koh Guitar Studio with eight tutors.
 enum DemoPersona {
   /// The studio owner: sees everything.
-  owner,
+  owner('Daniel Koh', 'Owner of Koh Guitar Studio, 8 tutors'),
 
   /// A teacher at the studio: sees their own lessons and students.
-  teacher,
+  teacher('Mei Lin Tan', 'Teacher at Koh Guitar Studio'),
 
   /// A solo tutor: a team of one, so no team features.
-  solo,
+  solo('Priya Shah', 'Teaches piano on her own');
+
+  const DemoPersona(this.displayName, this.description);
+
+  /// The persona's name.
+  final String displayName;
+
+  /// Who they are, on the sign-in page.
+  final String description;
 }
 
 /// What the owner may do. Mirrors the server's matrix in docs/architecture.md.
@@ -45,9 +51,9 @@ const _soloTeam = Team(
 SignedIn sessionFor(DemoPersona persona) {
   return switch (persona) {
     DemoPersona.owner => SignedIn(
-      user: const SessionUser(
+      user: SessionUser(
         id: '019a8f00-0000-7000-8000-0000000000a1',
-        displayName: 'Daniel Koh',
+        displayName: DemoPersona.owner.displayName,
         email: 'daniel@kohguitar.example',
       ),
       memberships: const [
@@ -61,9 +67,9 @@ SignedIn sessionFor(DemoPersona persona) {
       activeTeamId: _studio.id,
     ),
     DemoPersona.teacher => SignedIn(
-      user: const SessionUser(
+      user: SessionUser(
         id: '019a8f00-0000-7000-8000-0000000000a2',
-        displayName: 'Mei Lin Tan',
+        displayName: DemoPersona.teacher.displayName,
         email: 'meilin@kohguitar.example',
       ),
       memberships: const [
@@ -77,9 +83,9 @@ SignedIn sessionFor(DemoPersona persona) {
       activeTeamId: _studio.id,
     ),
     DemoPersona.solo => SignedIn(
-      user: const SessionUser(
+      user: SessionUser(
         id: '019a8f00-0000-7000-8000-0000000000a3',
-        displayName: 'Priya Shah',
+        displayName: DemoPersona.solo.displayName,
         email: 'priya@example.com',
       ),
       memberships: const [

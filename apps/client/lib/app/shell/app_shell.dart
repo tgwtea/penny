@@ -6,6 +6,8 @@ import 'package:penny_ui/penny_ui.dart';
 
 import '../../features/auth/application/session_controller.dart';
 import '../../features/auth/domain/session.dart';
+import '../../features/auth/presentation/persona_switcher.dart';
+import '../routes.dart';
 import 'destinations.dart';
 
 /// The frame around every signed-in screen: bottom navigation and a top bar
@@ -31,6 +33,7 @@ class AppShell extends ConsumerWidget {
       (d) => location == d.path || location.startsWith('${d.path}/'),
     );
     void go(int index) => context.go(destinations[index].path);
+    void openAccount() => context.go(Routes.account);
     final membership = session.activeMembership;
 
     if (PennyLayout.isWide(context)) {
@@ -45,6 +48,8 @@ class AppShell extends ConsumerWidget {
               selectedIndex: selected,
               onSelected: go,
               personName: session.user.displayName,
+              onOpenAccount: openAccount,
+              footer: const PersonaSwitcher(),
             ),
             Expanded(child: child),
           ],
@@ -54,8 +59,14 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       appBar: PennyTopBar(
-        title: selected >= 0 ? destinations[selected].nav.label : 'Penny',
+        title: selected >= 0
+            ? destinations[selected].nav.label
+            : location == Routes.account
+            ? 'Account'
+            : 'Penny',
         personName: session.user.displayName,
+        onOpenAccount: openAccount,
+        trailing: const PersonaSwitcher(),
       ),
       body: child,
       bottomNavigationBar: PennyBottomNav(

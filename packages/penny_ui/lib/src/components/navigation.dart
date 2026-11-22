@@ -338,6 +338,8 @@ class PennySidebar extends StatelessWidget {
     return PennyPressable(
       onPressed: onOpenAccount,
       contentColor: c.text,
+      // The same words as the phone top bar's avatar.
+      semanticLabel: 'Account: $personName',
       child: content,
     );
   }

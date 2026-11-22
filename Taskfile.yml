@@ -23,6 +23,9 @@ vars:
   # The Linux Flutter image (the `sdk` stage of apps/client/Dockerfile).
   FLUTTER_IMAGE: penny-flutter:local
   PYTHON: '{{if eq OS "windows"}}python{{else}}python3{{end}}'
+  # The Firebase Auth emulator in compose.yaml and its demo project.
+  EMULATOR_HOST: localhost:9099
+  EMULATOR_PROJECT: demo-penny
 
 tasks:
   default:
@@ -78,6 +81,9 @@ tasks:
       PENNY_DATABASE_URL: '{{.PENNY_DATABASE_URL | default .LOCAL_DATABASE_URL}}'
       PENNY_LOG_FORMAT: text
       PENNY_LOG_LEVEL: debug
+      # Sign-in through the local Firebase Auth emulator (compose.yaml).
+      PENNY_FIREBASE_PROJECT_ID: '{{.PENNY_FIREBASE_PROJECT_ID | default .EMULATOR_PROJECT}}'
+      PENNY_FIREBASE_AUTH_EMULATOR_HOST: '{{.PENNY_FIREBASE_AUTH_EMULATOR_HOST | default .EMULATOR_HOST}}'
       # The web client under `task run:client:web` (port 5173).
       PENNY_CORS_ORIGINS: '{{.PENNY_CORS_ORIGINS | default "http://localhost:5173"}}'
     cmds:
@@ -132,10 +138,11 @@ tasks:
         go run github.com/oasdiff/oasdiff@{{.OASDIFF_VERSION}} breaking {{.BASE}} api/openapi.yaml --fail-on ERR
 
   lint:api:
-    desc: Lint the Go service
+    desc: Lint the Go service and check its SQL queries against the schema
     dir: "{{.API_DIR}}"
     cmds:
       - golangci-lint run ./...
+      - sqlc vet
 
   lint:client:
     desc: Format-check and analyze the client, penny_ui, the catalogue and the Dart tools; check layering and design tokens
@@ -179,8 +186,10 @@ tasks:
     deps: [test:api, test:client]
 
   test:api:
-    desc: Run Go tests with the race detector (database tests need PENNY_TEST_DATABASE_URL)
+    desc: Run Go tests with the race detector (database tests need PENNY_TEST_DATABASE_URL; sign-in tests use the Auth emulator from task dev)
     dir: "{{.API_DIR}}"
+    env:
+      PENNY_TEST_FIREBASE_AUTH_EMULATOR_HOST: '{{.PENNY_TEST_FIREBASE_AUTH_EMULATOR_HOST | default ""}}'
     cmds:
       - go test -race ./...
 
@@ -192,6 +201,11 @@ tasks:
         cmd: cd {{.ITEM}} && flutter test
       - for: [tools/checks, tools/design]
         cmd: cd {{.ITEM}} && dart test
+
+  test:e2e:
+    desc: Run the web client in headless Chrome against the real API, a fresh database and the Auth emulator (needs task dev, Chrome and chromedriver)
+    cmds:
+      - tools/e2e/run.sh
 
   flutter:image:
     desc: Build the Linux Flutter image used for golden images
@@ -263,6 +277,7 @@ tasks:
     desc: Regenerate everything generated from a source in this repository
     cmds:
       - task: gen:api
+      - task: gen:sql
       - task: gen:dart
       - task: gen:tokens
 
@@ -271,6 +286,12 @@ tasks:
     dir: "{{.API_DIR}}"
     cmds:
       - go generate ./internal/httpapi/...
+
+  gen:sql:
+    desc: Regenerate each module's typed queries from services/api/db/queries (sqlc, ADR 005)
+    dir: "{{.API_DIR}}"
+    cmds:
+      - sqlc generate
 
   gen:dart:
     desc: Regenerate packages/penny_api from api/openapi.yaml (space_gen, ADR 022)
@@ -298,7 +319,7 @@ tasks:
     cmds:
       - task: gen
       - |
-        changes="$(git status --porcelain -- packages/penny_api services/api/internal/httpapi/gen packages/penny_ui/lib/src/tokens.g.dart)"
+        changes="$(git status --porcelain -- packages/penny_api services/api/internal/httpapi/gen 'services/api/internal/*/*sql' packages/penny_ui/lib/src/tokens.g.dart)"
         if [ -n "${changes}" ]; then
           echo "Generated code is stale. Run 'task gen' and commit the result:"
           echo "${changes}"

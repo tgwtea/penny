@@ -12,6 +12,7 @@ List<Override> demoOverrides() {
   final session = DemoSessionRepository();
   return [
     sessionRepositoryProvider.overrideWithValue(session),
+    authRepositoryProvider.overrideWithValue(session),
     serverInfoRepositoryProvider.overrideWithValue(DemoServerInfoRepository()),
   ];
 }
