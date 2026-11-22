@@ -587,4 +587,68 @@ void main() {
     ),
     size: const Size(390, 320),
   );
+
+  pennyGoldens(
+    'check_and_toggle_rows',
+    (_) => _gallery([
+      PennyCheckRow(
+        title: 'Practise the tremolo, 10 minutes a day',
+        subtitle: 'Mei Lin Tan',
+        checked: false,
+        onChanged: (_) {},
+      ),
+      PennyCheckRow(
+        title: 'Learn the first page of Malaguena',
+        subtitle: 'Mei Lin Tan',
+        checked: true,
+        onChanged: (_) {},
+      ),
+      PennyToggleRow(
+        title: 'Charge for no-shows',
+        body: 'A student who does not come is billed for the lesson.',
+        value: true,
+        onChanged: (_) {},
+      ),
+      PennyToggleRow(
+        title: 'Charge for late cancellations',
+        value: false,
+        onChanged: (_) {},
+      ),
+    ]),
+    size: const Size(390, 360),
+  );
+
+  pennyGoldens(
+    'select_field_and_section_header',
+    (_) => _gallery([
+      PennySelectField(
+        label: 'Date',
+        value: 'Thu 19 Nov',
+        icon: PennyIcons.calendar,
+        onTap: () {},
+      ),
+      PennySelectField(
+        label: 'Place',
+        placeholder: 'Choose a place',
+        hint: 'Saved on the Places page.',
+        onTap: () {},
+      ),
+      PennySelectField(
+        label: 'Lead tutor',
+        error: 'Choose who leads the lesson.',
+        onTap: () {},
+      ),
+      PennySectionHeader(
+        title: 'Tasks and notes',
+        action: PennyButton(
+          label: 'Add',
+          icon: PennyIcons.add,
+          variant: PennyButtonVariant.quiet,
+          size: PennyButtonSize.compact,
+          onPressed: () {},
+        ),
+      ),
+    ]),
+    size: const Size(390, 420),
+  );
 }

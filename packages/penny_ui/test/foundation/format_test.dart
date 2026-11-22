@@ -55,4 +55,18 @@ void main() {
     expect(h24, '16:30');
     expect(h12, '4:30 PM');
   });
+
+  test('money is integer cents, shown as the brand book says', () {
+    expect(PennyFormat.money(24000), 'S\$ 240.00');
+    expect(PennyFormat.money(6050), 'S\$ 60.50');
+    expect(PennyFormat.money(125000005), 'S\$ 1,250,000.05');
+    expect(PennyFormat.money(0), 'S\$ 0.00');
+    expect(PennyFormat.money(900, currency: 'EUR'), 'EUR 9.00');
+  });
+
+  test('lesson lengths read as minutes and hours', () {
+    expect(PennyFormat.minutes(45), '45 min');
+    expect(PennyFormat.minutes(60), '1 h');
+    expect(PennyFormat.minutes(90), '1 h 30 min');
+  });
 }
