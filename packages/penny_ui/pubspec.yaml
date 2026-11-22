@@ -14,6 +14,9 @@ dependencies:
   flutter_test:
     sdk: flutter
   intl: ^0.20.2
+  # QR code encoding for PennyQrCode (pure Dart, no platform code); drawing
+  # stays ours, in penny_ui's colours.
+  qr: ^4.0.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0

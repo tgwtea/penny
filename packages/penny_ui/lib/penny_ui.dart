@@ -27,6 +27,7 @@ export 'src/components/notice.dart';
 export 'src/components/option_row.dart';
 export 'src/components/page.dart';
 export 'src/components/pixel_art.dart';
+export 'src/components/qr_code.dart';
 export 'src/components/section_header.dart';
 export 'src/components/segmented.dart';
 export 'src/components/select_field.dart';
