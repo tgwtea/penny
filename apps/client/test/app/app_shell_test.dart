@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

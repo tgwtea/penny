@@ -4,6 +4,7 @@
 // Generator: tools/design/bin/generate_tokens.dart
 // Regenerate with `task gen:tokens`.
 
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 
 /// Penny's colour tokens for one theme (ink and copper, ADR 020).

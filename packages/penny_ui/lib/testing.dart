@@ -8,6 +8,7 @@ library;
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

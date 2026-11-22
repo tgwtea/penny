@@ -17,6 +17,10 @@ String generateTokens(String tokensJson) {
     ..writeln('// Generator: tools/design/bin/generate_tokens.dart')
     ..writeln('// Regenerate with `task gen:tokens`.')
     ..writeln()
+    ..writeln(
+      '// ignore: deprecated_member_use, '
+      'see docs/adr/023-stay-on-the-sdk-material-library.md',
+    )
     ..writeln("import 'package:flutter/material.dart';")
     ..writeln();
 
