@@ -17,11 +17,16 @@ import 'lesson_views.dart';
 
 /// Opens the form to add a lesson, or to reschedule [lesson]: a sheet on
 /// phone and laptop alike (designs: "add lesson", "reschedule").
+///
+/// A new lesson starts at [startsAt] (an instant) with [leadId] leading,
+/// when given: a free slot tapped on the timetable.
 Future<void> showLessonForm(
   BuildContext context,
   WidgetRef ref, {
   required ActiveTeam team,
   Lesson? lesson,
+  DateTime? startsAt,
+  String? leadId,
 }) async {
   final saved = await showPennySheet<String>(
     context,
@@ -29,6 +34,8 @@ Future<void> showLessonForm(
     builder: (sheetContext) => LessonForm(
       team: team,
       lesson: lesson,
+      startsAt: startsAt,
+      leadId: leadId,
       onDone: (message) => Navigator.of(sheetContext).pop(message),
     ),
   );
@@ -45,6 +52,8 @@ class LessonForm extends ConsumerStatefulWidget {
     super.key,
     required this.team,
     this.lesson,
+    this.startsAt,
+    this.leadId,
     required this.onDone,
   });
 
@@ -53,6 +62,12 @@ class LessonForm extends ConsumerStatefulWidget {
 
   /// The lesson to reschedule, or null to add one.
   final Lesson? lesson;
+
+  /// When a new lesson starts, if already chosen (an instant).
+  final DateTime? startsAt;
+
+  /// Who leads a new lesson, if already chosen.
+  final String? leadId;
 
   /// Called with the snackbar message once the person is done.
   final ValueChanged<String> onDone;
@@ -88,15 +103,19 @@ class _LessonFormState extends ConsumerState<LessonForm> with AsyncAction {
     final l = widget.lesson;
     _editing = l;
     final now = ref.read(clockProvider)();
-    final start = l == null
-        ? time.wallClock(now).add(const Duration(hours: 1))
-        : time.wallClock(l.startsAt);
+    final chosen = widget.startsAt;
+    final start = l != null
+        ? time.wallClock(l.startsAt)
+        : chosen != null
+        ? time.wallClock(chosen)
+        : time.wallClock(now).add(const Duration(hours: 1));
     _date = DateTime.utc(start.year, start.month, start.day);
-    _time = l == null
+    _time = l == null && chosen == null
         ? TimeOfDay(hour: start.hour, minute: 0)
         : TimeOfDay(hour: start.hour, minute: start.minute);
     _minutes = l == null ? 45 : l.length.inMinutes;
-    _leadId = l?.lead?.membershipId ?? widget.team.membershipId;
+    _leadId =
+        l?.lead?.membershipId ?? widget.leadId ?? widget.team.membershipId;
     _assisting = [
       for (final t in l?.tutors ?? const <LessonTutor>[])
         if (!t.isLead) t.membershipId,
