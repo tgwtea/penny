@@ -104,6 +104,8 @@ void main() {
         onPressed: () {},
       ),
     ]),
+    // The variants wrap onto three rows at phone width.
+    size: const Size(390, 300),
   );
 
   pennyGoldens(
