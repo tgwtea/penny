@@ -64,6 +64,9 @@ void main() {
     await tester.ensureVisible(submit);
     await tester.tap(submit);
     await waitFor(tester, find.text('Invited'));
+    // The list can show the teacher a moment before the form clears the
+    // email typed into it (on laptop the form stays open for the next one).
+    await settle(tester, rounds: 4);
     expect(find.text(teacherEmail), findsOneWidget);
 
     await signOut(tester, 'Daniel Koh');
