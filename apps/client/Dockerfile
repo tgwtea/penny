@@ -70,8 +70,14 @@ RUN cd apps/client \
 
 FROM nginxinc/nginx-unprivileged:1.31.7-alpine AS runtime
 
-# Where the app finds the API. Set per environment (deploy/base/web).
-ENV PENNY_API_URL=""
+# Where the app finds the API, and which Firebase project signs people in.
+# Set per environment (deploy/base/web, docs/runbooks/firebase-auth-setup.md).
+ENV PENNY_API_URL="" \
+    PENNY_FIREBASE_PROJECT_ID="" \
+    PENNY_FIREBASE_API_KEY="" \
+    PENNY_FIREBASE_APP_ID="" \
+    PENNY_FIREBASE_AUTH_DOMAIN="" \
+    PENNY_FIREBASE_MESSAGING_SENDER_ID=""
 
 COPY apps/client/nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/apps/client/build/web /usr/share/nginx/html

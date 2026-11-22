@@ -1,6 +1,7 @@
 # Serves the Flutter web build. The nginx image substitutes ${PENNY_API_URL}
-# from the environment at container start; nginx's own $variables are left
-# alone because they are not set in the environment.
+# and the ${PENNY_FIREBASE_*} settings from the environment at container
+# start; nginx's own $variables are left alone because they are not set in
+# the environment.
 
 server {
     listen 8080;
@@ -17,7 +18,7 @@ server {
     location = /config.json {
         default_type application/json;
         add_header Cache-Control "no-store" always;
-        return 200 '{"apiUrl":"${PENNY_API_URL}"}';
+        return 200 '{"apiUrl":"${PENNY_API_URL}","firebase":{"projectId":"${PENNY_FIREBASE_PROJECT_ID}","apiKey":"${PENNY_FIREBASE_API_KEY}","appId":"${PENNY_FIREBASE_APP_ID}","authDomain":"${PENNY_FIREBASE_AUTH_DOMAIN}","messagingSenderId":"${PENNY_FIREBASE_MESSAGING_SENDER_ID}"}}';
     }
 
     # Probes for Kubernetes.

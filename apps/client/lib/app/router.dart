@@ -4,7 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../core/capability.dart';
 import '../features/auth/application/session_controller.dart';
+import '../features/auth/presentation/account_screen.dart';
+import '../features/auth/presentation/create_account_screen.dart';
+import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
+import '../features/auth/presentation/starting_screen.dart';
+import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
 import '../features/payments/presentation/payments_screen.dart';
 import '../features/students/presentation/students_screen.dart';
@@ -21,14 +26,20 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(sessionProvider, (_, _) => sessionChanged.value++);
 
   final router = GoRouter(
+    // Where the browser points, so a deep link survives loading the session.
     initialLocation: Routes.today,
+    overridePlatformDefaultLocation: false,
     refreshListenable: sessionChanged,
     redirect: (context, state) =>
         redirectFor(ref.read(sessionProvider), state.uri),
     errorBuilder: (context, state) => const NotFoundView(),
     routes: [
       GoRoute(path: '/', redirect: (_, _) => Routes.today),
-      GoRoute(path: Routes.signIn, builder: (_, _) => const SignInScreen()),
+      _entry(Routes.starting, (_) => const StartingScreen()),
+      _entry(Routes.signIn, (_) => const SignInScreen()),
+      _entry(Routes.createAccount, (_) => const CreateAccountScreen()),
+      _entry(Routes.resetPassword, (_) => const ResetPasswordScreen()),
+      _entry(Routes.verifyEmail, (_) => const VerifyEmailScreen()),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),
@@ -37,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           _page(Routes.calendar, (_) => const CalendarScreen()),
           _page(Routes.students, (_) => const StudentsScreen()),
           _page(Routes.payments, (_) => const PaymentsScreen()),
+          _page(Routes.account, (_) => const AccountScreen()),
           _page(
             Routes.team,
             (_) => const CapabilityGate(
@@ -56,6 +68,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// A page before someone is in. Moving between them does not animate
+/// either: the session decides where the person is.
+GoRoute _entry(String path, WidgetBuilder builder) => _page(path, builder);
 
 /// A top-level destination. Switching between them does not animate: they
 /// are places, not steps (brand book, "Motion").

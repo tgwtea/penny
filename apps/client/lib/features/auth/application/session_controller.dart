@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../domain/auth_repository.dart';
 import '../domain/session.dart';
 import '../domain/session_repository.dart';
 
@@ -8,6 +9,14 @@ import '../domain/session_repository.dart';
 final sessionRepositoryProvider = Provider<SessionRepository>(
   (ref) => throw UnimplementedError(
     'sessionRepositoryProvider is set by backendOverrides()',
+  ),
+);
+
+/// Signing in and out, set by the composition root alongside
+/// [sessionRepositoryProvider]; both are usually the same object.
+final authRepositoryProvider = Provider<AuthRepository>(
+  (ref) => throw UnimplementedError(
+    'authRepositoryProvider is set by backendOverrides()',
   ),
 );
 
@@ -32,4 +41,11 @@ class SessionController extends Notifier<Session> {
   /// Shows another of the person's teams.
   Future<void> switchTeam(String teamId) =>
       ref.read(sessionRepositoryProvider).switchTeam(teamId);
+
+  /// Loads the signed-in person again.
+  Future<void> refresh() => ref.read(sessionRepositoryProvider).refresh();
+
+  /// Changes the signed-in person's display name.
+  Future<void> rename(String displayName) =>
+      ref.read(sessionRepositoryProvider).rename(displayName);
 }

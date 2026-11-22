@@ -60,3 +60,43 @@ final class ServerFailure extends Failure {
   /// The server's request ID, to quote when reporting the problem.
   final String? requestId;
 }
+
+/// Why signing in, signing up or changing the account failed. Screens pick
+/// their own words for each [reason] (auth/presentation/auth_messages.dart).
+final class AuthFailure extends Failure {
+  /// Creates an auth failure.
+  const AuthFailure(this.reason, [String message = '']) : super(message);
+
+  /// What went wrong, in terms the person can act on.
+  final AuthFailureReason reason;
+}
+
+/// The reasons an identity provider refuses a sign-in or account change.
+enum AuthFailureReason {
+  /// The email and password do not match an account.
+  wrongCredentials,
+
+  /// An account with this email already exists.
+  emailInUse,
+
+  /// The password is too easy to guess.
+  weakPassword,
+
+  /// The email address is not valid.
+  invalidEmail,
+
+  /// Too many attempts; wait before trying again.
+  tooManyAttempts,
+
+  /// The person closed the Google window before finishing.
+  cancelled,
+
+  /// Deleting the account needs a fresh sign-in first.
+  requiresRecentSignIn,
+
+  /// The provider could not be reached.
+  network,
+
+  /// Anything else.
+  unknown,
+}

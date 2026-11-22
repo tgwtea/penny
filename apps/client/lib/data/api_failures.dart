@@ -19,6 +19,9 @@ Future<T> guardApiCall<T>(Future<T> Function() call) async {
     if (e.innerException != null) throw NetworkFailure(e.message ?? '$e');
     final body = e.body;
     throw failureFromProblem(e.code, body is Problem ? body : null);
+  } on MissingSecretsException {
+    // A secured call with nobody signed in.
+    throw const UnauthenticatedFailure('not signed in');
   } on http.ClientException catch (e) {
     throw NetworkFailure(e.message);
   } on TimeoutException catch (e) {
@@ -53,7 +56,3 @@ Failure failureFromProblem(int status, Problem? problem) {
     },
   };
 }
-
-/// A generated API client for [baseUrl] over [client].
-ApiClient apiClientFor(Uri baseUrl, http.Client client) =>
-    ApiClient(baseUri: baseUrl, client: client);

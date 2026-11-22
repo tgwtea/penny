@@ -16,6 +16,9 @@ import 'package:penny/features/auth/application/session_controller.dart';
 import 'package:penny/features/system/application/server_info_provider.dart';
 import 'package:penny_ui/penny_ui.dart';
 
+import '../fakes/fake_api.dart';
+import '../fakes/fake_identity_provider.dart';
+
 const _phone = Size(390, 844);
 const _laptop = Size(1440, 900);
 
@@ -29,11 +32,11 @@ Future<ProviderContainer> pumpApp(
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
+  final session = DemoSessionRepository(persona: persona);
   final container = ProviderContainer(
     overrides: [
-      sessionRepositoryProvider.overrideWithValue(
-        DemoSessionRepository(persona: persona),
-      ),
+      sessionRepositoryProvider.overrideWithValue(session),
+      authRepositoryProvider.overrideWithValue(session),
       serverInfoRepositoryProvider.overrideWithValue(
         DemoServerInfoRepository(),
       ),
@@ -148,42 +151,124 @@ void main() {
   });
 
   group('HTTP mode', () {
-    Future<void> pumpHttpApp(WidgetTester tester, http.Client client) async {
+    Future<FakeIdentityProvider> pumpHttpApp(
+      WidgetTester tester,
+      http.Client client, {
+      String? signedInAs,
+      void Function(FakeIdentityProvider)? seed,
+    }) async {
       tester.view.physicalSize = _phone;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      final identity = FakeIdentityProvider();
+      seed?.call(identity);
       final config = AppConfig(
         backend: BackendKind.http,
         apiBaseUrl: Uri.parse('https://api.example.com'),
       );
       await tester.pumpWidget(
         ProviderScope(
-          overrides: backendOverrides(config, httpClient: client),
+          overrides: backendOverrides(
+            config,
+            identity: identity,
+            httpClient: client,
+          ),
           child: const PennyApp(),
         ),
       );
+      await tester.pump();
+      identity.restore(signedInAs: signedInAs);
       await tester.pumpAndSettle();
+      return identity;
     }
 
-    testWidgets('signs out to the sign-in screen and shows the API version', (
+    MockClient versionOnly() => MockClient(
+      (request) async => request.url.path == '/v1/version'
+          ? http.Response(
+              jsonEncode({'version': '0.1.0', 'commit': '3f2c1a9'}),
+              200,
+            )
+          : http.Response('', 404),
+    );
+
+    testWidgets('signed out, shows sign-in and the API version', (
       tester,
     ) async {
-      await pumpHttpApp(
-        tester,
-        MockClient(
-          (request) async => request.url.path == '/v1/version'
-              ? http.Response(
-                  jsonEncode({'version': '0.1.0', 'commit': '3f2c1a9'}),
-                  200,
-                )
-              : http.Response('', 404),
-        ),
-      );
-      expect(find.text('Sign-in is not available yet.'), findsOneWidget);
+      await pumpHttpApp(tester, versionOnly());
+      expect(find.text('Sign in to Penny'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
       expect(
         find.text('Connected to Penny API 0.1.0 (3f2c1a9)'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('signs in with email and lands on Today', (tester) async {
+      final api = FakeApi();
+      await pumpHttpApp(
+        tester,
+        api.client,
+        seed: (i) => i.seed('hana@example.com', 'correct horse'),
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Email'),
+        'hana@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Password'),
+        'correct horse',
+      );
+      await tester.tap(find.widgetWithText(PennyButton, 'Sign in'));
+      await tester.pumpAndSettle();
+      expect(find.text('Today'), findsWidgets);
+      expect(api.requests, contains('GET /v1/me'));
+    });
+
+    testWidgets('a wrong password says so and stays on sign-in', (
+      tester,
+    ) async {
+      await pumpHttpApp(
+        tester,
+        FakeApi().client,
+        seed: (i) => i.seed('hana@example.com', 'correct horse'),
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Email'),
+        'hana@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Password'),
+        'wrong',
+      );
+      await tester.tap(find.widgetWithText(PennyButton, 'Sign in'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('That email and password don\'t match'),
+        findsOneWidget,
+      );
+      expect(find.text('Sign in to Penny'), findsOneWidget);
+    });
+
+    testWidgets('a new account is held at "Check your email"', (tester) async {
+      await pumpHttpApp(tester, FakeApi().client);
+      await tester.tap(find.text('New to Penny? Create an account'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Your name'),
+        'Hana Lim',
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Email'),
+        'hana@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(PennyTextField, 'Password'),
+        'correct horse',
+      );
+      await tester.tap(find.widgetWithText(PennyButton, 'Create account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Check your email'), findsOneWidget);
+      expect(find.textContaining('hana@example.com'), findsWidgets);
     });
 
     testWidgets('says when the API cannot be reached, and retries', (

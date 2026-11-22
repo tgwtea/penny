@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/capability.dart';
+import '../../../core/failure.dart';
 
 /// A team, as the session needs it. The UI says "Team"; the API says
 /// workspace.
@@ -73,15 +74,45 @@ class SessionUser {
 }
 
 /// Who is using the app, and in which team.
+///
+/// The router reads it on every change (app/routes.dart): each state has
+/// one place the person belongs.
 @immutable
 sealed class Session {
   const Session();
+}
+
+/// The app is finding out whether someone is signed in, such as while the
+/// identity provider restores a saved sign-in on start.
+final class SessionStarting extends Session {
+  /// Creates a starting session.
+  const SessionStarting();
 }
 
 /// Nobody is signed in.
 final class SignedOut extends Session {
   /// Creates a signed-out session.
   const SignedOut();
+}
+
+/// Someone signed in, but has not verified their email address yet. Penny
+/// needs a verified address before it lets them in (ADR 004).
+final class AwaitingVerification extends Session {
+  /// Creates the session for [email].
+  const AwaitingVerification({required this.email});
+
+  /// The address the verification link was sent to.
+  final String email;
+}
+
+/// Someone signed in, but Penny could not load who they are: the server is
+/// unreachable or failed. Retrying (SessionRepository.refresh) may fix it.
+final class SessionUnavailable extends Session {
+  /// Creates the session for [failure].
+  const SessionUnavailable(this.failure);
+
+  /// Why loading failed.
+  final Failure failure;
 }
 
 /// Someone is signed in.
@@ -126,4 +157,11 @@ final class SignedIn extends Session {
 
   /// Whether the person can switch to another team.
   bool get hasSeveralTeams => memberships.length > 1;
+
+  /// Whether the person still has to create or join a team.
+  bool get needsOnboarding => memberships.isEmpty;
+
+  /// A copy showing [teamId] instead.
+  SignedIn withActiveTeam(String teamId) =>
+      SignedIn(user: user, memberships: memberships, activeTeamId: teamId);
 }
