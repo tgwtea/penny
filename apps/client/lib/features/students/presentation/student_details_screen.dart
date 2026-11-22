@@ -166,7 +166,16 @@ class _Details extends ConsumerWidget {
             leading: PennyAvatar(name: contact.name),
             title: contact.name,
             tag: contact.relationship.label,
-            subtitle: [?contact.email, ?contact.phone].join(', '),
+            // One line: how they sign in, if they do, in place of the bare
+            // email.
+            subtitle: [
+              ?switch ((contact.canSignIn, contact.signedIn)) {
+                (true, true) => 'Signs in with ${contact.email}',
+                (true, false) => 'Invited to sign in at ${contact.email}',
+                _ => contact.email,
+              },
+              ?contact.phone,
+            ].join(', '),
             trailing: [
               if (manage)
                 PennyMenuButton(
@@ -177,6 +186,48 @@ class _Details extends ConsumerWidget {
                       icon: PennyIcons.edit,
                       onSelected: () => openContact(contact),
                     ),
+                    if (contact.canSignIn)
+                      PennyMenuItem(
+                        label: 'Stop their sign-in',
+                        icon: PennyIcons.locked,
+                        onSelected: () => _run(
+                          context,
+                          () => actions.setContactSignIn(
+                            student.id,
+                            contact.id,
+                            false,
+                          ),
+                          '${contact.name} no longer signs in',
+                        ),
+                      )
+                    else if (contact.email != null)
+                      PennyMenuItem(
+                        label: 'Let them sign in',
+                        icon: PennyIcons.email,
+                        onSelected: () async {
+                          final yes = await showPennyConfirmation(
+                            context,
+                            title: 'Invite ${contact.name} to sign in?',
+                            body:
+                                'Penny emails ${contact.email} an invitation. '
+                                'Once they sign in with that address, they '
+                                'see ${student.name}\'s lessons and payments, '
+                                'read-only. Their email stays as it is until '
+                                'you stop their sign-in.',
+                            confirmLabel: 'Send invitation',
+                          );
+                          if (!yes || !context.mounted) return;
+                          await _run(
+                            context,
+                            () => actions.setContactSignIn(
+                              student.id,
+                              contact.id,
+                              true,
+                            ),
+                            'Invitation sent to ${contact.email}',
+                          );
+                        },
+                      ),
                     PennyMenuItem(
                       label: 'Remove',
                       icon: PennyIcons.delete,
@@ -253,6 +304,10 @@ class _Details extends ConsumerWidget {
                 ),
             ],
           ),
+        if (manage) ...[
+          const PennySectionHeader(title: 'Their own sign-in'),
+          _StudentSignIn(student: student, run: _run),
+        ],
         const PennySectionHeader(title: 'Next lessons'),
         switch (upcoming) {
           AsyncData(:final value) =>
@@ -339,6 +394,148 @@ class _Details extends ConsumerWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Whether the student signs in themselves, and the controls to give or
+/// stop it (ADR 025).
+class _StudentSignIn extends ConsumerWidget {
+  const _StudentSignIn({required this.student, required this.run});
+
+  final Student student;
+  final Future<void> Function(BuildContext, Future<Object?> Function(), String)
+  run;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = PennyColors.of(context);
+    final actions = ref.read(studentActionsProvider);
+    final first = PennyFormat.firstName(student.name);
+    final email = student.signInEmail;
+    if (email == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Give $first their own sign-in to see their lessons and what to '
+            'work on, read-only.',
+            style: PennyText.body.copyWith(color: c.textSecondary),
+          ),
+          const SizedBox(height: PennySpace.s3),
+          PennyButton(
+            label: 'Give them a sign-in',
+            icon: PennyIcons.addPerson,
+            variant: PennyButtonVariant.secondary,
+            onPressed: student.archived
+                ? null
+                : () => showPennySheet<void>(
+                    context,
+                    title: 'Give $first a sign-in',
+                    builder: (sheetContext) => _SignInForm(
+                      studentId: student.id,
+                      onDone: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ),
+          ),
+        ],
+      );
+    }
+    return PennyListRow(
+      leading: Icon(
+        student.signedIn ? PennyIcons.verified : PennyIcons.pending,
+        size: PennyIconSize.standard,
+        color: c.textSecondary,
+      ),
+      title: email,
+      subtitle: student.signedIn ? 'Signs in to Penny' : 'Invited to sign in',
+      trailing: [
+        PennyButton(
+          label: 'Stop',
+          variant: PennyButtonVariant.quiet,
+          size: PennyButtonSize.compact,
+          onPressed: () => run(
+            context,
+            () => actions.setStudentSignIn(student.id, null),
+            '$first no longer signs in',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SignInForm extends ConsumerStatefulWidget {
+  const _SignInForm({required this.studentId, required this.onDone});
+
+  final String studentId;
+  final VoidCallback onDone;
+
+  @override
+  ConsumerState<_SignInForm> createState() => _SignInFormState();
+}
+
+class _SignInFormState extends ConsumerState<_SignInForm> {
+  final _email = TextEditingController();
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final email = _email.text.trim();
+    if (!email.contains('@')) {
+      setState(() => _error = 'Enter the student\'s email address.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(studentActionsProvider)
+          .setStudentSignIn(widget.studentId, email);
+      widget.onDone();
+      if (mounted) {
+        PennySnackbar.show(context, message: 'Invitation sent to $email');
+      }
+    } on Failure catch (f) {
+      setState(() => _error = failureText(f));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = PennyColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PennyTextField(
+          label: 'Their email',
+          placeholder: 'sofia@example.com',
+          controller: _email,
+          error: _error,
+          keyboardType: TextInputType.emailAddress,
+          onSubmitted: (_) => _send(),
+        ),
+        const SizedBox(height: PennySpace.s2),
+        Text(
+          'Penny emails them an invitation. Once they sign in with this '
+          'address, they see their own lessons, read-only.',
+          style: PennyText.small.copyWith(color: c.textSecondary),
+        ),
+        const SizedBox(height: PennySpace.s6),
+        PennyButton(
+          label: 'Send invitation',
+          size: PennyButtonSize.large,
+          expand: true,
+          onPressed: _busy ? null : _send,
+        ),
       ],
     );
   }
