@@ -234,6 +234,10 @@ void main() {
     expect(find.text('Draft saved'), findsOneWidget);
     expect(find.text(lesson.studentNames.first), findsWidgets);
     expect(find.widgetWithText(StatusBadge, 'Draft'), findsOneWidget);
+    // Each lesson line opens its lesson: a request traces to what it bills.
+    await tester.tap(find.bySemanticsLabel(RegExp('^Open the lesson: ')).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Lesson'), findsWidgets);
     final left = await c
         .read(paymentRepositoryProvider)
         .billableLessons(DemoStore.studioId);

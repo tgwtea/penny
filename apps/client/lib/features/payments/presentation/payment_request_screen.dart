@@ -210,7 +210,12 @@ class _PaymentRequestScreenState extends ConsumerState<PaymentRequestScreen> {
         ],
         const PennySectionHeader(title: 'What it covers'),
         for (final l in r.lines) ...[
-          _line(context, l.description, money(l.amountCents, r.currency)),
+          _line(
+            context,
+            l.description,
+            money(l.amountCents, r.currency),
+            lessonId: l.lessonId,
+          ),
           const PennyDivider(),
         ],
         _line(context, 'Total', money(r.amountCents, r.currency), strong: true),
@@ -383,17 +388,20 @@ class _PaymentRequestScreenState extends ConsumerState<PaymentRequestScreen> {
     ];
   }
 
+  /// A line of the request; a lesson's opens that lesson, so a request
+  /// traces back to what it bills.
   Widget _line(
     BuildContext context,
     String what,
     String amount, {
     bool strong = false,
+    String? lessonId,
   }) {
     final c = PennyColors.of(context);
     final style = (strong ? PennyText.bodyStrong : PennyText.body).copyWith(
       color: c.text,
     );
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: PennySpace.s3),
       child: Row(
         children: [
@@ -403,8 +411,23 @@ class _PaymentRequestScreenState extends ConsumerState<PaymentRequestScreen> {
             amount,
             style: style.copyWith(fontFeatures: PennyText.amount.fontFeatures),
           ),
+          if (lessonId != null) ...[
+            const SizedBox(width: PennySpace.s2),
+            Icon(
+              PennyIcons.next,
+              size: PennyIconSize.standard,
+              color: c.textSecondary,
+            ),
+          ],
         ],
       ),
+    );
+    if (lessonId == null) return row;
+    return PennyPressable(
+      onPressed: () => context.push(Paths.lesson(lessonId)),
+      contentColor: c.text,
+      semanticLabel: 'Open the lesson: $what',
+      child: row,
     );
   }
 }

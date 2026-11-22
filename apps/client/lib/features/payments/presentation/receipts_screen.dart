@@ -275,21 +275,36 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         fact('Request', r.reference),
         const PennySectionHeader(title: 'What it covers'),
         for (final l in r.lines)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: PennySpace.s2),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.description,
-                    style: PennyText.body.copyWith(color: c.text),
+          PennyPressable(
+            onPressed: l.lessonId == null
+                ? null
+                : () => context.push(Paths.lesson(l.lessonId!)),
+            contentColor: c.text,
+            isButton: l.lessonId != null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: PennySpace.s2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.description,
+                      style: PennyText.body.copyWith(color: c.text),
+                    ),
                   ),
-                ),
-                Text(
-                  money(l.amountCents, r.currency),
-                  style: PennyText.amount.copyWith(color: c.text),
-                ),
-              ],
+                  Text(
+                    money(l.amountCents, r.currency),
+                    style: PennyText.amount.copyWith(color: c.text),
+                  ),
+                  if (l.lessonId != null) ...[
+                    const SizedBox(width: PennySpace.s2),
+                    Icon(
+                      PennyIcons.next,
+                      size: PennyIconSize.standard,
+                      color: c.textSecondary,
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         const PennySectionHeader(title: 'Proof it is unaltered'),
