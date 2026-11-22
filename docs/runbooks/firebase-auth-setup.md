@@ -24,6 +24,7 @@ In **Authentication**, open **Sign-in method** and:
 3. Under **Settings**, then **User account linking**, choose **Link accounts that use the same email**. Someone who signs up with a password and later uses Google with the same address then stays one person, and keeps their teams.
 4. Under **Settings**, then **Authorized domains**, add the environment's web host (`app.dev.<domain>`). Remove `localhost` from the prod project. Keep it on dev if developers will sign in to dev from `flutter run`.
 5. Under **Settings**, turn on **Email enumeration protection**. Penny's reset-password page already answers the same way whether or not an account exists; this makes Firebase's own API do the same.
+6. Under **Settings**, then **Password policy**, require at least 8 characters, the same as Penny's sign-up form, and turn on enforcement, so Firebase refuses shorter ones from any client (docs/security.md, V2).
 
 ## 3. Adjust the emails
 

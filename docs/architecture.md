@@ -629,6 +629,8 @@ Payee setup with test-scan confirmation, PayNow encoder with golden payloads ver
 
 Row-level security, ASVS Level 1 review, rate limits, PDPA access and deletion flows, retention jobs, prod overlay and first promotion, restore drill, load test at ten times expected traffic. Done when prod is live and the first runbook has been exercised.
 
+Server done on 22 Nov 2026 except the deployment steps (prod overlay, first promotion, restore drill, load test), which are done elsewhere. Row-level security covers every team table (migration 00011), with triggers that make the audit log append-only and receipts immutable for every role. Public operations are rate-limited per client address, believing `X-Forwarded-For` only from `PENNY_TRUSTED_PROXIES`; request bodies are capped at 1 MiB and responses carry HSTS. A daily `retention` job purges idempotency keys, long-expired payment links and year-old email log rows. PDPA access requests are answered by `GET /v1/me/export` and, for owners, a student export (`internal/privacy`); the retention policy is docs/privacy.md, and the ASVS Level 1 review with its follow-ups is docs/security.md. Runbooks cover data requests and breach response.
+
 ### Phase 10: Student and parent roles
 
 Invitations by email, linking `students.user_id` and `student_contacts.user_id`, capability sets for the two roles, a parent view of upcoming lessons, receipts and payment links.
