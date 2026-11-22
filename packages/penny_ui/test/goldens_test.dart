@@ -479,6 +479,115 @@ void main() {
   );
 
   pennyGoldens(
+    'chips',
+    (_) => _gallery([
+      PennyChips<String>(
+        chips: const [
+          PennyChip(value: 'mei', label: 'Mei', person: 'Mei Lin Tan'),
+          PennyChip(value: 'aisha', label: 'Aisha', person: 'Aisha Rahman'),
+          PennyChip(value: 'ravi', label: 'Ravi', person: 'Ravi Kumar'),
+        ],
+        selected: const {'mei'},
+        onTap: (_) {},
+      ),
+      PennyChips<String>(
+        chips: const [
+          PennyChip(value: 'all', label: 'Everyone'),
+          PennyChip(value: 'mei', label: 'Mei Lin Tan'),
+          PennyChip(value: 'aisha', label: 'Aisha Rahman'),
+          PennyChip(value: 'ravi', label: 'Ravi Kumar'),
+          PennyChip(value: 'joshua', label: 'Joshua Lim'),
+        ],
+        selected: const {'mei', 'aisha'},
+        onTap: (_) {},
+      ),
+      PennyChips<int>(
+        scrollable: true,
+        chips: [
+          for (final (i, n) in [
+            'Daniel',
+            'Mei',
+            'Aisha',
+            'Ravi',
+            'Joshua',
+            'Siti',
+          ].indexed)
+            PennyChip(value: i, label: n, person: n),
+        ],
+        selected: const {1},
+        onTap: (_) {},
+      ),
+    ]),
+    size: const Size(390, 300),
+  );
+
+  LessonView monthLesson(
+    int day,
+    int hour,
+    String student, {
+    LessonViewStatus status = LessonViewStatus.scheduled,
+    bool clash = false,
+  }) {
+    final start = DateTime(2026, 11, day, hour);
+    return LessonView(
+      id: '$day-$hour-$student',
+      start: start,
+      end: start.add(const Duration(minutes: 45)),
+      students: [student],
+      tutors: const [_mei],
+      status: status,
+      hasClash: clash,
+    );
+  }
+
+  final month = <int, List<LessonView>>{
+    16: [monthLesson(16, 15, 'Arjun Nair', status: LessonViewStatus.done)],
+    17: [
+      monthLesson(17, 14, 'Hana Ito', status: LessonViewStatus.done),
+      monthLesson(17, 16, 'Kai Wong', status: LessonViewStatus.noShow),
+    ],
+    19: [
+      monthLesson(19, 14, 'Arjun Nair', status: LessonViewStatus.done),
+      monthLesson(19, 16, 'Sofia Lim', clash: true),
+      monthLesson(19, 16, 'Ben Ong', clash: true),
+      monthLesson(19, 17, 'Rohan Menon', status: LessonViewStatus.cancelled),
+      monthLesson(19, 18, 'Lucas Goh'),
+    ],
+    20: [monthLesson(20, 10, 'Chloe Tan')],
+    23: [monthLesson(23, 15, 'Arjun Nair')],
+    26: [monthLesson(26, 16, 'Sofia Lim'), monthLesson(26, 17, 'Ben Ong')],
+  };
+
+  pennyGoldens(
+    'month_grid',
+    (_) => Padding(
+      padding: const EdgeInsets.all(PennySpace.s4),
+      child: MonthGrid(
+        month: _day,
+        today: _day,
+        lessonsOn: (d) => d.month == 11 ? month[d.day] ?? const [] : const [],
+        onTapDay: (_) {},
+      ),
+    ),
+    size: const Size(900, 760),
+  );
+
+  pennyGoldens(
+    'month_grid_compact',
+    (_) => Padding(
+      padding: const EdgeInsets.all(PennySpace.s4),
+      child: MonthGrid(
+        month: _day,
+        today: _day,
+        compact: true,
+        lessonsOn: (d) => d.month == 11 ? month[d.day] ?? const [] : const [],
+        onTapDay: (_) {},
+      ),
+    ),
+    size: const Size(390, 440),
+  );
+
+  pennyGoldens(
     'dialog',
     (_) => PennyDialog(
       title: 'Delete your account?',
