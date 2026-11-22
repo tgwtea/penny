@@ -5,6 +5,8 @@ import 'package:http/testing.dart';
 import 'package:penny/data/api_connection.dart';
 import 'package:penny/data/api_settings.dart';
 
+import 'fake_scheduling_api.dart';
+
 /// A fake Penny API speaking the contract in api/openapi.yaml, kept in
 /// memory. It knows only what the HTTP repositories under test need; each
 /// feature adds its routes here.
@@ -20,6 +22,28 @@ class FakeApi {
   /// members routes return them.
   final teams = <String, ({String name, List<Map<String, Object?>> members})>{};
   int _seq = 0;
+
+  /// Students, places, lessons and policies (Phase 5 routes).
+  late final scheduling = FakeSchedulingApi(
+    memberOf: (teamId, email) {
+      final team = teams[teamId];
+      if (team == null) return null;
+      for (final m in team.members) {
+        if (m['email'] == email && m['status'] == 'active') {
+          return (id: m['id']! as String, role: m['role']! as String);
+        }
+      }
+      return null;
+    },
+    nameOf: (membershipId) {
+      for (final team in teams.values) {
+        for (final m in team.members) {
+          if (m['id'] == membershipId) return m['displayName']! as String;
+        }
+      }
+      return '';
+    },
+  );
 
   /// Every request, for assertions: "GET /v1/me".
   final requests = <String>[];
@@ -50,6 +74,8 @@ class FakeApi {
     if (email == null) {
       return problem(401, 'urn:penny:problem:unauthenticated');
     }
+    final schedulingRoute = scheduling.handle(request, email);
+    if (schedulingRoute != null) return schedulingRoute;
     final teamRoute = _teamRoute(request, email);
     if (teamRoute != null) return teamRoute;
     switch (route) {

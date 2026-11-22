@@ -348,6 +348,88 @@ func (q *Queries) LockWorkspaceMembers(ctx context.Context, workspaceID uuid.UUI
 	return err
 }
 
+const memberNamesByUser = `-- name: MemberNamesByUser :many
+SELECT DISTINCT ON (user_id) user_id, display_name FROM workspace_memberships
+WHERE workspace_id = $1 AND user_id = ANY($2::uuid[])
+ORDER BY user_id, (status = 'active') DESC, updated_at DESC
+`
+
+type MemberNamesByUserParams struct {
+	WorkspaceID uuid.UUID
+	UserIds     []uuid.UUID
+}
+
+type MemberNamesByUserRow struct {
+	UserID      *uuid.UUID
+	DisplayName string
+}
+
+func (q *Queries) MemberNamesByUser(ctx context.Context, arg MemberNamesByUserParams) ([]MemberNamesByUserRow, error) {
+	rows, err := q.db.Query(ctx, memberNamesByUser, arg.WorkspaceID, arg.UserIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MemberNamesByUserRow
+	for rows.Next() {
+		var i MemberNamesByUserRow
+		if err := rows.Scan(&i.UserID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const membersByID = `-- name: MembersByID :many
+SELECT id, user_id, display_name, role, status FROM workspace_memberships
+WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type MembersByIDParams struct {
+	WorkspaceID uuid.UUID
+	Ids         []uuid.UUID
+}
+
+type MembersByIDRow struct {
+	ID          uuid.UUID
+	UserID      *uuid.UUID
+	DisplayName string
+	Role        MembershipRole
+	Status      MembershipStatus
+}
+
+// Names and roles of the given memberships, removed ones included, so old
+// lessons still show who taught them.
+func (q *Queries) MembersByID(ctx context.Context, arg MembersByIDParams) ([]MembersByIDRow, error) {
+	rows, err := q.db.Query(ctx, membersByID, arg.WorkspaceID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MembersByIDRow
+	for rows.Next() {
+		var i MembersByIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Role,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeAllMembershipsOfUser = `-- name: RemoveAllMembershipsOfUser :many
 UPDATE workspace_memberships
 SET status = 'removed', removed_at = $1,

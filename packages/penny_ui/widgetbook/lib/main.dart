@@ -103,6 +103,83 @@ class PennyCatalogue extends StatelessWidget {
                 ],
               ),
             }),
+            _component('PennySelectField', {
+              'Chosen': (_) => PennySelectField(
+                label: 'Date',
+                value: 'Thu 19 Nov',
+                icon: PennyIcons.calendar,
+                onTap: () {},
+              ),
+              'Nothing chosen, with hint': (_) => PennySelectField(
+                label: 'Place',
+                placeholder: 'Choose a place',
+                hint: 'Saved on the Places page.',
+                onTap: () {},
+              ),
+              'Error': (_) => PennySelectField(
+                label: 'Lead tutor',
+                error: 'Choose who leads the lesson.',
+                onTap: () {},
+              ),
+              'Opens a choice': (context) => PennySelectField(
+                label: 'Length',
+                value: '45 min',
+                onTap: () => showPennyChoice<int>(
+                  context,
+                  title: 'Length',
+                  selected: 45,
+                  choices: const [
+                    PennyChoice(value: 30, label: '30 min'),
+                    PennyChoice(value: 45, label: '45 min'),
+                    PennyChoice(value: 60, label: '1 h'),
+                  ],
+                ),
+              ),
+            }),
+            _component('PennyCheckRow', {
+              'Open task': (_) => PennyCheckRow(
+                title: 'Practise the tremolo, 10 minutes a day',
+                subtitle: 'Mei Lin Tan',
+                checked: false,
+                onChanged: (_) {},
+              ),
+              'Done task': (_) => PennyCheckRow(
+                title: 'Learn the first page of Malaguena',
+                checked: true,
+                onChanged: (_) {},
+              ),
+              'Read-only': (_) => const PennyCheckRow(
+                title: 'Bring the capo',
+                checked: false,
+                onChanged: null,
+              ),
+            }),
+            _component('PennyToggleRow', {
+              'On': (_) => PennyToggleRow(
+                title: 'Charge for no-shows',
+                body: 'A student who does not come is billed for the lesson.',
+                value: true,
+                onChanged: (_) {},
+              ),
+              'Off': (_) => PennyToggleRow(
+                title: 'Charge for late cancellations',
+                value: false,
+                onChanged: (_) {},
+              ),
+            }),
+            _component('PennySectionHeader', {
+              'With an action': (_) => PennySectionHeader(
+                title: 'Tasks and notes',
+                action: PennyButton(
+                  label: 'Add',
+                  icon: PennyIcons.add,
+                  variant: PennyButtonVariant.quiet,
+                  size: PennyButtonSize.compact,
+                  onPressed: () {},
+                ),
+              ),
+              'Plain': (_) => const PennySectionHeader(title: 'History'),
+            }),
             _component('PennyDivider', {
               'Plain': (_) => const PennyDivider(),
               'With a word': (_) => const PennyDivider(label: 'or'),

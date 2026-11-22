@@ -11,9 +11,12 @@ import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/starting_screen.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
+import '../features/lessons/presentation/lesson_details_screen.dart';
+import '../features/lessons/presentation/places_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/payments/presentation/payments_screen.dart';
+import '../features/students/presentation/student_details_screen.dart';
 import '../features/students/presentation/students_screen.dart';
 import '../features/team/presentation/team_screen.dart';
 import '../features/timetable/presentation/calendar_screen.dart';
@@ -52,6 +55,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           _page(Routes.students, (_) => const StudentsScreen()),
           _page(Routes.payments, (_) => const PaymentsScreen()),
           _page(Routes.account, (_) => const AccountScreen()),
+          _detail(
+            Routes.lesson,
+            (id) => LessonDetailsScreen(key: ValueKey(id), lessonId: id),
+          ),
+          _detail(
+            Routes.student,
+            (id) => StudentDetailsScreen(key: ValueKey(id), studentId: id),
+          ),
+          _page(
+            Routes.places,
+            (_) => const CapabilityGate(
+              capability: Capability.manageLessons,
+              title: 'Places',
+              child: PlacesScreen(),
+            ),
+          ),
           _page(
             Routes.team,
             (_) => const CapabilityGate(
@@ -71,6 +90,20 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   return router;
 });
+
+/// A detail page, built from the `:id` in its path.
+GoRoute _detail(String path, Widget Function(String id) builder) {
+  return GoRoute(
+    path: path,
+    pageBuilder: (context, state) => NoTransitionPage(
+      key: state.pageKey,
+      child: Material(
+        type: MaterialType.transparency,
+        child: builder(state.pathParameters['id']!),
+      ),
+    ),
+  );
+}
 
 /// A page before someone is in. Moving between them does not animate
 /// either: the session decides where the person is.

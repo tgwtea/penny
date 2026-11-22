@@ -608,6 +608,8 @@ Code done on 22 Nov 2026. An added teacher is an `invited` membership matched by
 
 Students and contacts, locations with postal-code entry, lessons with any number of tutors and students, lifecycle transitions with PRD R7 permissions, lesson items (tasks, goals, notes), student goals, optimistic concurrency, audit events. Studio demo scenario (owner plus 7 teachers, about 40 students, a realistic week, one cancellation, one make-up, one clash) per PRD R1. Done when the contract tests pass for both repository implementations.
 
+Client done on 22 Nov 2026, on web. Each tutor has a cancellation policy (Penny's default until they set one: 24 hours' notice, late cancellations not charged, no-shows charged), shown on the lesson, in the cancel sheet before confirming, and on Account; owners edit anyone's from the Team page. The clash, late-cancellation and billing rules are mirrored in the client's domain so the demo backend and the screens agree with the server; the clash rule runs against the shared fixtures. Undo after "Mark done" reopens the lesson. The demo seeds two teams around the current week: the studio (an owner, seven teachers, 40 students, today as the designs draw it) and a team of one. Lesson and student details are pages with Back on laptop; the side panel waits on its design (`docs/design/screens.md`).
+
 ### Phase 6: Timetable and calendar
 
 Team timetable day view and week view with teacher filter (PRD R3), clash detection with shared fixtures, explicit empty slots, phone layout with teacher switcher, teacher-filtered Home, week and month views (PRD R4), recurring series with materialisation job, iCalendar feed. Done when the PRD's "done means" list passes, including widget tests for empty, populated and clash states.

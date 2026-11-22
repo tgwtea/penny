@@ -85,7 +85,7 @@ func (s *Service) Create(ctx context.Context, user identity.User, name, timezone
 // Actor resolves userID's membership in workspaceID, inside db (a pool or
 // the caller's transaction). Someone who is not an active member gets
 // apperr.ErrNotFound, so a team's existence is not revealed to outsiders.
-func (s *Service) Actor(ctx context.Context, db workspacesql.DBTX, workspaceID, userID uuid.UUID) (authz.Actor, error) {
+func (s *Service) Actor(ctx context.Context, db database.DBTX, workspaceID, userID uuid.UUID) (authz.Actor, error) {
 	m, err := newStore(db).activeMembershipOf(ctx, workspaceID, userID)
 	if err != nil {
 		return authz.Actor{}, err
@@ -334,6 +334,48 @@ func (s *Service) LeaveAll(ctx context.Context, tx pgx.Tx, userID uuid.UUID) err
 		}
 	}
 	return nil
+}
+
+// MemberInfo is how other modules see a member: enough to name them and to
+// check they can teach.
+type MemberInfo struct {
+	ID          uuid.UUID
+	UserID      *uuid.UUID
+	DisplayName string
+	Role        authz.Role
+	Active      bool
+}
+
+// MembersByID returns the given memberships of the team, removed ones
+// included, keyed by ID. IDs from another team are simply absent.
+func (s *Service) MembersByID(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]MemberInfo, error) {
+	rows, err := workspacesql.New(db).MembersByID(ctx, workspacesql.MembersByIDParams{WorkspaceID: workspaceID, Ids: ids})
+	if err != nil {
+		return nil, fmt.Errorf("read members: %w", err)
+	}
+	out := make(map[uuid.UUID]MemberInfo, len(rows))
+	for _, r := range rows {
+		out[r.ID] = MemberInfo{
+			ID: r.ID, UserID: r.UserID, DisplayName: r.DisplayName,
+			Role: authz.Role(r.Role), Active: r.Status == workspacesql.MembershipStatusActive,
+		}
+	}
+	return out, nil
+}
+
+// NamesByUser returns, for each user, the name they have in the team.
+func (s *Service) NamesByUser(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID]string, error) {
+	rows, err := workspacesql.New(db).MemberNamesByUser(ctx, workspacesql.MemberNamesByUserParams{WorkspaceID: workspaceID, UserIds: userIDs})
+	if err != nil {
+		return nil, fmt.Errorf("read member names: %w", err)
+	}
+	out := make(map[uuid.UUID]string, len(rows))
+	for _, r := range rows {
+		if r.UserID != nil {
+			out[*r.UserID] = r.DisplayName
+		}
+	}
+	return out, nil
 }
 
 // asTeamManager runs fn in a transaction scoped to the team, as an actor

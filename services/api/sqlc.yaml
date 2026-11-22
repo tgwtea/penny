@@ -63,3 +63,11 @@ sql:
         <<: *go
         package: auditsql
         out: internal/audit/auditsql
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/scheduling
+    gen:
+      go:
+        <<: *go
+        package: schedulingsql
+        out: internal/scheduling/schedulingsql

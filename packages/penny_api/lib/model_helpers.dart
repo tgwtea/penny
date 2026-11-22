@@ -34,10 +34,24 @@ bool listsEqual<T>(List<T>? a, List<T>? b) {
   return deepEquals(a, b);
 }
 
+/// Check if two nullable maps are deeply equal.
+bool mapsEqual<K, V>(Map<K, V>? a, Map<K, V>? b) {
+  final deepEquals = const DeepCollectionEquality().equals;
+  return deepEquals(a, b);
+}
+
 /// A deep hash of a nullable list — consistent with [listsEqual].
 /// Two lists that compare equal under [listsEqual] produce the same
 /// hash. Null hashes to 0.
 int listHash<T>(List<T>? list) {
   if (list == null) return 0;
   return const DeepCollectionEquality().hash(list);
+}
+
+/// A deep hash of a nullable map — consistent with [mapsEqual].
+/// Two maps that compare equal under [mapsEqual] produce the same
+/// hash. Null hashes to 0.
+int mapHash<K, V>(Map<K, V>? map) {
+  if (map == null) return 0;
+  return const DeepCollectionEquality().hash(map);
 }

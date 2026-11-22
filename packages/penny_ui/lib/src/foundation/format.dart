@@ -21,6 +21,9 @@ abstract final class PennyFormat {
   /// "Thu 19 Nov", for tight spaces.
   static String shortDate(DateTime d) => DateFormat('EEE d MMM').format(d);
 
+  /// "Thursday", for a day within the coming week.
+  static String weekday(DateTime d) => DateFormat('EEEE').format(d);
+
   /// "Thursday 19 November", for titles.
   static String longDate(DateTime d) => DateFormat('EEEE d MMMM').format(d);
 
@@ -40,6 +43,27 @@ abstract final class PennyFormat {
   static String names(List<String> names, {int max = 2}) {
     if (names.length <= max) return names.join(', ');
     return '${names.take(max).join(', ')} +${names.length - max}';
+  }
+
+  /// "S\$ 240.00": an amount of integer cents in [currency] (ISO 4217).
+  /// Money is never a floating-point number before this point.
+  static String money(int cents, {String currency = 'SGD'}) {
+    final symbol = _currencySymbols[currency] ?? '$currency ';
+    final whole = cents ~/ 100;
+    final part = (cents % 100).abs().toString().padLeft(2, '0');
+    final grouped = NumberFormat.decimalPattern('en').format(whole);
+    return '${cents < 0 ? '-' : ''}$symbol$grouped.$part';
+  }
+
+  static const _currencySymbols = {'SGD': 'S\$ ', 'USD': 'US\$ ', 'MYR': 'RM '};
+
+  /// "45 min", "1 h", "1 h 30 min": a lesson's length.
+  static String minutes(int minutes) {
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    if (h == 0) return '$m min';
+    if (m == 0) return '$h h';
+    return '$h h $m min';
   }
 
   /// The first word of a name: "Mei Lin Tan" becomes "Mei".
