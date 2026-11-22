@@ -66,6 +66,19 @@ These have no artboard; they were designed in code from the components above and
 | Void receipt | Sheet from Receipt | Owner, the payee | The reason; "Issue a corrected receipt" with the payment as it really was, or not, which reopens the request | Sheet, TextField, ToggleRow |
 | Public payment page, all states | `/pay/:token` (public) | Anyone with the link | As the artboard, with "I've paid" under what it covers; then "Thanks. You said you paid."; paid, withdrawn and unknown-link states; the payee's cancellation policy | PublicPage, QrCode, Notice, Button |
 
+## Designed while building Phases 9 and 10
+
+| Screen | Route or opener | Who sees it | Notes | Components used |
+| --- | --- | --- | --- | --- |
+| Your data | Account | Everyone signed in | What the download holds, and "Download my data", which saves the export as a JSON file (docs/privacy.md) | SectionHeader, Button, Snackbar |
+| Their data | Student details | Owners | Read the export through and remove anything about other people before sending it; "Export student data" | SectionHeader, Button |
+| Contact sign-in | Contact's menu on Student details | Owners | "Let them sign in", after a confirmation that an invitation is emailed and the contact then sees the student's lessons and payments read-only; "Stop their sign-in". The contact's line reads "Invited to sign in at …" or "Signs in with …" | MenuButton, Confirmation, ListRow |
+| Their own sign-in | Student details | Owners | The student's sign-in email, invited or signing in, with Stop; or "Give them a sign-in", a sheet asking for the email | ListRow, Sheet, TextField |
+| Family lessons, empty, loading, error | `/family/lessons` | Students and parents | The student's, or children's, lessons coming up and recent, a row each with the tutors and place, its badge, and the items meant for the family under it; other students counted, never named; their goals. Empty says the team links a student when it gives access | ListRow, StatusBadge, EmptyState, Notice, Skeleton rows |
+| Family payments | `/family/payments` | Parents | Each open request as its payment page shows it: amount, badge, due day, the PayNow panel, what it covers and "I've paid"; then paid or waiting ones as rows; receipts with a PDF button. Empty says payment requests show here | PayNowPanel, QrCode, StatusBadge, ListRow, Button |
+
+A family account's navigation is Lessons, and Payments for parents. Every staff page refuses them with "Only the team's tutors can see this."; Today sends them to Lessons.
+
 ## Still to design
 
 The design track's definition of done is every key screen in all five states at both widths. This first pass covers each screen once, plus the empty, loading, error and no-permission states on Today and Team. Still to draw, before or during Phase 2:

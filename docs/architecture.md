@@ -635,11 +635,15 @@ Row-level security, ASVS Level 1 review, rate limits, PDPA access and deletion f
 
 Server done on 22 Nov 2026 except the deployment steps (prod overlay, first promotion, restore drill, load test), which are done elsewhere. Row-level security covers every team table (migration 00011), with triggers that make the audit log append-only and receipts immutable for every role. Public operations are rate-limited per client address, believing `X-Forwarded-For` only from `PENNY_TRUSTED_PROXIES`; request bodies are capped at 1 MiB and responses carry HSTS. A daily `retention` job purges idempotency keys, long-expired payment links and year-old email log rows. PDPA access requests are answered by `GET /v1/me/export` and, for owners, a student export (`internal/privacy`); the retention policy is docs/privacy.md, and the ASVS Level 1 review with its follow-ups is docs/security.md. Runbooks cover data requests and breach response.
 
+Client done on 22 Nov 2026, on web: "Download my data" on Account and, for owners, "Export student data" on a student's page, each saving the export as a JSON file. The demo builds its exports from its own store.
+
 ### Phase 10: Student and parent roles
 
 Invitations by email, linking `students.user_id` and `student_contacts.user_id`, capability sets for the two roles, a parent view of upcoming lessons, receipts and payment links.
 
 Server done on 22 Nov 2026 (ADR 025). An owner gives a contact a parent account, or a student their own, at an email address; Penny invites it, and the first verified sign-in links the record (migration 00013). Family accounts are read-only under `/v1/workspaces/{id}/family/...`: their students, those students' lessons with only the items meant for them and other students counted rather than named, and for parents the open and paid payment requests with the PayNow code, "I've paid" and receipts. Team lists and member counts are staff only, and saved places are closed to family accounts, since a place can be a student's home.
+
+Client done on 22 Nov 2026, on web. On a student's page owners let a contact sign in or give the student a sign-in email, and stop either; a contact's line says whether they are invited or sign in. Students and parents land on Lessons, their own or their children's, with the family's notes, other students counted and goals; parents also get Payments, each open request with its PayNow code and "I've paid", and their receipts. Their navigation has only those pages, and the staff pages are gated by capability. The demo has a parent persona (Arjun Nair's mother) and a student persona (Sofia Lim). `task test:e2e` covers an owner giving a parent access and the parent signing up to see their child.
 
 ### Phase 11: Encrypted messaging
 
