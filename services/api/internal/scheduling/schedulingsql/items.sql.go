@@ -130,6 +130,49 @@ func (q *Queries) GetLessonItem(ctx context.Context, arg GetLessonItemParams) (L
 	return i, err
 }
 
+const listItemsOfLessons = `-- name: ListItemsOfLessons :many
+SELECT id, workspace_id, lesson_id, kind, body, visibility, done_at, student_goal_id, author_membership, created_at, updated_at FROM lesson_items
+WHERE workspace_id = $1 AND lesson_id = ANY($2::uuid[])
+ORDER BY lesson_id, created_at, id
+`
+
+type ListItemsOfLessonsParams struct {
+	WorkspaceID uuid.UUID
+	LessonIds   []uuid.UUID
+}
+
+func (q *Queries) ListItemsOfLessons(ctx context.Context, arg ListItemsOfLessonsParams) ([]LessonItem, error) {
+	rows, err := q.db.Query(ctx, listItemsOfLessons, arg.WorkspaceID, arg.LessonIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LessonItem
+	for rows.Next() {
+		var i LessonItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.LessonID,
+			&i.Kind,
+			&i.Body,
+			&i.Visibility,
+			&i.DoneAt,
+			&i.StudentGoalID,
+			&i.AuthorMembership,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLessonItems = `-- name: ListLessonItems :many
 SELECT id, workspace_id, lesson_id, kind, body, visibility, done_at, student_goal_id, author_membership, created_at, updated_at FROM lesson_items
 WHERE workspace_id = $1 AND lesson_id = $2

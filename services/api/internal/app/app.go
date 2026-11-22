@@ -19,6 +19,7 @@ import (
 	"github.com/tgwtea/penny/services/api/internal/notify"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
 	"github.com/tgwtea/penny/services/api/internal/platform/queue"
+	"github.com/tgwtea/penny/services/api/internal/privacy"
 	"github.com/tgwtea/penny/services/api/internal/scheduling"
 	"github.com/tgwtea/penny/services/api/internal/workspace"
 )
@@ -53,6 +54,7 @@ type Services struct {
 	Scheduling *scheduling.Service
 	Billing    *billing.Service
 	Notify     *notify.Service
+	Privacy    *privacy.Service
 	Audit      *audit.Recorder
 }
 
@@ -89,6 +91,7 @@ func New(d Deps) (*Services, error) {
 		Scheduling: lessons,
 		Billing:    payments,
 		Notify:     notifier,
+		Privacy:    privacy.NewService(d.Pool, teams, lessons, payments, rec, d.Clock),
 		Audit:      rec,
 	}, nil
 }

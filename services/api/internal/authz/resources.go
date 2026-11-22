@@ -130,3 +130,13 @@ func ManagePayeeAccount(a Actor, membershipID uuid.UUID) error {
 	}
 	return apperr.New(apperr.ErrForbidden, "Only the tutor or the team owner can change this account.")
 }
+
+// ExportStudentData allows reading a student's whole record, for a PDPA
+// access request from the student or their family: owners only, since it
+// spans every tutor's notes and every payment.
+func ExportStudentData(a Actor) error {
+	if !a.Can(ManageStudents) {
+		return apperr.New(apperr.ErrForbidden, "Only the team owner can export a student's data.")
+	}
+	return nil
+}

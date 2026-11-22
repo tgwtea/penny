@@ -161,6 +161,30 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/me/export:
+    get:
+      operationId: exportMyData
+      tags: [identity]
+      summary: Download everything Penny holds about the signed-in person
+      description: |
+        For a PDPA access request: the person's profile, their membership in
+        each team with the name, email, PayNow account and cancellation
+        policy that team holds for them, and what they did, newest first.
+        Records a team keeps that mention them, such as lessons they taught,
+        belong to the team; its owner can export those. Each export is
+        written to the audit log.
+      responses:
+        "200":
+          description: The person's data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalDataExport"
+        "401":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
   /v1/workspaces:
     post:
       operationId: createWorkspace
@@ -476,6 +500,36 @@ paths:
                 $ref: "#/components/schemas/Student"
         "400":
           $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/students/{studentId}/export:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/StudentId"
+    get:
+      operationId: exportStudentData
+      tags: [students]
+      summary: Download everything the team holds about a student
+      description: |
+        For a PDPA access request from a student or their family, for the
+        owner to review before passing on: the student with their contacts
+        and goals, every lesson they are in with its tasks, goals and notes,
+        and every payment request and receipt. Owners only, since it spans
+        every tutor's notes. Each export is written to the audit log.
+      responses:
+        "200":
+          description: The student's data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDataExport"
         "401":
           $ref: "#/components/responses/Problem"
         "403":
@@ -3778,6 +3832,112 @@ components:
         cancellationPolicy:
           type: string
           description: The payee's cancellation policy, in their words.
+
+    PersonalDataExport:
+      type: object
+      required: [exportedAt, person, teams, actions, actionsTruncated]
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        person:
+          type: object
+          required: [id, email, displayName, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+            displayName:
+              type: string
+            createdAt:
+              type: string
+              format: date-time
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamDataExport"
+        actions:
+          type: array
+          description: What the person did in Penny, newest first.
+          items:
+            $ref: "#/components/schemas/RecordedAction"
+        actionsTruncated:
+          type: boolean
+          description: More actions exist than the export lists.
+
+    TeamDataExport:
+      type: object
+      required: [membershipId, teamId, teamName, role, displayName, email, cancellationPolicies]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        role:
+          $ref: "#/components/schemas/MembershipRole"
+        displayName:
+          type: string
+          description: The name the team knows the person by.
+        email:
+          type: string
+        payeeAccount:
+          $ref: "#/components/schemas/PayeeAccount"
+        cancellationPolicies:
+          type: array
+          description: Policies the person set; empty while they use the default.
+          items:
+            $ref: "#/components/schemas/CancellationPolicy"
+
+    RecordedAction:
+      type: object
+      required: [at, action, entityType, entityId]
+      properties:
+        at:
+          type: string
+          format: date-time
+        teamId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          example: lesson.completed
+        entityType:
+          type: string
+          example: lesson
+        entityId:
+          type: string
+          format: uuid
+
+    StudentDataExport:
+      type: object
+      required: [exportedAt, teamName, student, lessons, paymentRequests, receipts]
+      properties:
+        exportedAt:
+          type: string
+          format: date-time
+        teamName:
+          type: string
+        student:
+          $ref: "#/components/schemas/Student"
+        lessons:
+          type: array
+          description: Every lesson the student is in, oldest first, with its items.
+          items:
+            $ref: "#/components/schemas/Lesson"
+        paymentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentRequest"
+        receipts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Receipt"
 
     MembershipRole:
       type: string

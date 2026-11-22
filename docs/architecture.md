@@ -141,6 +141,7 @@ services/api/
 │   ├── billing/      payee accounts, payment requests, PayNow encoder, payment records, receipts
 │   ├── notify/       Mailer interface, templates, reminder jobs, email log
 │   ├── audit/        append-only audit log writer
+│   ├── privacy/      PDPA data exports, composed from each module's part
 │   └── messaging/    reserved, empty
 └── db/
     ├── migrations/   goose SQL, numbered

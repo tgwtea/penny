@@ -761,6 +761,51 @@ func (s *Service) PublicFor(ctx context.Context, tx pgx.Tx, workspaceID, request
 	return s.public(ctx, tx, q, row)
 }
 
+// PayeeAccountFor reads a membership's PayNow account, if it has one, for
+// its person's data export.
+func (s *Service) PayeeAccountFor(ctx context.Context, db database.DBTX, workspaceID, membershipID uuid.UUID) (*PayeeAccount, error) {
+	row, err := billingsql.New(db).GetPayeeAccount(ctx, billingsql.GetPayeeAccountParams{WorkspaceID: workspaceID, MembershipID: membershipID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read payee account: %w", err)
+	}
+	a, err := toPayeeAccount(row)
+	return &a, err
+}
+
+// StudentBilling reads every request and receipt for a student, oldest
+// first, for their data export.
+func (s *Service) StudentBilling(ctx context.Context, tx pgx.Tx, workspaceID, studentID uuid.UUID) ([]Request, []Receipt, error) {
+	q := billingsql.New(tx)
+	rows, err := q.ListRequestsForStudent(ctx, billingsql.ListRequestsForStudentParams{WorkspaceID: workspaceID, StudentID: studentID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list student requests: %w", err)
+	}
+	requests, err := s.requests(ctx, tx, q, workspaceID, rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	stored, err := q.ListReceiptsForStudent(ctx, billingsql.ListReceiptsForStudentParams{WorkspaceID: workspaceID, StudentID: studentID})
+	if err != nil {
+		return nil, nil, fmt.Errorf("list student receipts: %w", err)
+	}
+	payees := map[uuid.UUID]uuid.UUID{}
+	for _, r := range rows {
+		payees[r.ID] = r.PayeeMembershipID
+	}
+	receipts := make([]Receipt, 0, len(stored))
+	for _, r := range stored {
+		rc, err := toReceipt(r, studentID, payees[r.RequestID])
+		if err != nil {
+			return nil, nil, err
+		}
+		receipts = append(receipts, rc)
+	}
+	return requests, receipts, s.voiders(ctx, tx, workspaceID, receipts)
+}
+
 // ReminderDue is an overdue request to chase.
 type ReminderDue struct {
 	WorkspaceID uuid.UUID

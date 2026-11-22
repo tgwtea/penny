@@ -92,6 +92,33 @@ func (r *Recorder) History(ctx context.Context, db database.DBTX, entityType str
 	return out, nil
 }
 
+// Action is something a person did, for their data export.
+type Action struct {
+	WorkspaceID *uuid.UUID
+	Action      string
+	EntityType  string
+	EntityID    uuid.UUID
+	At          time.Time
+}
+
+// ByActor returns up to limit of what userID did, newest first, and
+// whether there was more. Run it across teams.
+func (r *Recorder) ByActor(ctx context.Context, db database.DBTX, userID uuid.UUID, limit int) ([]Action, bool, error) {
+	rows, err := auditsql.New(db).ListEventsByActor(ctx, auditsql.ListEventsByActorParams{ActorUserID: &userID, MaxEvents: int32(limit + 1)})
+	if err != nil {
+		return nil, false, fmt.Errorf("read actions: %w", err)
+	}
+	more := len(rows) > limit
+	if more {
+		rows = rows[:limit]
+	}
+	out := make([]Action, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, Action{WorkspaceID: row.WorkspaceID, Action: row.Action, EntityType: row.EntityType, EntityID: row.EntityID, At: row.At})
+	}
+	return out, more, nil
+}
+
 func marshal(v any) ([]byte, error) {
 	if v == nil {
 		return nil, nil

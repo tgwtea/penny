@@ -15,6 +15,7 @@ import 'package:penny_api/models/goal_input.dart';
 import 'package:penny_api/models/problem.dart';
 import 'package:penny_api/models/student.dart';
 import 'package:penny_api/models/student_changes.dart';
+import 'package:penny_api/models/student_data_export.dart';
 import 'package:penny_api/models/student_input.dart';
 import 'package:penny_api/models/student_list.dart';
 
@@ -180,6 +181,46 @@ class StudentsApi {
 
     if (response.body.isNotEmpty) {
       return Student.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    throw ApiException<Object?>.unhandled(response.statusCode);
+  }
+
+  /// Download everything the team holds about a student
+  /// For a PDPA access request from a student or their family, for the
+  /// owner to review before passing on: the student with their contacts
+  /// and goals, every lesson they are in with its tasks, goals and notes,
+  /// and every payment request and receipt. Owners only, since it spans
+  /// every tutor's notes. Each export is written to the audit log.
+  Future<StudentDataExport> exportStudentData(
+    String workspaceId,
+    String studentId,
+  ) async {
+    final response = await client.invokeApi(
+      method: Method.get,
+      path: '/v1/workspaces/{workspaceId}/students/{studentId}/export'
+          .replaceAll('{workspaceId}', Uri.encodeComponent(workspaceId))
+          .replaceAll('{studentId}', Uri.encodeComponent(studentId)),
+      authRequest: const HttpAuth(
+        scheme: 'bearer',
+        secretName: 'firebaseIdToken',
+      ),
+    );
+
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException<Problem>(
+        response.statusCode,
+        response.body,
+        body: Problem.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        ),
+      );
+    }
+
+    if (response.body.isNotEmpty) {
+      return StudentDataExport.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
     }
