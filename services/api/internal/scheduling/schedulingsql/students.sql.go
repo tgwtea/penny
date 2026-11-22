@@ -12,6 +12,55 @@ import (
 	"github.com/google/uuid"
 )
 
+const contactsToRemind = `-- name: ContactsToRemind :many
+SELECT c.id, c.name, c.email, s.name AS student_name
+FROM lesson_participants p
+JOIN students s ON s.workspace_id = p.workspace_id AND s.id = p.student_id
+JOIN student_contacts c ON c.workspace_id = p.workspace_id AND c.student_id = p.student_id
+WHERE p.workspace_id = $1 AND p.lesson_id = $2
+  AND c.receives_reminders AND c.email IS NOT NULL
+ORDER BY lower(s.name), c.created_at, c.id
+`
+
+type ContactsToRemindParams struct {
+	WorkspaceID uuid.UUID
+	LessonID    uuid.UUID
+}
+
+type ContactsToRemindRow struct {
+	ID          uuid.UUID
+	Name        string
+	Email       *string
+	StudentName string
+}
+
+// Who gets a lesson's reminder: contacts with an email of every student in
+// it who still want reminders.
+func (q *Queries) ContactsToRemind(ctx context.Context, arg ContactsToRemindParams) ([]ContactsToRemindRow, error) {
+	rows, err := q.db.Query(ctx, contactsToRemind, arg.WorkspaceID, arg.LessonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ContactsToRemindRow
+	for rows.Next() {
+		var i ContactsToRemindRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.StudentName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countActiveStudentsIn = `-- name: CountActiveStudentsIn :one
 SELECT count(*)::int AS found FROM students
 WHERE workspace_id = $1 AND id = ANY($2::uuid[]) AND archived_at IS NULL
@@ -30,20 +79,21 @@ func (q *Queries) CountActiveStudentsIn(ctx context.Context, arg CountActiveStud
 }
 
 const createContact = `-- name: CreateContact :one
-INSERT INTO student_contacts (workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at
+INSERT INTO student_contacts (workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, receives_payment_reminders)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders
 `
 
 type CreateContactParams struct {
-	WorkspaceID       uuid.UUID
-	StudentID         uuid.UUID
-	Name              string
-	Email             *string
-	Phone             *string
-	Relationship      ContactRelationship
-	ReceivesReminders bool
-	ReceivesBilling   bool
+	WorkspaceID              uuid.UUID
+	StudentID                uuid.UUID
+	Name                     string
+	Email                    *string
+	Phone                    *string
+	Relationship             ContactRelationship
+	ReceivesReminders        bool
+	ReceivesBilling          bool
+	ReceivesPaymentReminders bool
 }
 
 func (q *Queries) CreateContact(ctx context.Context, arg CreateContactParams) (StudentContact, error) {
@@ -56,6 +106,7 @@ func (q *Queries) CreateContact(ctx context.Context, arg CreateContactParams) (S
 		arg.Relationship,
 		arg.ReceivesReminders,
 		arg.ReceivesBilling,
+		arg.ReceivesPaymentReminders,
 	)
 	var i StudentContact
 	err := row.Scan(
@@ -71,6 +122,7 @@ func (q *Queries) CreateContact(ctx context.Context, arg CreateContactParams) (S
 		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReceivesPaymentReminders,
 	)
 	return i, err
 }
@@ -166,6 +218,56 @@ func (q *Queries) DeleteContact(ctx context.Context, arg DeleteContactParams) (i
 	return result.RowsAffected(), nil
 }
 
+const getContact = `-- name: GetContact :one
+SELECT c.id, c.workspace_id, c.student_id, c.name, c.email, c.phone, c.relationship, c.receives_reminders, c.receives_billing, c.user_id, c.created_at, c.updated_at, c.receives_payment_reminders, s.name AS student_name FROM student_contacts c
+JOIN students s ON s.workspace_id = c.workspace_id AND s.id = c.student_id
+WHERE c.workspace_id = $1 AND c.id = $2
+`
+
+type GetContactParams struct {
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+type GetContactRow struct {
+	ID                       uuid.UUID
+	WorkspaceID              uuid.UUID
+	StudentID                uuid.UUID
+	Name                     string
+	Email                    *string
+	Phone                    *string
+	Relationship             ContactRelationship
+	ReceivesReminders        bool
+	ReceivesBilling          bool
+	UserID                   *uuid.UUID
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
+	ReceivesPaymentReminders bool
+	StudentName              string
+}
+
+func (q *Queries) GetContact(ctx context.Context, arg GetContactParams) (GetContactRow, error) {
+	row := q.db.QueryRow(ctx, getContact, arg.WorkspaceID, arg.ID)
+	var i GetContactRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.StudentID,
+		&i.Name,
+		&i.Email,
+		&i.Phone,
+		&i.Relationship,
+		&i.ReceivesReminders,
+		&i.ReceivesBilling,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReceivesPaymentReminders,
+		&i.StudentName,
+	)
+	return i, err
+}
+
 const getStudent = `-- name: GetStudent :one
 SELECT id, workspace_id, name, primary_teacher_membership_id, notes, user_id, archived_at, created_at, updated_at FROM students WHERE workspace_id = $1 AND id = $2
 `
@@ -215,7 +317,7 @@ func (q *Queries) GoalBelongsToLessonStudent(ctx context.Context, arg GoalBelong
 }
 
 const listContacts = `-- name: ListContacts :many
-SELECT id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at FROM student_contacts
+SELECT id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders FROM student_contacts
 WHERE workspace_id = $1 AND student_id = $2
 ORDER BY created_at, id
 `
@@ -247,6 +349,7 @@ func (q *Queries) ListContacts(ctx context.Context, arg ListContactsParams) ([]S
 			&i.UserID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReceivesPaymentReminders,
 		); err != nil {
 			return nil, err
 		}
@@ -372,6 +475,36 @@ func (q *Queries) ListStudents(ctx context.Context, arg ListStudentsParams) ([]S
 	return items, nil
 }
 
+const stopLessonReminders = `-- name: StopLessonReminders :exec
+UPDATE student_contacts SET receives_reminders = false, updated_at = now()
+WHERE workspace_id = $1 AND id = $2
+`
+
+type StopLessonRemindersParams struct {
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+func (q *Queries) StopLessonReminders(ctx context.Context, arg StopLessonRemindersParams) error {
+	_, err := q.db.Exec(ctx, stopLessonReminders, arg.WorkspaceID, arg.ID)
+	return err
+}
+
+const stopPaymentReminders = `-- name: StopPaymentReminders :exec
+UPDATE student_contacts SET receives_payment_reminders = false, updated_at = now()
+WHERE workspace_id = $1 AND id = $2
+`
+
+type StopPaymentRemindersParams struct {
+	WorkspaceID uuid.UUID
+	ID          uuid.UUID
+}
+
+func (q *Queries) StopPaymentReminders(ctx context.Context, arg StopPaymentRemindersParams) error {
+	_, err := q.db.Exec(ctx, stopPaymentReminders, arg.WorkspaceID, arg.ID)
+	return err
+}
+
 const studentTaughtBy = `-- name: StudentTaughtBy :one
 SELECT EXISTS (
     SELECT 1 FROM students s
@@ -402,21 +535,23 @@ func (q *Queries) StudentTaughtBy(ctx context.Context, arg StudentTaughtByParams
 const updateContact = `-- name: UpdateContact :one
 UPDATE student_contacts
 SET name = $1, email = $2, phone = $3, relationship = $4,
-    receives_reminders = $5, receives_billing = $6, updated_at = now()
-WHERE workspace_id = $7 AND student_id = $8 AND id = $9
-RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at
+    receives_reminders = $5, receives_billing = $6,
+    receives_payment_reminders = $7, updated_at = now()
+WHERE workspace_id = $8 AND student_id = $9 AND id = $10
+RETURNING id, workspace_id, student_id, name, email, phone, relationship, receives_reminders, receives_billing, user_id, created_at, updated_at, receives_payment_reminders
 `
 
 type UpdateContactParams struct {
-	Name              string
-	Email             *string
-	Phone             *string
-	Relationship      ContactRelationship
-	ReceivesReminders bool
-	ReceivesBilling   bool
-	WorkspaceID       uuid.UUID
-	StudentID         uuid.UUID
-	ID                uuid.UUID
+	Name                     string
+	Email                    *string
+	Phone                    *string
+	Relationship             ContactRelationship
+	ReceivesReminders        bool
+	ReceivesBilling          bool
+	ReceivesPaymentReminders bool
+	WorkspaceID              uuid.UUID
+	StudentID                uuid.UUID
+	ID                       uuid.UUID
 }
 
 func (q *Queries) UpdateContact(ctx context.Context, arg UpdateContactParams) (StudentContact, error) {
@@ -427,6 +562,7 @@ func (q *Queries) UpdateContact(ctx context.Context, arg UpdateContactParams) (S
 		arg.Relationship,
 		arg.ReceivesReminders,
 		arg.ReceivesBilling,
+		arg.ReceivesPaymentReminders,
 		arg.WorkspaceID,
 		arg.StudentID,
 		arg.ID,
@@ -445,6 +581,7 @@ func (q *Queries) UpdateContact(ctx context.Context, arg UpdateContactParams) (S
 		&i.UserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReceivesPaymentReminders,
 	)
 	return i, err
 }

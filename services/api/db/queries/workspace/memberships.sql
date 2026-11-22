@@ -33,6 +33,7 @@ SELECT
     w.id AS workspace_id,
     w.name AS workspace_name,
     w.timezone AS workspace_timezone,
+    w.reminder_hours AS workspace_reminder_hours,
     (SELECT count(*)::int FROM workspace_memberships c
      WHERE c.workspace_id = w.id AND c.status = 'active') AS member_count
 FROM workspace_memberships m
@@ -115,7 +116,7 @@ RETURNING id, workspace_id;
 -- name: MembersByID :many
 -- Names and roles of the given memberships, removed ones included, so old
 -- lessons still show who taught them.
-SELECT id, user_id, display_name, role, status FROM workspace_memberships
+SELECT id, user_id, display_name, email, role, status FROM workspace_memberships
 WHERE workspace_id = @workspace_id AND id = ANY(@ids::uuid[]);
 
 -- name: MemberNamesByUser :many

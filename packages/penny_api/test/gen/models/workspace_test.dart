@@ -10,6 +10,7 @@ void main() {
         name: 'Koh Guitar Studio',
         timezone: 'Asia/Singapore',
         memberCount: 8,
+        reminderHours: 24,
       );
       final parsed = Workspace.maybeFromJson(instance.toJson())!;
       expect(parsed, equals(instance));

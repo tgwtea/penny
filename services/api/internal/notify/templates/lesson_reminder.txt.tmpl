@@ -1,0 +1,15 @@
+{{define "subject"}}Reminder: {{.StudentFirstName}}'s lesson {{.Day}} at {{.StartTime}}{{end}}
+{{define "text"}}Hi {{.ContactName}},
+
+{{.StudentFirstName}} has a lesson with {{.Tutors}} {{.Day}}, {{.Date}}, {{.StartTime}} to {{.EndTime}}.
+{{if .Place}}
+Where: {{.Place}}{{if .Address}}, {{.Address}}{{end}}{{if .MeetingURL}}
+Join online: {{.MeetingURL}}{{end}}
+{{end}}{{if .Policy}}
+Cancellation policy: {{.Policy}}
+{{end}}
+To cancel or change the lesson, contact {{.TeamName}}.
+
+{{.TeamName}}, via Penny.{{if .UnsubscribeURL}}
+{{.UnsubscribeText}}: {{.UnsubscribeURL}}{{end}}
+{{end}}

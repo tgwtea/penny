@@ -220,6 +220,7 @@ func toContact(c schedulingsql.StudentContact) Contact {
 	return Contact{
 		ID: c.ID, Name: c.Name, Email: c.Email, Phone: c.Phone, Relationship: string(c.Relationship),
 		ReceivesReminders: c.ReceivesReminders, ReceivesBilling: c.ReceivesBilling,
+		ReceivesPaymentReminders: c.ReceivesPaymentReminders,
 	}
 }
 

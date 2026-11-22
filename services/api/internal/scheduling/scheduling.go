@@ -123,6 +123,9 @@ type Contact struct {
 	Relationship      string
 	ReceivesReminders bool
 	ReceivesBilling   bool
+	// ReceivesPaymentReminders is whether overdue payment requests are
+	// chased with this contact. Stopped from an email's link.
+	ReceivesPaymentReminders bool
 }
 
 // Goal is something a student works towards over several lessons.
@@ -256,12 +259,13 @@ type StudentChanges struct {
 
 // ContactInput adds or replaces a contact.
 type ContactInput struct {
-	Name              string
-	Email             *string
-	Phone             *string
-	Relationship      string
-	ReceivesReminders bool
-	ReceivesBilling   bool
+	Name                     string
+	Email                    *string
+	Phone                    *string
+	Relationship             string
+	ReceivesReminders        bool
+	ReceivesBilling          bool
+	ReceivesPaymentReminders bool
 }
 
 // GoalChanges changes a goal. Nil leaves a value.

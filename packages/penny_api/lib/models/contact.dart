@@ -16,6 +16,7 @@ class Contact {
     required this.receivesBilling,
     this.email,
     this.phone,
+    this.receivesPaymentReminders,
   });
 
   /// Converts a `Map<String, dynamic>` to a [Contact].
@@ -33,6 +34,7 @@ class Contact {
         ),
         receivesReminders: json['receivesReminders'] as bool,
         receivesBilling: json['receivesBilling'] as bool,
+        receivesPaymentReminders: json['receivesPaymentReminders'] as bool?,
       ),
     );
   }
@@ -58,6 +60,9 @@ class Contact {
   final bool receivesReminders;
   final bool receivesBilling;
 
+  /// Reminders about overdue payment requests. Stopped from an email's link.
+  final bool? receivesPaymentReminders;
+
   /// Converts a [Contact] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
     return {
@@ -68,6 +73,7 @@ class Contact {
       'relationship': relationship.toJson(),
       'receivesReminders': receivesReminders,
       'receivesBilling': receivesBilling,
+      'receivesPaymentReminders': ?receivesPaymentReminders,
     };
   }
 
@@ -80,6 +86,7 @@ class Contact {
     relationship,
     receivesReminders,
     receivesBilling,
+    receivesPaymentReminders,
   ]);
 
   @override
@@ -92,6 +99,7 @@ class Contact {
         phone == other.phone &&
         relationship == other.relationship &&
         receivesReminders == other.receivesReminders &&
-        receivesBilling == other.receivesBilling;
+        receivesBilling == other.receivesBilling &&
+        receivesPaymentReminders == other.receivesPaymentReminders;
   }
 }

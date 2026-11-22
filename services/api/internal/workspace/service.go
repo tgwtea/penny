@@ -25,12 +25,24 @@ import (
 // maxNameLength matches the contract's limits on team and member names.
 const maxNameLength = 100
 
+// Hooks let later modules react to team changes inside the same
+// transaction. Every field is optional.
+type Hooks struct {
+	// MemberInvited runs after someone is added by email, with the new
+	// member, the team's name and who added them.
+	MemberInvited func(ctx context.Context, tx pgx.Tx, m Member, teamName, inviterName string) error
+}
+
 // Service implements the team use cases.
 type Service struct {
 	pool  *pgxpool.Pool
 	audit *audit.Recorder
 	clock clock.Clock
+	hooks Hooks
 }
+
+// SetHooks installs the hooks. Call it while wiring, before serving.
+func (s *Service) SetHooks(h Hooks) { s.hooks = h }
 
 // NewService returns the workspace service.
 func NewService(pool *pgxpool.Pool, rec *audit.Recorder, c clock.Clock) *Service {
@@ -69,7 +81,7 @@ func (s *Service) Create(ctx context.Context, user identity.User, name, timezone
 		}
 		created = Membership{
 			ID:           owner.ID,
-			Workspace:    Workspace{ID: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: 1},
+			Workspace:    Workspace{ID: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: 1, ReminderHours: int(w.ReminderHours)},
 			Role:         authz.Owner,
 			Capabilities: authz.CapabilitiesOf(authz.Owner),
 		}
@@ -123,6 +135,9 @@ func (s *Service) Update(ctx context.Context, userID, workspaceID uuid.UUID, c C
 		}
 		c.Timezone = &tz
 	}
+	if c.ReminderHours != nil && (*c.ReminderHours < 0 || *c.ReminderHours > MaxReminderHours) {
+		return Workspace{}, apperr.New(apperr.ErrValidation, "Remind between 0 hours (never) and a week before a lesson.")
+	}
 	var w Workspace
 	err := s.asTeamManager(ctx, userID, workspaceID, func(tx pgx.Tx, actor authz.Actor) error {
 		st := newStore(tx)
@@ -139,8 +154,8 @@ func (s *Service) Update(ctx context.Context, userID, workspaceID uuid.UUID, c C
 		return s.audit.Record(ctx, tx, audit.Event{
 			WorkspaceID: audit.Ptr(workspaceID), Actor: audit.Ptr(actor.UserID),
 			Action: "workspace.updated", EntityType: "workspace", EntityID: workspaceID,
-			Before: map[string]any{"timezone": before.Timezone},
-			After:  map[string]any{"timezone": w.Timezone, "renamed": before.Name != w.Name},
+			Before: map[string]any{"timezone": before.Timezone, "reminder_hours": before.ReminderHours},
+			After:  map[string]any{"timezone": w.Timezone, "reminder_hours": w.ReminderHours, "renamed": before.Name != w.Name},
 		})
 	})
 	return w, err
@@ -189,11 +204,26 @@ func (s *Service) AddMember(ctx context.Context, userID, workspaceID uuid.UUID, 
 		if err != nil {
 			return err
 		}
-		return s.audit.Record(ctx, tx, audit.Event{
+		if err := s.audit.Record(ctx, tx, audit.Event{
 			WorkspaceID: audit.Ptr(workspaceID), Actor: audit.Ptr(actor.UserID),
 			Action: "member.invited", EntityType: "membership", EntityID: added.ID,
 			After: map[string]any{"role": added.Role, "status": added.Status},
-		})
+		}); err != nil {
+			return err
+		}
+		if s.hooks.MemberInvited == nil {
+			return nil
+		}
+		st := newStore(tx)
+		team, err := st.workspace(ctx, workspaceID)
+		if err != nil {
+			return err
+		}
+		inviter, err := st.membership(ctx, workspaceID, actor.MembershipID)
+		if err != nil {
+			return err
+		}
+		return s.hooks.MemberInvited(ctx, tx, added, team.Name, inviter.DisplayName)
 	})
 	return added, err
 }
@@ -336,14 +366,16 @@ func (s *Service) LeaveAll(ctx context.Context, tx pgx.Tx, userID uuid.UUID) err
 	return nil
 }
 
-// MemberInfo is how other modules see a member: enough to name them and to
-// check they can teach.
+// MemberInfo is how other modules see a member: enough to name them,
+// write to them and check they can teach.
 type MemberInfo struct {
 	ID          uuid.UUID
 	UserID      *uuid.UUID
 	DisplayName string
+	Email       string
 	Role        authz.Role
 	Active      bool
+	Invited     bool
 }
 
 // MembersByID returns the given memberships of the team, removed ones
@@ -356,11 +388,26 @@ func (s *Service) MembersByID(ctx context.Context, db database.DBTX, workspaceID
 	out := make(map[uuid.UUID]MemberInfo, len(rows))
 	for _, r := range rows {
 		out[r.ID] = MemberInfo{
-			ID: r.ID, UserID: r.UserID, DisplayName: r.DisplayName,
+			ID: r.ID, UserID: r.UserID, DisplayName: r.DisplayName, Email: r.Email,
 			Role: authz.Role(r.Role), Active: r.Status == workspacesql.MembershipStatusActive,
+			Invited: r.Status == workspacesql.MembershipStatusInvited,
 		}
 	}
 	return out, nil
+}
+
+// Settings returns a team's name, timezone and reminder lead time, for
+// modules acting for it, such as notify.
+func (s *Service) Settings(ctx context.Context, db database.DBTX, workspaceID uuid.UUID) (Settings, error) {
+	row, err := workspacesql.New(db).GetWorkspaceSettings(ctx, workspaceID)
+	if err != nil {
+		return Settings{}, readErr(err, "workspace")
+	}
+	loc, err := time.LoadLocation(row.Timezone)
+	if err != nil {
+		return Settings{}, fmt.Errorf("load timezone %q: %w", row.Timezone, err)
+	}
+	return Settings{Name: row.Name, Location: loc, ReminderHours: int(row.ReminderHours)}, nil
 }
 
 // Timezone is the team's IANA timezone, for modules that schedule in it.

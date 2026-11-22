@@ -41,11 +41,16 @@ func (s store) workspace(ctx context.Context, id uuid.UUID) (Workspace, error) {
 	if err != nil {
 		return Workspace{}, fmt.Errorf("count members: %w", err)
 	}
-	return Workspace{ID: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: int(count)}, nil
+	return Workspace{ID: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: int(count), ReminderHours: int(w.ReminderHours)}, nil
 }
 
 func (s store) updateWorkspace(ctx context.Context, id uuid.UUID, c Changes) error {
-	if _, err := s.q.UpdateWorkspace(ctx, workspacesql.UpdateWorkspaceParams{ID: id, Name: c.Name, Timezone: c.Timezone}); err != nil {
+	var hours *int32
+	if c.ReminderHours != nil {
+		h := int32(*c.ReminderHours)
+		hours = &h
+	}
+	if _, err := s.q.UpdateWorkspace(ctx, workspacesql.UpdateWorkspaceParams{ID: id, Name: c.Name, Timezone: c.Timezone, ReminderHours: hours}); err != nil {
 		return readErr(err, "workspace")
 	}
 	return nil
@@ -104,6 +109,7 @@ func (s store) membershipsOfUser(ctx context.Context, userID uuid.UUID) ([]Membe
 			ID: r.MembershipID,
 			Workspace: Workspace{
 				ID: r.WorkspaceID, Name: r.WorkspaceName, Timezone: r.WorkspaceTimezone, MemberCount: int(r.MemberCount),
+				ReminderHours: int(r.WorkspaceReminderHours),
 			},
 			Role:         role,
 			Capabilities: authz.CapabilitiesOf(role),

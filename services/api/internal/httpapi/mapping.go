@@ -12,7 +12,7 @@ import (
 // each kind of object looks the same wherever it appears.
 
 func toWorkspace(w workspace.Workspace) gen.Workspace {
-	return gen.Workspace{Id: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: int32(w.MemberCount)}
+	return gen.Workspace{Id: w.ID, Name: w.Name, Timezone: w.Timezone, MemberCount: int32(w.MemberCount), ReminderHours: int32(w.ReminderHours)}
 }
 
 func toMembership(m workspace.Membership) gen.Membership {

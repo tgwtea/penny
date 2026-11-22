@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,7 +46,10 @@ func newLessonStudio(t *testing.T) lessonStudio {
 	for _, name := range []string{"Arjun Nair", "Sofia Lim"} {
 		resp, err := s.api.Client.CreateStudentWithResponse(ctx, s.team.Id, gen.StudentInput{
 			Name: name, PrimaryTeacherId: &s.teacherID,
-			Contacts: &[]gen.ContactInput{{Name: "Parent of " + name, Relationship: gen.ContactRelationshipParent, Email: ptr(openapi_types.Email("parent@example.com"))}},
+			Contacts: &[]gen.ContactInput{{
+				Name: "Parent of " + name, Relationship: gen.ContactRelationshipParent,
+				Email: ptr(openapi_types.Email("parent." + strings.ToLower(strings.Fields(name)[0]) + "@example.com")),
+			}},
 		}, s.owner.Auth)
 		if err != nil {
 			t.Fatal(err)

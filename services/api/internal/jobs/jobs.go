@@ -21,6 +21,7 @@ import (
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/tgwtea/penny/services/api/internal/app"
+	"github.com/tgwtea/penny/services/api/internal/notify"
 )
 
 // Client is River's client over pgx.
@@ -55,11 +56,37 @@ func (w *bookAheadWorker) Work(ctx context.Context, _ *river.Job[BookAheadArgs])
 	return err
 }
 
+type lessonReminderWorker struct {
+	river.WorkerDefaults[notify.LessonReminderArgs]
+	services *app.Services
+}
+
+func (w *lessonReminderWorker) Work(ctx context.Context, job *river.Job[notify.LessonReminderArgs]) error {
+	return w.services.Notify.SendLessonReminder(ctx, job.Args, job.ScheduledAt)
+}
+
+type invitationWorker struct {
+	river.WorkerDefaults[notify.InvitationArgs]
+	services *app.Services
+}
+
+func (w *invitationWorker) Work(ctx context.Context, job *river.Job[notify.InvitationArgs]) error {
+	return w.services.Notify.SendInvitation(ctx, job.Args)
+}
+
+// Workers registers how to run every job.
+func Workers(services *app.Services, logger *slog.Logger) *river.Workers {
+	workers := river.NewWorkers()
+	river.AddWorker(workers, &bookAheadWorker{services: services, logger: logger})
+	river.AddWorker(workers, &lessonReminderWorker{services: services})
+	river.AddWorker(workers, &invitationWorker{services: services})
+	return workers
+}
+
 // NewWorkerClient returns a River client that runs every job, for
 // cmd/worker.
 func NewWorkerClient(pool *pgxpool.Pool, services *app.Services, logger *slog.Logger) (*Client, error) {
-	workers := river.NewWorkers()
-	river.AddWorker(workers, &bookAheadWorker{services: services, logger: logger})
+	workers := Workers(services, logger)
 
 	client, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Logger:  logger,

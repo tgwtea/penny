@@ -8,13 +8,16 @@ package app
 
 import (
 	"errors"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/tgwtea/penny/services/api/internal/account"
 	"github.com/tgwtea/penny/services/api/internal/audit"
 	"github.com/tgwtea/penny/services/api/internal/identity"
+	"github.com/tgwtea/penny/services/api/internal/notify"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
+	"github.com/tgwtea/penny/services/api/internal/platform/queue"
 	"github.com/tgwtea/penny/services/api/internal/scheduling"
 	"github.com/tgwtea/penny/services/api/internal/workspace"
 )
@@ -25,8 +28,20 @@ type Deps struct {
 	Verifier identity.Verifier
 	Clock    clock.Clock
 	// PublicURL is the API's address as the world reaches it, for links
-	// the API hands out (calendar feeds).
+	// the API hands out (calendar feeds, one-click unsubscribe).
 	PublicURL string
+	// AppURL is the web client's address, for links in emails.
+	AppURL string
+	// Queue inserts background jobs in the caller's transaction. Without
+	// one, nothing is queued: no reminders or invitations.
+	Queue queue.Inserter
+	// Mailer sends email; only the worker has one.
+	Mailer notify.Mailer
+	// UnsubscribeSecret signs and checks unsubscribe links.
+	UnsubscribeSecret string
+	// NotifyMetrics are optional.
+	NotifyMetrics *notify.Metrics
+	Logger        *slog.Logger
 }
 
 // Services are every module's service, ready to use.
@@ -35,10 +50,12 @@ type Services struct {
 	Account    *account.Service
 	Teams      *workspace.Service
 	Scheduling *scheduling.Service
+	Notify     *notify.Service
 	Audit      *audit.Recorder
 }
 
-// New builds the services.
+// New builds the services and connects the hooks through which a change
+// in one module queues work in another, in the same transaction.
 func New(d Deps) (*Services, error) {
 	if d.Pool == nil || d.Verifier == nil {
 		return nil, errors.New("app.New needs a database pool and a token verifier")
@@ -49,11 +66,22 @@ func New(d Deps) (*Services, error) {
 	rec := audit.NewRecorder(d.Clock)
 	users := identity.NewService(d.Pool, d.Verifier, d.Clock)
 	teams := workspace.NewService(d.Pool, rec, d.Clock)
+	lessons := scheduling.NewService(d.Pool, teams, rec, d.Clock, d.PublicURL)
+	notifier := notify.NewService(notify.Deps{
+		Pool: d.Pool, Lessons: lessons, Teams: teams, Audit: rec, Clock: d.Clock,
+		Mailer: d.Mailer, Queue: d.Queue, Links: notify.Links{App: d.AppURL, API: d.PublicURL},
+		Secret: []byte(d.UnsubscribeSecret), Metrics: d.NotifyMetrics, Logger: d.Logger,
+	})
+
+	lessons.SetHooks(scheduling.Hooks{LessonChanged: notifier.LessonChanged})
+	teams.SetHooks(workspace.Hooks{MemberInvited: notifier.MemberInvited})
+
 	return &Services{
 		Users:      users,
 		Account:    account.NewService(d.Pool, users, teams, rec),
 		Teams:      teams,
-		Scheduling: scheduling.NewService(d.Pool, teams, rec, d.Clock, d.PublicURL),
+		Scheduling: lessons,
+		Notify:     notifier,
 		Audit:      rec,
 	}, nil
 }

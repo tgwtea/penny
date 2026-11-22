@@ -25,6 +25,7 @@ import (
 	"github.com/tgwtea/penny/services/api/internal/platform/httpserver"
 	"github.com/tgwtea/penny/services/api/internal/platform/logging"
 	"github.com/tgwtea/penny/services/api/internal/platform/metrics"
+	"github.com/tgwtea/penny/services/api/internal/platform/queue"
 	"github.com/tgwtea/penny/services/api/internal/platform/schema"
 	"github.com/tgwtea/penny/services/api/internal/platform/telemetry"
 )
@@ -67,7 +68,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	services, err := app.New(app.Deps{Pool: pool, Verifier: verifier, Clock: clock.System{}, PublicURL: cfg.PublicURL})
+	inserter, err := queue.NewInserter(pool)
+	if err != nil {
+		return err
+	}
+	services, err := app.New(app.Deps{
+		Pool: pool, Verifier: verifier, Clock: clock.System{}, PublicURL: cfg.PublicURL, AppURL: cfg.AppURL,
+		Queue: inserter, UnsubscribeSecret: cfg.UnsubscribeSecret, Logger: logger,
+	})
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,22 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "subject" .}}</title>
+</head>
+<body style="margin:0;padding:0;background:#F5F7F9;font-family:'IBM Plex Sans',Arial,sans-serif;color:#1C2B3A;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7F9;">
+<tr><td align="center" style="padding:24px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:12px;">
+<tr><td style="padding:32px 24px;font-size:15px;line-height:1.5;">
+{{template "body" .}}
+</td></tr>
+</table>
+<p style="max-width:560px;margin:16px auto 0;font-size:12px;line-height:1.5;color:#5B6B7B;">
+{{.TeamName}}, via Penny.{{if .UnsubscribeURL}} <a href="{{.UnsubscribeURL}}" style="color:#5B6B7B;">{{.UnsubscribeText}}</a>{{end}}
+</p>
+</td></tr>
+</table>
+</body>
+</html>{{end}}

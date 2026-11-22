@@ -106,14 +106,16 @@ jobs:
       PENNY_TEST_REQUIRE_DB: "1"
       # Sign-in tests use real emulator tokens (ADR 004, build plan Phase 3).
       PENNY_TEST_FIREBASE_AUTH_EMULATOR_HOST: localhost:9099
+      # Mail tests send through Mailpit and read the message back (ADR 014).
+      PENNY_TEST_MAILPIT_URL: http://localhost:8025
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # The emulator image is built from tools/firebase-emulator, so it runs
       # through compose rather than as a service container.
-      - name: Start the Firebase Auth emulator
-        run: docker compose up --detach --build --wait firebase-auth
+      - name: Start the Firebase Auth emulator and Mailpit
+        run: docker compose up --detach --build --wait firebase-auth mailpit
       - uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
         with:
           install_args: task go golangci-lint sqlc

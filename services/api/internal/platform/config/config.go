@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"net/mail"
 	"strings"
 	"time"
 )
@@ -32,8 +33,35 @@ type API struct {
 	// such as https://api.example.com, for links the API hands out
 	// (PENNY_PUBLIC_URL, default http://localhost:8080).
 	PublicURL string
-	Firebase  Firebase
-	Log       Log
+	// AppURL is the web client's address, for links back to the app
+	// (PENNY_APP_URL, default http://localhost:5173).
+	AppURL string
+	// UnsubscribeSecret signs the unsubscribe links in emails
+	// (PENNY_UNSUBSCRIBE_SECRET, required, at least 32 characters). The
+	// API checks them; the worker signs them. Both need the same value.
+	UnsubscribeSecret string
+	Firebase          Firebase
+	Log               Log
+}
+
+// Mail configures how the worker sends email (ADR 014).
+type Mail struct {
+	// Provider is smtp (Mailpit locally and in CI) or postmark
+	// (PENNY_MAIL_PROVIDER, default smtp).
+	Provider string
+	// FromName and FromEmail are the sender (PENNY_MAIL_FROM, such as
+	// "Penny <reminders@example.com>").
+	FromName  string
+	FromEmail string
+	// SMTPAddr is host:port of the SMTP server (PENNY_SMTP_ADDR, default
+	// localhost:1025, Mailpit). PENNY_SMTP_USERNAME and PENNY_SMTP_PASSWORD
+	// are optional.
+	SMTPAddr     string
+	SMTPUsername string
+	SMTPPassword string
+	// PostmarkToken is the server token (PENNY_POSTMARK_TOKEN, required for
+	// postmark).
+	PostmarkToken string
 }
 
 // Worker configures the background job binary.
@@ -46,6 +74,11 @@ type Worker struct {
 	// PublicURL is the API's public address, for links in emails
 	// (PENNY_PUBLIC_URL, default http://localhost:8080).
 	PublicURL string
+	// AppURL is the web client's address (PENNY_APP_URL).
+	AppURL string
+	// UnsubscribeSecret signs unsubscribe links (PENNY_UNSUBSCRIBE_SECRET).
+	UnsubscribeSecret string
+	Mail              Mail
 	// ShutdownTimeout bounds how long running jobs get to finish after
 	// SIGTERM before they are released to run again (PENNY_SHUTDOWN_TIMEOUT,
 	// default 30s).
@@ -80,14 +113,16 @@ type Migrate struct {
 func LoadAPI(lookup LookupFunc) (API, error) {
 	r := newReader(lookup)
 	cfg := API{
-		HTTPAddr:        r.listenAddr("PENNY_HTTP_ADDR", ":8080"),
-		AdminAddr:       r.listenAddr("PENNY_ADMIN_ADDR", ":9090"),
-		DatabaseURL:     r.databaseURL("PENNY_DATABASE_URL"),
-		CORSOrigins:     r.origins("PENNY_CORS_ORIGINS"),
-		ShutdownTimeout: r.duration("PENNY_SHUTDOWN_TIMEOUT", 20*time.Second),
-		PublicURL:       r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
-		Firebase:        readFirebase(r),
-		Log:             readLog(r),
+		HTTPAddr:          r.listenAddr("PENNY_HTTP_ADDR", ":8080"),
+		AdminAddr:         r.listenAddr("PENNY_ADMIN_ADDR", ":9090"),
+		DatabaseURL:       r.databaseURL("PENNY_DATABASE_URL"),
+		CORSOrigins:       r.origins("PENNY_CORS_ORIGINS"),
+		ShutdownTimeout:   r.duration("PENNY_SHUTDOWN_TIMEOUT", 20*time.Second),
+		PublicURL:         r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
+		AppURL:            r.publicURL("PENNY_APP_URL", defaultAppURL),
+		UnsubscribeSecret: r.secret("PENNY_UNSUBSCRIBE_SECRET", 32),
+		Firebase:          readFirebase(r),
+		Log:               readLog(r),
 	}
 	if cfg.HTTPAddr == cfg.AdminAddr {
 		r.fail("PENNY_ADMIN_ADDR", "must differ from PENNY_HTTP_ADDR")
@@ -95,20 +130,47 @@ func LoadAPI(lookup LookupFunc) (API, error) {
 	return cfg, r.err()
 }
 
-// defaultPublicURL is the API under `task run:api`.
-const defaultPublicURL = "http://localhost:8080"
+// defaultPublicURL is the API under `task run:api`, and defaultAppURL the
+// web client under `task run:client:web`.
+const (
+	defaultPublicURL = "http://localhost:8080"
+	defaultAppURL    = "http://localhost:5173"
+)
 
 // LoadWorker reads the worker binary's configuration.
 func LoadWorker(lookup LookupFunc) (Worker, error) {
 	r := newReader(lookup)
 	cfg := Worker{
-		AdminAddr:       r.listenAddr("PENNY_ADMIN_ADDR", ":9091"),
-		DatabaseURL:     r.databaseURL("PENNY_DATABASE_URL"),
-		PublicURL:       r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
-		ShutdownTimeout: r.duration("PENNY_SHUTDOWN_TIMEOUT", 30*time.Second),
-		Log:             readLog(r),
+		AdminAddr:         r.listenAddr("PENNY_ADMIN_ADDR", ":9091"),
+		DatabaseURL:       r.databaseURL("PENNY_DATABASE_URL"),
+		PublicURL:         r.publicURL("PENNY_PUBLIC_URL", defaultPublicURL),
+		AppURL:            r.publicURL("PENNY_APP_URL", defaultAppURL),
+		UnsubscribeSecret: r.secret("PENNY_UNSUBSCRIBE_SECRET", 32),
+		Mail:              readMail(r),
+		ShutdownTimeout:   r.duration("PENNY_SHUTDOWN_TIMEOUT", 30*time.Second),
+		Log:               readLog(r),
 	}
 	return cfg, r.err()
+}
+
+func readMail(r *reader) Mail {
+	m := Mail{
+		Provider:      r.oneOf("PENNY_MAIL_PROVIDER", "smtp", "smtp", "postmark"),
+		SMTPAddr:      r.string("PENNY_SMTP_ADDR", "localhost:1025"),
+		SMTPUsername:  r.value("PENNY_SMTP_USERNAME"),
+		SMTPPassword:  r.value("PENNY_SMTP_PASSWORD"),
+		PostmarkToken: r.value("PENNY_POSTMARK_TOKEN"),
+	}
+	from, err := mail.ParseAddress(r.string("PENNY_MAIL_FROM", "Penny <no-reply@penny.invalid>"))
+	if err != nil {
+		r.fail("PENNY_MAIL_FROM", "must be an address such as \"Penny <reminders@example.com>\"")
+	} else {
+		m.FromName, m.FromEmail = from.Name, from.Address
+	}
+	if m.Provider == "postmark" && m.PostmarkToken == "" {
+		r.fail("PENNY_POSTMARK_TOKEN", "is required when PENNY_MAIL_PROVIDER is postmark")
+	}
+	return m
 }
 
 // LoadMigrate reads the migrate binary's configuration.

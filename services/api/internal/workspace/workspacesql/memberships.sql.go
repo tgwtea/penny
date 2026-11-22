@@ -209,6 +209,7 @@ SELECT
     w.id AS workspace_id,
     w.name AS workspace_name,
     w.timezone AS workspace_timezone,
+    w.reminder_hours AS workspace_reminder_hours,
     (SELECT count(*)::int FROM workspace_memberships c
      WHERE c.workspace_id = w.id AND c.status = 'active') AS member_count
 FROM workspace_memberships m
@@ -218,12 +219,13 @@ ORDER BY m.joined_at, m.id
 `
 
 type ListActiveMembershipsOfUserRow struct {
-	MembershipID      uuid.UUID
-	Role              MembershipRole
-	WorkspaceID       uuid.UUID
-	WorkspaceName     string
-	WorkspaceTimezone string
-	MemberCount       int32
+	MembershipID           uuid.UUID
+	Role                   MembershipRole
+	WorkspaceID            uuid.UUID
+	WorkspaceName          string
+	WorkspaceTimezone      string
+	WorkspaceReminderHours int32
+	MemberCount            int32
 }
 
 // Every team the person is in, with the team and its member count, for
@@ -243,6 +245,7 @@ func (q *Queries) ListActiveMembershipsOfUser(ctx context.Context, userID *uuid.
 			&i.WorkspaceID,
 			&i.WorkspaceName,
 			&i.WorkspaceTimezone,
+			&i.WorkspaceReminderHours,
 			&i.MemberCount,
 		); err != nil {
 			return nil, err
@@ -426,7 +429,7 @@ func (q *Queries) MemberNamesByUser(ctx context.Context, arg MemberNamesByUserPa
 }
 
 const membersByID = `-- name: MembersByID :many
-SELECT id, user_id, display_name, role, status FROM workspace_memberships
+SELECT id, user_id, display_name, email, role, status FROM workspace_memberships
 WHERE workspace_id = $1 AND id = ANY($2::uuid[])
 `
 
@@ -439,6 +442,7 @@ type MembersByIDRow struct {
 	ID          uuid.UUID
 	UserID      *uuid.UUID
 	DisplayName string
+	Email       string
 	Role        MembershipRole
 	Status      MembershipStatus
 }
@@ -458,6 +462,7 @@ func (q *Queries) MembersByID(ctx context.Context, arg MembersByIDParams) ([]Mem
 			&i.ID,
 			&i.UserID,
 			&i.DisplayName,
+			&i.Email,
 			&i.Role,
 			&i.Status,
 		); err != nil {

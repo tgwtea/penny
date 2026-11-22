@@ -147,6 +147,8 @@ type Workspace struct {
 	CreatedBy uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// How long before a lesson its contacts are reminded. 0 sends no reminders.
+	ReminderHours int32
 }
 
 // A person's role in a team. Removed memberships stay, because lessons and receipts keep pointing at them.

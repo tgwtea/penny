@@ -4,8 +4,9 @@ import 'package:penny_api/model_helpers.dart';
 
 @immutable
 class UpdateWorkspaceRequest {
-  UpdateWorkspaceRequest({this.name, this.timezone}) {
+  UpdateWorkspaceRequest({this.name, this.timezone, this.reminderHours}) {
     name?.validate(minLength: 1, maxLength: 100);
+    reminderHours?.validate(min: 0, max: 168);
   }
 
   /// Converts a `Map<String, dynamic>` to a [UpdateWorkspaceRequest].
@@ -16,6 +17,7 @@ class UpdateWorkspaceRequest {
       () => UpdateWorkspaceRequest(
         name: json['name'] as String?,
         timezone: json['timezone'] as String?,
+        reminderHours: json['reminderHours'] as int?,
       ),
     );
   }
@@ -34,19 +36,27 @@ class UpdateWorkspaceRequest {
   /// An IANA timezone name.
   final String? timezone;
 
+  /// How long before a lesson to remind its contacts. 0 turns reminders off.
+  final int? reminderHours;
+
   /// Converts a [UpdateWorkspaceRequest] to a `Map<String, dynamic>`.
   Map<String, dynamic> toJson() {
-    return {'name': ?name, 'timezone': ?timezone};
+    return {
+      'name': ?name,
+      'timezone': ?timezone,
+      'reminderHours': ?reminderHours,
+    };
   }
 
   @override
-  int get hashCode => Object.hashAll([name, timezone]);
+  int get hashCode => Object.hashAll([name, timezone, reminderHours]);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is UpdateWorkspaceRequest &&
         name == other.name &&
-        timezone == other.timezone;
+        timezone == other.timezone &&
+        reminderHours == other.reminderHours;
   }
 }

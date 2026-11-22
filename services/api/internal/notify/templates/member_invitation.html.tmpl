@@ -1,0 +1,5 @@
+{{define "subject"}}{{.InviterName}} added you to {{.TeamName}} on Penny{{end}}
+{{define "body"}}<p style="margin:0 0 16px;">Hi {{.InviteeName}},</p>
+<p style="margin:0 0 16px;">{{.InviterName}} added you to <strong>{{.TeamName}}</strong> as a {{.Role}}. Penny keeps the team's lessons, timetable and payments in order.</p>
+<p style="margin:0 0 24px;">Sign in or create an account with this email address, {{.Email}}, to see your lessons.</p>
+<p style="margin:0;"><a href="{{.SignInURL}}" style="display:inline-block;background:#1C2B3A;color:#FFFFFF;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:8px;">Open Penny</a></p>{{end}}

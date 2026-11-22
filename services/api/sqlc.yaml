@@ -78,3 +78,11 @@ sql:
         <<: *go
         package: schedulingsql
         out: internal/scheduling/schedulingsql
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/notify
+    gen:
+      go:
+        <<: *go
+        package: notifysql
+        out: internal/notify/notifysql

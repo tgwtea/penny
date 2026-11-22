@@ -1,0 +1,8 @@
+Hi Mei,
+
+Daniel Koh added you to Koh Guitar Studio as a teacher. Penny keeps the team's lessons, timetable and payments in order.
+
+Sign in or create an account with this email address, meilin@kohguitar.example, to see your lessons:
+http://localhost:5173/sign-in
+
+Koh Guitar Studio, via Penny.

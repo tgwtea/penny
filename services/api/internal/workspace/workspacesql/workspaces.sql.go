@@ -28,7 +28,7 @@ const createWorkspace = `-- name: CreateWorkspace :one
 
 INSERT INTO workspaces (name, timezone, created_by)
 VALUES ($1, $2, $3)
-RETURNING id, name, timezone, created_by, created_at, updated_at
+RETURNING id, name, timezone, created_by, created_at, updated_at, reminder_hours
 `
 
 type CreateWorkspaceParams struct {
@@ -48,12 +48,13 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReminderHours,
 	)
 	return i, err
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, name, timezone, created_by, created_at, updated_at FROM workspaces WHERE id = $1
+SELECT id, name, timezone, created_by, created_at, updated_at, reminder_hours FROM workspaces WHERE id = $1
 `
 
 func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, error) {
@@ -66,7 +67,27 @@ func (q *Queries) GetWorkspace(ctx context.Context, id uuid.UUID) (Workspace, er
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReminderHours,
 	)
+	return i, err
+}
+
+const getWorkspaceSettings = `-- name: GetWorkspaceSettings :one
+SELECT name, timezone, reminder_hours FROM workspaces WHERE id = $1
+`
+
+type GetWorkspaceSettingsRow struct {
+	Name          string
+	Timezone      string
+	ReminderHours int32
+}
+
+// What other modules need to act for a team: its name, timezone and
+// reminder lead time.
+func (q *Queries) GetWorkspaceSettings(ctx context.Context, id uuid.UUID) (GetWorkspaceSettingsRow, error) {
+	row := q.db.QueryRow(ctx, getWorkspaceSettings, id)
+	var i GetWorkspaceSettingsRow
+	err := row.Scan(&i.Name, &i.Timezone, &i.ReminderHours)
 	return i, err
 }
 
@@ -85,19 +106,26 @@ const updateWorkspace = `-- name: UpdateWorkspace :one
 UPDATE workspaces
 SET name = COALESCE($1, name),
     timezone = COALESCE($2, timezone),
+    reminder_hours = COALESCE($3, reminder_hours),
     updated_at = now()
-WHERE id = $3
-RETURNING id, name, timezone, created_by, created_at, updated_at
+WHERE id = $4
+RETURNING id, name, timezone, created_by, created_at, updated_at, reminder_hours
 `
 
 type UpdateWorkspaceParams struct {
-	Name     *string
-	Timezone *string
-	ID       uuid.UUID
+	Name          *string
+	Timezone      *string
+	ReminderHours *int32
+	ID            uuid.UUID
 }
 
 func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error) {
-	row := q.db.QueryRow(ctx, updateWorkspace, arg.Name, arg.Timezone, arg.ID)
+	row := q.db.QueryRow(ctx, updateWorkspace,
+		arg.Name,
+		arg.Timezone,
+		arg.ReminderHours,
+		arg.ID,
+	)
 	var i Workspace
 	err := row.Scan(
 		&i.ID,
@@ -106,6 +134,7 @@ func (q *Queries) UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReminderHours,
 	)
 	return i, err
 }

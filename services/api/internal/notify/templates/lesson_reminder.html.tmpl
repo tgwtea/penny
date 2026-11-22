@@ -1,0 +1,6 @@
+{{define "subject"}}Reminder: {{.StudentFirstName}}'s lesson {{.Day}} at {{.StartTime}}{{end}}
+{{define "body"}}<p style="margin:0 0 16px;">Hi {{.ContactName}},</p>
+<p style="margin:0 0 16px;">{{.StudentFirstName}} has a lesson with {{.Tutors}} {{.Day}}, <strong>{{.Date}}, {{.StartTime}} to {{.EndTime}}</strong>.</p>
+{{if .Place}}<p style="margin:0 0 16px;"><strong>Where:</strong> {{.Place}}{{if .Address}}, {{.Address}}{{end}}{{if .MeetingURL}}<br><a href="{{.MeetingURL}}" style="color:#1C2B3A;">Join online</a>{{end}}</p>{{end}}
+{{if .Policy}}<p style="margin:0 0 16px;"><strong>Cancellation policy:</strong> {{.Policy}}</p>{{end}}
+<p style="margin:0;">To cancel or change the lesson, contact {{.TeamName}}.</p>{{end}}
