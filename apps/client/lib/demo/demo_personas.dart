@@ -24,7 +24,24 @@ enum DemoPersona {
   solo('a3', 'Priya Shah', 'priya@example.com', 'Teaches piano on her own'),
 
   /// Someone who has just signed up: no team yet, so onboarding.
-  newcomer('a4', 'Hana Lim', 'hana@example.com', 'New to Penny, no team yet');
+  newcomer('a4', 'Hana Lim', 'hana@example.com', 'New to Penny, no team yet'),
+
+  /// A parent with a family account (ADR 025): sees their son's lessons
+  /// and payments, read-only.
+  parent(
+    'a5',
+    'Priya Nair',
+    'priya.nair@example.com',
+    'Arjun Nair\'s mother, at Koh Guitar Studio',
+  ),
+
+  /// A student with their own account: sees their lessons, read-only.
+  student(
+    'a6',
+    'Sofia Lim',
+    'sofia.lim@example.com',
+    'A student at Koh Guitar Studio',
+  );
 
   const DemoPersona(
     this.userId,

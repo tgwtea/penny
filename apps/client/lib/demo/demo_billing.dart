@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../core/capability.dart';
 import '../core/failure.dart';
 import '../core/team_time.dart';
+import '../features/family/domain/family.dart';
 import '../features/lessons/domain/lesson.dart';
 import '../features/payments/domain/payment.dart';
 import '../features/payments/domain/payment_repository.dart';
@@ -403,6 +404,38 @@ mixin _DemoBillingRules {
     if (r.status != PaymentStatus.open || r.payerConfirmedAt != null) return;
     r.payerConfirmedAt = store.now();
     if (r.payment != null) close(r);
+  }
+
+  /// What [r]'s payment page shows.
+  PublicPayment publicPage(DemoRequest r) {
+    final account = billing.accounts[r.payeeId];
+    final policy = schedule.policyOf(r.payeeId);
+    return PublicPayment(
+      teamName: store.team(r.teamId).name,
+      payeeName: account?.displayName ?? store.nameOf(r.payeeId),
+      studentFirstName: studentName(r.studentId).split(' ').first,
+      amountCents: r.amountCents,
+      reference: r.reference,
+      dueOn: r.dueOn,
+      lines: [
+        for (final l in r.lines)
+          PaymentLine(description: l.description, amountCents: l.amountCents),
+      ],
+      status: r.status,
+      payerConfirmed: r.payerConfirmedAt != null,
+      coTaught: r.coTaught,
+      cancellationPolicy: policy.summary.isEmpty ? null : policy.summary,
+      paynowPayload: r.status == PaymentStatus.open && account != null
+          ? PayNowPayload(
+              type: account.proxyType,
+              proxy: account.proxyValue,
+              merchantName: account.displayName,
+              amountCents: r.amountCents,
+              expiry: r.dueOn.add(const Duration(days: 90)),
+              reference: r.reference,
+            ).encode()
+          : null,
+    );
   }
 
   Uint8List pdfOf(DemoReceipt r) => demoReceiptPdf([
@@ -1044,45 +1077,103 @@ class DemoPublicPaymentRepository
     return r;
   }
 
-  PublicPayment _page(DemoRequest r) {
-    final account = billing.accounts[r.payeeId];
-    final policy = schedule.policyOf(r.payeeId);
-    return PublicPayment(
-      teamName: store.team(r.teamId).name,
-      payeeName: account?.displayName ?? store.nameOf(r.payeeId),
-      studentFirstName: studentName(r.studentId).split(' ').first,
-      amountCents: r.amountCents,
-      reference: r.reference,
-      dueOn: r.dueOn,
-      lines: [
-        for (final l in r.lines)
-          PaymentLine(description: l.description, amountCents: l.amountCents),
-      ],
-      status: r.status,
-      payerConfirmed: r.payerConfirmedAt != null,
-      coTaught: r.coTaught,
-      cancellationPolicy: policy.summary.isEmpty ? null : policy.summary,
-      paynowPayload: r.status == PaymentStatus.open && account != null
-          ? PayNowPayload(
-              type: account.proxyType,
-              proxy: account.proxyValue,
-              merchantName: account.displayName,
-              amountCents: r.amountCents,
-              expiry: r.dueOn.add(const Duration(days: 90)),
-              reference: r.reference,
-            ).encode()
-          : null,
-    );
-  }
-
   @override
-  Future<PublicPayment> page(String token) async => _page(_byToken(token));
+  Future<PublicPayment> page(String token) async => publicPage(_byToken(token));
 
   @override
   Future<PublicPayment> confirmPaid(String token) async {
     final r = _byToken(token);
     payerConfirms(r);
-    return _page(r);
+    return publicPage(r);
+  }
+}
+
+/// Billing as a signed-in parent sees it (ADR 025), for the demo's family
+/// repository: their children's open and paid requests, "I've paid" and
+/// receipts. [studentIds] are the parent's linked students.
+class DemoFamilyBilling with _DemoBillingRules {
+  /// Creates the desk over [session]'s store.
+  DemoFamilyBilling(this.session);
+
+  @override
+  final DemoSessionRepository session;
+
+  /// Open and paid requests for [studentIds], newest first.
+  List<FamilyPayment> payments(String teamId, Set<String> studentIds) {
+    final rows =
+        billing.requests.values
+            .where(
+              (r) =>
+                  r.teamId == teamId &&
+                  studentIds.contains(r.studentId) &&
+                  (r.status == PaymentStatus.open ||
+                      r.status == PaymentStatus.paid),
+            )
+            .toList()
+          ..sort((x, y) => y.createdAt.compareTo(x.createdAt));
+    return [for (final r in rows) _payment(r)];
+  }
+
+  /// "I've paid" for one of [studentIds]' requests.
+  FamilyPayment confirm(
+    String teamId,
+    String requestId,
+    Set<String> studentIds,
+  ) {
+    final r = billing.requests[requestId];
+    if (r == null ||
+        r.teamId != teamId ||
+        !studentIds.contains(r.studentId) ||
+        r.status == PaymentStatus.draft) {
+      throw const NotFoundFailure('no such request');
+    }
+    payerConfirms(r);
+    return _payment(r);
+  }
+
+  /// Receipts for [studentIds], newest first.
+  List<ReceiptSummary> receipts(String teamId, Set<String> studentIds) {
+    final list =
+        billing.receipts.values
+            .where(
+              (r) =>
+                  r.teamId == teamId &&
+                  studentIds.contains(billing.requests[r.requestId]!.studentId),
+            )
+            .toList()
+          ..sort((x, y) => y.number.compareTo(x.number));
+    return [for (final r in list) receiptOf(r)];
+  }
+
+  /// One of [studentIds]' receipts as a PDF.
+  ReceiptPdf pdf(String teamId, String receiptId, Set<String> studentIds) {
+    final r = billing.receipts[receiptId];
+    if (r == null ||
+        r.teamId != teamId ||
+        !studentIds.contains(billing.requests[r.requestId]!.studentId)) {
+      throw const NotFoundFailure('no such receipt');
+    }
+    return ReceiptPdf(filename: 'Receipt ${r.label}.pdf', bytes: pdfOf(r));
+  }
+
+  FamilyPayment _payment(DemoRequest r) {
+    final last = r.receiptIds.isEmpty
+        ? null
+        : billing.receipts[r.receiptIds.last];
+    return FamilyPayment(
+      id: r.id,
+      studentId: r.studentId,
+      studentName: studentName(r.studentId),
+      createdAt: r.createdAt,
+      page: publicPage(r),
+      receipt: last == null
+          ? null
+          : ReceiptRef(
+              id: last.id,
+              number: last.label,
+              voided: last.voided != null,
+            ),
+    );
   }
 }
 

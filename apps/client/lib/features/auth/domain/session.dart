@@ -156,6 +156,11 @@ final class SignedIn extends Session {
   bool can(Capability capability) =>
       activeMembership?.capabilities.contains(capability) ?? false;
 
+  /// Whether the person is a student or parent in the active team (ADR
+  /// 025): they see their family's pages, not the staff's.
+  bool get isFamily =>
+      !can(Capability.viewOwnLessons) && can(Capability.viewLinkedLessons);
+
   /// Whether the active team has one member. Team features are hidden then;
   /// there is no separate solo mode.
   bool get isTeamOfOne => (activeMembership?.team.memberCount ?? 1) <= 1;

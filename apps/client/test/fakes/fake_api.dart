@@ -60,6 +60,18 @@ class FakeApi {
     ],
   );
 
+  /// Connects the scheduling fake's family hooks to the teams.
+  late final _familyHooks = scheduling
+    ..inviteFamily = _inviteFamily
+    ..activeFamily = (teamId, email, role) =>
+        teams[teamId]?.members.any(
+          (m) =>
+              m['email'] == email &&
+              m['role'] == role &&
+              m['status'] == 'active',
+        ) ??
+        false;
+
   /// PayNow accounts, payment requests, receipts and the public payment
   /// page (Phase 8 routes).
   late final billing = FakeBillingApi(
@@ -91,6 +103,7 @@ class FakeApi {
   );
 
   Future<http.Response> _handle(http.Request request) async {
+    _familyHooks;
     final route = '${request.method} ${request.url.path}';
     requests.add(route);
     if (failWith != null) {
@@ -117,6 +130,8 @@ class FakeApi {
     if (email == null) {
       return problem(401, 'urn:penny:problem:unauthenticated');
     }
+    final familyRoute = _familyRoute(request, email);
+    if (familyRoute != null) return familyRoute;
     final schedulingRoute = scheduling.handle(request, email);
     if (schedulingRoute != null) return schedulingRoute;
     final billingRoute = billing.handle(request, email);
@@ -134,6 +149,19 @@ class FakeApi {
       case 'DELETE /v1/me':
         names.remove(email);
         return http.Response('', 204);
+      case 'GET /v1/me/export':
+        return json({
+          'exportedAt': '2026-11-19T08:20:00Z',
+          'person': {
+            'id': 'user-${email.hashCode}',
+            'email': email,
+            'displayName': _nameOf(email),
+            'createdAt': '2026-09-01T00:00:00Z',
+          },
+          'teams': const <Object?>[],
+          'actions': const <Object?>[],
+          'actionsTruncated': false,
+        });
     }
     return problem(404, 'urn:penny:problem:not-found');
   }
@@ -153,9 +181,15 @@ class FakeApi {
               'id': m['id'],
               'workspace': _workspace(id),
               'role': m['role'],
-              'capabilities': m['role'] == 'owner'
-                  ? const ['manage_team', 'view_team_timetable']
-                  : const ['view_own_lessons'],
+              'capabilities': switch (m['role']) {
+                'owner' => const ['manage_team', 'view_team_timetable'],
+                'parent' => const [
+                  'view_linked_lessons',
+                  'view_linked_payments',
+                ],
+                'student' => const ['view_linked_lessons'],
+                _ => const ['view_own_lessons'],
+              },
             },
     ],
   };
@@ -168,9 +202,63 @@ class FakeApi {
     'timezone': 'Asia/Singapore',
     'reminderHours': reminderHours[id] ?? 24,
     'memberCount': teams[id]!.members
-        .where((m) => m['status'] == 'active')
+        .where((m) => m['status'] == 'active' && _isStaff(m))
         .length,
   };
+
+  static bool _isStaff(Map<String, Object?> m) =>
+      m['role'] == 'owner' || m['role'] == 'teacher';
+
+  /// A family account's routes (ADR 025): only parents and students, each
+  /// seeing only the students they are linked to.
+  http.Response? _familyRoute(http.Request request, String email) {
+    final p = request.url.pathSegments;
+    if (p.length < 5 ||
+        p[0] != 'v1' ||
+        p[1] != 'workspaces' ||
+        p[3] != 'family') {
+      return null;
+    }
+    final me = scheduling.memberOf(p[2], email);
+    if (me == null) return problem(404, 'urn:penny:problem:not-found');
+    if (me.role != 'parent' && me.role != 'student') {
+      return problem(403, 'urn:penny:problem:forbidden');
+    }
+    final linked = scheduling.linkedStudents(p[2], email, me.role);
+    if (p[4] == 'students' || p[4] == 'lessons') {
+      return scheduling.handleFamily(request, p[2], me.role, linked) ??
+          problem(404, 'urn:penny:problem:not-found');
+    }
+    if (me.role != 'parent') return problem(403, 'urn:penny:problem:forbidden');
+    return billing.handleFamily(request, linked) ??
+        problem(404, 'urn:penny:problem:not-found');
+  }
+
+  /// Gives [address] a family account in [teamId], as the server does:
+  /// null when done, or why not.
+  String? _inviteFamily(
+    String teamId,
+    String role,
+    String name,
+    String address,
+  ) {
+    final team = teams[teamId]!;
+    for (final m in team.members) {
+      if (m['email'] != address) continue;
+      return m['role'] == role
+          ? null
+          : '$address already has a ${m['role']} account in the team. Use a '
+                'different email.';
+    }
+    team.members.add({
+      'id': 'member-${++_seq}',
+      'displayName': name,
+      'email': address,
+      'role': role,
+      'status': 'invited',
+    });
+    return null;
+  }
 
   /// [email]'s person signs in, which claims their invitations, as
   /// GET /v1/me does.
@@ -248,7 +336,7 @@ class FakeApi {
     }
     if (parts.length == 4 && parts[3] == 'members') {
       if (request.method == 'GET') {
-        final sorted = [...team.members]
+        final sorted = [...team.members.where(_isStaff)]
           ..sort((a, b) {
             final byRole = (a['role'] == 'owner' ? 0 : 1).compareTo(
               b['role'] == 'owner' ? 0 : 1,

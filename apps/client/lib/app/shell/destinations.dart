@@ -32,11 +32,12 @@ class AppDestination {
   final bool Function(SignedIn session) isVisibleTo;
 }
 
-bool _always(SignedIn _) => true;
+bool _staff(SignedIn s) => s.can(Capability.viewOwnLessons);
 
 /// The destinations, in order (BottomNav guidelines). Team appears only for
 /// owners of a team with more than one member; a team of one hides every
-/// team feature.
+/// team feature. Students and parents (ADR 025) see only their own
+/// Lessons, and parents their Payments.
 final List<AppDestination> appDestinations = [
   const AppDestination(
     path: Routes.today,
@@ -45,7 +46,7 @@ final List<AppDestination> appDestinations = [
       icon: PennyIcons.today,
       activeIcon: PennyIcons.todayActive,
     ),
-    isVisibleTo: _always,
+    isVisibleTo: _staff,
   ),
   const AppDestination(
     path: Routes.calendar,
@@ -54,16 +55,16 @@ final List<AppDestination> appDestinations = [
       icon: PennyIcons.calendar,
       activeIcon: PennyIcons.calendarActive,
     ),
-    isVisibleTo: _always,
+    isVisibleTo: _staff,
   ),
-  const AppDestination(
+  AppDestination(
     path: Routes.students,
-    nav: PennyDestination(
+    nav: const PennyDestination(
       label: 'Students',
       icon: PennyIcons.students,
       activeIcon: PennyIcons.studentsActive,
     ),
-    isVisibleTo: _always,
+    isVisibleTo: (s) => s.can(Capability.viewOwnStudents),
   ),
   AppDestination(
     path: Routes.payments,
@@ -75,6 +76,24 @@ final List<AppDestination> appDestinations = [
     isVisibleTo: (s) =>
         s.can(Capability.managePayments) || s.can(Capability.manageOwnPayments),
     alsoFor: const [Routes.receipts],
+  ),
+  AppDestination(
+    path: Routes.familyLessons,
+    nav: const PennyDestination(
+      label: 'Lessons',
+      icon: PennyIcons.calendar,
+      activeIcon: PennyIcons.calendarActive,
+    ),
+    isVisibleTo: (s) => s.isFamily,
+  ),
+  AppDestination(
+    path: Routes.familyPayments,
+    nav: const PennyDestination(
+      label: 'Payments',
+      icon: PennyIcons.payments,
+      activeIcon: PennyIcons.paymentsActive,
+    ),
+    isVisibleTo: (s) => s.isFamily && s.can(Capability.viewLinkedPayments),
   ),
   AppDestination(
     path: Routes.team,

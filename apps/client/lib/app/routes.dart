@@ -47,6 +47,13 @@ abstract final class Routes {
   /// The team list. Owners only.
   static const team = '/team';
 
+  /// A family account's home (ADR 025): their own lessons, or their
+  /// children's.
+  static const familyLessons = '/family/lessons';
+
+  /// A parent's payment requests and receipts.
+  static const familyPayments = '/family/payments';
+
   /// One lesson: `/lessons/:id`.
   static const lesson = '/lessons/:id';
 
@@ -114,8 +121,12 @@ String? redirectFor(Session session, Uri location) {
     case SignedIn(needsOnboarding: true):
       return path == Routes.onboarding ? null : to(Routes.onboarding);
     case SignedIn():
-      if (Routes.entryPages.contains(path)) return headedFor ?? Routes.today;
-      if (path == '/') return Routes.today;
+      // A family account's home is its lessons, not the staff's Today.
+      final home = session.isFamily ? Routes.familyLessons : Routes.today;
+      if (Routes.entryPages.contains(path)) return headedFor ?? home;
+      if (path == '/' || (path == Routes.today && session.isFamily)) {
+        return home;
+      }
       return null;
   }
 }

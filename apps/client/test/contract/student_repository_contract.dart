@@ -8,6 +8,7 @@ typedef StudentFixture = ({
   StudentRepository repository,
   String teamId,
   String teacherId,
+  String staffEmail,
 });
 
 /// What every StudentRepository must do (ADR 012).
@@ -100,6 +101,115 @@ void studentRepositoryContract(
       final read = await f.repository.student(f.teamId, s.id);
       expect(read.contacts, isEmpty);
       expect(read.goals.single.title, 'Grade 3 by June');
+    });
+
+    test('a contact given sign-in is invited, and keeps their email', () async {
+      final f = await setUp();
+      final s = await f.repository.create(
+        f.teamId,
+        const StudentDraft(
+          name: 'Ivy Ng',
+          contacts: [
+            ContactDraft(
+              name: 'Joan Ng',
+              relationship: ContactRelationship.parent,
+              email: 'joan.ng@example.com',
+            ),
+            ContactDraft(
+              name: 'Gran Ng',
+              relationship: ContactRelationship.other,
+            ),
+          ],
+        ),
+      );
+      final joan = s.contacts.firstWhere((c) => c.name == 'Joan Ng');
+      final gran = s.contacts.firstWhere((c) => c.name == 'Gran Ng');
+      expect(joan.canSignIn, isFalse);
+
+      final on = await f.repository.setContactSignIn(
+        f.teamId,
+        s.id,
+        joan.id,
+        canSignIn: true,
+      );
+      expect(on.canSignIn, isTrue);
+      expect(on.signedIn, isFalse, reason: 'invited until they sign in');
+      final read = await f.repository.student(f.teamId, s.id);
+      expect(
+        read.contacts.firstWhere((c) => c.id == joan.id).canSignIn,
+        isTrue,
+      );
+
+      await expectLater(
+        f.repository.updateContact(
+          f.teamId,
+          s.id,
+          joan.id,
+          const ContactDraft(
+            name: 'Joan Ng',
+            relationship: ContactRelationship.parent,
+            email: 'joan@elsewhere.example',
+          ),
+        ),
+        throwsA(isA<ConflictFailure>()),
+        reason: 'a signed-in contact\'s email is locked',
+      );
+      await expectLater(
+        f.repository.setContactSignIn(f.teamId, s.id, gran.id, canSignIn: true),
+        throwsA(isA<ValidationFailure>()),
+        reason: 'no email to invite',
+      );
+
+      final off = await f.repository.setContactSignIn(
+        f.teamId,
+        s.id,
+        joan.id,
+        canSignIn: false,
+      );
+      expect(off.canSignIn, isFalse);
+    });
+
+    test('a staff email cannot become a parent account', () async {
+      final f = await setUp();
+      final s = await f.repository.create(
+        f.teamId,
+        StudentDraft(
+          name: 'Kit Ho',
+          contacts: [
+            ContactDraft(
+              name: 'Staff',
+              relationship: ContactRelationship.other,
+              email: f.staffEmail,
+            ),
+          ],
+        ),
+      );
+      await expectLater(
+        f.repository.setContactSignIn(
+          f.teamId,
+          s.id,
+          s.contacts.single.id,
+          canSignIn: true,
+        ),
+        throwsA(isA<ConflictFailure>()),
+      );
+    });
+
+    test('a student can be given their own sign-in, and lose it', () async {
+      final f = await setUp();
+      final s = await f.repository.create(
+        f.teamId,
+        const StudentDraft(name: 'Lea Koh'),
+      );
+      final given = await f.repository.setStudentSignIn(
+        f.teamId,
+        s.id,
+        'Lea.Koh@example.com',
+      );
+      expect(given.signInEmail, 'lea.koh@example.com');
+      expect(given.signedIn, isFalse);
+      final removed = await f.repository.setStudentSignIn(f.teamId, s.id, null);
+      expect(removed.signInEmail, isNull);
     });
 
     test('a blank name is refused', () async {

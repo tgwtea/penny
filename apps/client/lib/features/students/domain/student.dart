@@ -76,6 +76,8 @@ class Contact {
     this.receivesReminders = true,
     this.receivesBilling = true,
     this.receivesPaymentReminders = true,
+    this.canSignIn = false,
+    this.signedIn = false,
   });
 
   /// The contact's ID.
@@ -102,6 +104,13 @@ class Contact {
   /// Whether overdue payment requests are chased with them by email. They
   /// can stop this from the email's link.
   final bool receivesPaymentReminders;
+
+  /// Whether the owner gave them a parent account (ADR 025). Their email
+  /// cannot change while they have one.
+  final bool canSignIn;
+
+  /// Whether they have signed in with it; until then they are invited.
+  final bool signedIn;
 }
 
 /// What it takes to add or change a contact.
@@ -181,6 +190,8 @@ class Student extends StudentSummary {
     this.notes = '',
     this.contacts = const [],
     this.goals = const [],
+    this.signInEmail,
+    this.signedIn = false,
   });
 
   /// Private to the team's staff.
@@ -191,6 +202,12 @@ class Student extends StudentSummary {
 
   /// What they work towards.
   final List<Goal> goals;
+
+  /// Where the owner gave the student their own account (ADR 025).
+  final String? signInEmail;
+
+  /// Whether the student has signed in with it.
+  final bool signedIn;
 }
 
 /// What it takes to add a student.

@@ -18,7 +18,11 @@ class CapabilityGate extends ConsumerWidget {
     required this.capability,
     required this.title,
     required this.child,
+    this.refusal = 'Only the team owner can see this.',
   });
+
+  /// What someone without [capability] is told.
+  final String refusal;
 
   /// What the screen needs.
   final Capability capability;
@@ -36,7 +40,7 @@ class CapabilityGate extends ConsumerWidget {
     return PennyPage(
       title: title,
       child: PennyEmptyState(
-        title: 'Only the team owner can see this.',
+        title: refusal,
         body: 'Ask the owner if you need something from this page.',
         action: PennyButton(
           label: 'Go to Today',

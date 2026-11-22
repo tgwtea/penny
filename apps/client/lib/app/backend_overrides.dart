@@ -9,6 +9,8 @@ import '../demo/demo_backend.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/http_session_repository.dart';
 import '../features/auth/data/identity_provider.dart';
+import '../features/family/application/family_providers.dart';
+import '../features/family/data/http_family_repository.dart';
 import '../features/lessons/application/lesson_providers.dart';
 import '../features/lessons/data/http_lesson_repository.dart';
 import '../features/lessons/data/http_series_repository.dart';
@@ -16,6 +18,8 @@ import '../features/notifications/application/unsubscribe_providers.dart';
 import '../features/notifications/data/http_unsubscribe_repository.dart';
 import '../features/payments/application/payment_providers.dart';
 import '../features/payments/data/http_payment_repository.dart';
+import '../features/privacy/application/privacy_providers.dart';
+import '../features/privacy/data/http_privacy_repository.dart';
 import '../features/shared/application/file_saver_provider.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/students/data/http_student_repository.dart';
@@ -92,5 +96,7 @@ List<Override> httpOverrides(
     publicPaymentRepositoryProvider.overrideWithValue(
       HttpPublicPaymentRepository(api),
     ),
+    familyRepositoryProvider.overrideWithValue(HttpFamilyRepository(api)),
+    privacyRepositoryProvider.overrideWithValue(HttpPrivacyRepository(api)),
   ];
 }

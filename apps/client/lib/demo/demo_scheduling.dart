@@ -799,6 +799,7 @@ class DemoStudentRepository implements StudentRepository {
       ..primaryTeacherId = c.primaryTeacherId ?? st.primaryTeacherId
       ..notes = c.notes ?? st.notes
       ..archived = c.archived ?? st.archived;
+    if (st.archived) _unlink(teamId, st);
     return _student(st);
   }
 
@@ -826,18 +827,103 @@ class DemoStudentRepository implements StudentRepository {
     final st = _find(teamId, studentId);
     final i = st.contacts.indexWhere((c) => c.id == contactId);
     if (i < 0) throw const NotFoundFailure('no such contact');
-    return st.contacts[i] = _contact(contactId, d);
+    final next = _contact(contactId, d);
+    if (_s.contactAccess.containsKey(contactId) &&
+        next.email != st.contacts[i].email) {
+      throw const ConflictFailure(
+        'signs in',
+        detail:
+            'This contact signs in with their email. Turn off their sign-in '
+            'before changing it.',
+      );
+    }
+    st.contacts[i] = next;
+    return _flagged(next);
   }
 
   @override
   Future<void> removeContact(String teamId, String studentId, String id) async {
     DemoActor.of(_session, teamId).require(Capability.manageStudents);
     final st = _find(teamId, studentId);
-    final before = st.contacts.length;
-    st.contacts.removeWhere((c) => c.id == id);
-    if (st.contacts.length == before) {
-      throw const NotFoundFailure('no such contact');
+    final gone = st.contacts.where((c) => c.id == id).firstOrNull;
+    if (gone == null) throw const NotFoundFailure('no such contact');
+    st.contacts.remove(gone);
+    if (_s.contactAccess.containsKey(id)) {
+      final userId = _s.contactAccess.remove(id);
+      _store.endFamilyIfUnused(teamId, userId: userId, email: gone.email!);
     }
+  }
+
+  @override
+  Future<Contact> setContactSignIn(
+    String teamId,
+    String studentId,
+    String contactId, {
+    required bool canSignIn,
+  }) async {
+    DemoActor.of(_session, teamId).require(Capability.manageStudents);
+    final st = _find(teamId, studentId);
+    final c = st.contacts.where((c) => c.id == contactId).firstOrNull;
+    if (c == null) throw const NotFoundFailure('no such contact');
+    final had = _s.contactAccess.containsKey(contactId);
+    if (canSignIn && !had) {
+      if (c.email == null) {
+        throw const ValidationFailure(
+          'email',
+          detail: 'Add the contact\'s email before they can sign in.',
+        );
+      }
+      final m = _store.inviteFamily(teamId, TeamRole.parent, c.name, c.email!);
+      _s.contactAccess[contactId] = m.member.status == MemberStatus.active
+          ? m.userId
+          : null;
+    } else if (!canSignIn && had) {
+      final userId = _s.contactAccess.remove(contactId);
+      _store.endFamilyIfUnused(teamId, userId: userId, email: c.email!);
+    }
+    return _flagged(c);
+  }
+
+  @override
+  Future<Student> setStudentSignIn(
+    String teamId,
+    String studentId,
+    String? email,
+  ) async {
+    DemoActor.of(_session, teamId).require(Capability.manageStudents);
+    final st = _find(teamId, studentId);
+    final address = email?.trim().toLowerCase();
+    if (address != null && !address.contains('@')) {
+      throw const ValidationFailure(
+        'email',
+        detail: 'Enter the student\'s email address.',
+      );
+    }
+    if (address != null && st.archived) {
+      throw const ConflictFailure(
+        'archived',
+        detail: 'Restore the student before giving them an account.',
+      );
+    }
+    final before = _s.studentAccess[st.id];
+    if (before?.email == address) return _student(st);
+    if (address != null) {
+      final m = _store.inviteFamily(teamId, TeamRole.student, st.name, address);
+      _s.studentAccess[st.id] = (
+        email: address,
+        userId: m.member.status == MemberStatus.active ? m.userId : null,
+      );
+    } else {
+      _s.studentAccess.remove(st.id);
+    }
+    if (before != null) {
+      _store.endFamilyIfUnused(
+        teamId,
+        userId: before.userId,
+        email: before.email,
+      );
+    }
+    return _student(st);
   }
 
   @override
@@ -952,6 +1038,33 @@ class DemoStudentRepository implements StudentRepository {
     );
   }
 
+  /// [c] with whether they can sign in, and have.
+  Contact _flagged(Contact c) => Contact(
+    id: c.id,
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    relationship: c.relationship,
+    receivesReminders: c.receivesReminders,
+    receivesBilling: c.receivesBilling,
+    receivesPaymentReminders: c.receivesPaymentReminders,
+    canSignIn: _s.contactAccess.containsKey(c.id),
+    signedIn: _s.contactAccess[c.id] != null,
+  );
+
+  /// Archiving ends every family account's access to [st].
+  void _unlink(String teamId, DemoStudent st) {
+    for (final c in st.contacts) {
+      if (!_s.contactAccess.containsKey(c.id)) continue;
+      final userId = _s.contactAccess.remove(c.id);
+      _store.endFamilyIfUnused(teamId, userId: userId, email: c.email!);
+    }
+    final own = _s.studentAccess.remove(st.id);
+    if (own != null) {
+      _store.endFamilyIfUnused(teamId, userId: own.userId, email: own.email);
+    }
+  }
+
   StudentSummary _summary(DemoStudent st) => StudentSummary(
     id: st.id,
     name: st.name,
@@ -971,7 +1084,9 @@ class DemoStudentRepository implements StudentRepository {
         : _store.nameOf(st.primaryTeacherId!),
     archived: st.archived,
     notes: st.notes,
-    contacts: [...st.contacts],
+    contacts: [for (final c in st.contacts) _flagged(c)],
     goals: [...st.goals],
+    signInEmail: _s.studentAccess[st.id]?.email,
+    signedIn: _s.studentAccess[st.id]?.userId != null,
   );
 }
