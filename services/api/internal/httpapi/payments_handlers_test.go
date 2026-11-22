@@ -419,6 +419,17 @@ func TestVoidingAReceiptCorrectsOrReopens(t *testing.T) {
 	if got := strings.Join(numbers, " "); got != "R-0003:false R-0002:true R-0001:true" {
 		t.Errorf("receipts = %s", got)
 	}
+
+	// Nothing else about a receipt ever changes, even for the database owner.
+	for _, sql := range []string{
+		`UPDATE receipts SET amount_cents = 1`,
+		`UPDATE receipts SET void_reason = 'Changed my mind' WHERE voided_at IS NOT NULL`,
+		`DELETE FROM receipts`,
+	} {
+		if _, err := ps.api.Pool.Exec(ps.ctx, sql); err == nil || !strings.Contains(err.Error(), "SQLSTATE 42501") {
+			t.Errorf("%s = %v, want it refused", sql, err)
+		}
+	}
 }
 
 func TestWithdrawingARequestFreesItsLessons(t *testing.T) {

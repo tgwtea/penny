@@ -1,8 +1,10 @@
 -- Teams (workspace module).
 
 -- name: CreateWorkspace :one
-INSERT INTO workspaces (name, timezone, created_by)
-VALUES (@name, @timezone, @created_by)
+-- The ID is made by the caller, so the creating transaction can be scoped
+-- to the new team (row-level security).
+INSERT INTO workspaces (id, name, timezone, created_by)
+VALUES (@id, @name, @timezone, @created_by)
 RETURNING *;
 
 -- name: GetWorkspace :one

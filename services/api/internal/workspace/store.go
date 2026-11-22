@@ -24,8 +24,8 @@ func newStore(db workspacesql.DBTX) store {
 	return store{q: workspacesql.New(db)}
 }
 
-func (s store) createWorkspace(ctx context.Context, name, timezone string, by uuid.UUID) (workspacesql.Workspace, error) {
-	w, err := s.q.CreateWorkspace(ctx, workspacesql.CreateWorkspaceParams{Name: name, Timezone: timezone, CreatedBy: by})
+func (s store) createWorkspace(ctx context.Context, id uuid.UUID, name, timezone string, by uuid.UUID) (workspacesql.Workspace, error) {
+	w, err := s.q.CreateWorkspace(ctx, workspacesql.CreateWorkspaceParams{ID: id, Name: name, Timezone: timezone, CreatedBy: by})
 	if err != nil {
 		return w, fmt.Errorf("create workspace: %w", err)
 	}

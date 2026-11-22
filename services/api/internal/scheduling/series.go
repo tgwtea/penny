@@ -382,7 +382,12 @@ func (s *Service) BookAhead(ctx context.Context) (int, error) {
 	horizon := dateOnly(s.clock.Now().Add(BookingHorizon))
 	seen := map[uuid.UUID]bool{}
 	for {
-		due, err := schedulingsql.New(s.pool).SeriesDueForBooking(ctx, schedulingsql.SeriesDueForBookingParams{Horizon: horizon, Batch: batch})
+		var due []schedulingsql.SeriesDueForBookingRow
+		err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+			var err error
+			due, err = schedulingsql.New(tx).SeriesDueForBooking(ctx, schedulingsql.SeriesDueForBookingParams{Horizon: horizon, Batch: batch})
+			return err
+		})
 		if err != nil {
 			return booked, fmt.Errorf("find series to book: %w", err)
 		}

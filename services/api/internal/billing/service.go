@@ -678,7 +678,12 @@ func (s *Service) PayerConfirmed(ctx context.Context, token string) (PublicReque
 // draft requests' links are not found.
 func (s *Service) withLink(ctx context.Context, token string, fn func(pgx.Tx, *billingsql.Queries, billingsql.PaymentRequest) error) error {
 	hash := sha256.Sum256([]byte(token))
-	link, err := billingsql.New(s.pool).FindPaymentLink(ctx, hash[:])
+	var link billingsql.FindPaymentLinkRow
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		link, err = billingsql.New(tx).FindPaymentLink(ctx, hash[:])
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !s.clock.Now().Before(link.ExpiresAt)) {
 		return apperr.ErrNotFound
 	}
@@ -770,8 +775,13 @@ type ReminderDue struct {
 // reminded in the last interval and whose payee has not confirmed the money.
 func (s *Service) RemindersDue(ctx context.Context, interval time.Duration) ([]ReminderDue, error) {
 	now := s.clock.Now()
-	rows, err := billingsql.New(s.pool).OpenRequestsToRemind(ctx, billingsql.OpenRequestsToRemindParams{
-		Today: dateOnly(now), RemindedBefore: ptr(now.Add(-interval)),
+	var rows []billingsql.OpenRequestsToRemindRow
+	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		rows, err = billingsql.New(tx).OpenRequestsToRemind(ctx, billingsql.OpenRequestsToRemindParams{
+			Today: dateOnly(now), RemindedBefore: ptr(now.Add(-interval)),
+		})
+		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("find requests to remind: %w", err)

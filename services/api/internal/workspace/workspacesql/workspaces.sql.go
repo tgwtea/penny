@@ -26,20 +26,28 @@ func (q *Queries) CountActiveMembers(ctx context.Context, workspaceID uuid.UUID)
 
 const createWorkspace = `-- name: CreateWorkspace :one
 
-INSERT INTO workspaces (name, timezone, created_by)
-VALUES ($1, $2, $3)
+INSERT INTO workspaces (id, name, timezone, created_by)
+VALUES ($1, $2, $3, $4)
 RETURNING id, name, timezone, created_by, created_at, updated_at, reminder_hours
 `
 
 type CreateWorkspaceParams struct {
+	ID        uuid.UUID
 	Name      string
 	Timezone  string
 	CreatedBy uuid.UUID
 }
 
 // Teams (workspace module).
+// The ID is made by the caller, so the creating transaction can be scoped
+// to the new team (row-level security).
 func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error) {
-	row := q.db.QueryRow(ctx, createWorkspace, arg.Name, arg.Timezone, arg.CreatedBy)
+	row := q.db.QueryRow(ctx, createWorkspace,
+		arg.ID,
+		arg.Name,
+		arg.Timezone,
+		arg.CreatedBy,
+	)
 	var i Workspace
 	err := row.Scan(
 		&i.ID,
