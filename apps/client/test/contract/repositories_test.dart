@@ -7,6 +7,9 @@ import 'package:penny/demo/demo_repositories.dart';
 import 'package:penny/features/auth/data/http_session_repository.dart';
 import 'package:penny/demo/demo_store.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
+import 'package:penny/demo/demo_scheduling.dart';
+import 'package:penny/features/lessons/data/http_lesson_repository.dart';
+import 'package:penny/features/students/data/http_student_repository.dart';
 import 'package:penny/features/team/data/http_team_repository.dart';
 
 import '../fakes/fake_api.dart';
@@ -14,6 +17,8 @@ import '../fakes/fake_identity_provider.dart';
 import 'auth_repository_contract.dart';
 import 'server_info_repository_contract.dart';
 import 'session_repository_contract.dart';
+import 'lesson_repository_contract.dart';
+import 'student_repository_contract.dart';
 import 'team_repository_contract.dart';
 
 /// An HTTP session signed in as a verified person, settled.
@@ -52,6 +57,60 @@ Future<TeamFixture> httpTeam() async {
   return (repository: repo, teamId: teamId, ownerName: 'Daniel Koh');
 }
 
+/// The demo studio as its owner, Daniel Koh, who also teaches.
+DemoSessionRepository _demoOwner() => DemoSessionRepository();
+
+Future<StudentFixture> demoStudents() async => (
+  repository: DemoStudentRepository(_demoOwner()),
+  teamId: DemoStore.studioId,
+  teacherId: demoId('b2'),
+);
+
+Future<LessonFixture> demoLessons() async {
+  final session = _demoOwner();
+  return (
+    lessons: DemoLessonRepository(session),
+    locations: DemoLocationRepository(session),
+    policies: DemoPolicyRepository(session),
+    students: DemoStudentRepository(session),
+    teamId: DemoStore.studioId,
+    tutorId: demoId('b1'),
+  );
+}
+
+Future<StudentFixture> httpStudents() async {
+  final api = FakeApi()..names['daniel@example.com'] = 'Daniel Koh';
+  final connection = api.connection(
+    idToken: () async => 'token-daniel@example.com-0',
+  );
+  final teamId = await HttpTeamRepository(
+    connection,
+  ).createTeam(name: 'Koh Guitar Studio');
+  return (
+    repository: HttpStudentRepository(connection),
+    teamId: teamId,
+    teacherId: api.teams[teamId]!.members.first['id']! as String,
+  );
+}
+
+Future<LessonFixture> httpLessons() async {
+  final api = FakeApi()..names['daniel@example.com'] = 'Daniel Koh';
+  final connection = api.connection(
+    idToken: () async => 'token-daniel@example.com-0',
+  );
+  final teamId = await HttpTeamRepository(
+    connection,
+  ).createTeam(name: 'Koh Guitar Studio');
+  return (
+    lessons: HttpLessonRepository(connection),
+    locations: HttpLocationRepository(connection),
+    policies: HttpPolicyRepository(connection),
+    students: HttpStudentRepository(connection),
+    teamId: teamId,
+    tutorId: api.teams[teamId]!.members.first['id']! as String,
+  );
+}
+
 void main() {
   serverInfoRepositoryContract(
     'DemoServerInfoRepository',
@@ -84,4 +143,10 @@ void main() {
 
   teamRepositoryContract('DemoTeamRepository', demoTeam);
   teamRepositoryContract('HttpTeamRepository', httpTeam);
+
+  studentRepositoryContract('DemoStudentRepository', demoStudents);
+  studentRepositoryContract('HttpStudentRepository', httpStudents);
+
+  lessonRepositoryContract('Demo lesson repositories', demoLessons);
+  lessonRepositoryContract('Http lesson repositories', httpLessons);
 }

@@ -54,6 +54,19 @@ void main() {
       expect(shared.metaLine(), 'Shared with Mei, Aisha');
     });
 
+    test('leads with the tutor when the viewer does not teach it', () {
+      final lesson = _lesson(location: 'Studio 2');
+      expect(lesson.metaLine(viewerMembershipId: 'm-aisha'), 'Mei, Studio 2');
+      expect(lesson.metaLine(viewerMembershipId: 'm-mei'), 'Studio 2');
+      expect(_lesson().metaLine(viewerMembershipId: 'm-aisha'), 'Mei');
+      expect(
+        _lesson(
+          tutors: const [_mei, _aisha],
+        ).metaLine(viewerMembershipId: 'm-owner'),
+        'Shared with Mei, Aisha',
+      );
+    });
+
     test('falls back to the place, then online, then make-up', () {
       expect(_lesson(location: 'Studio 2').metaLine(), 'Studio 2');
       final online = LessonView(

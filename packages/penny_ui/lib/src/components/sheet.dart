@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../foundation/icons.dart';
 import '../tokens.g.dart';
 import 'button.dart';
+import 'option_row.dart';
 
 /// Opens a sheet from the bottom of the screen: how phones create and edit
 /// (brand book, "Layout"). On laptop, show the same content in a panel
@@ -89,4 +90,53 @@ class PennySheet extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One answer offered by [showPennyChoice].
+class PennyChoice<T> {
+  /// Creates a choice.
+  const PennyChoice({
+    required this.value,
+    required this.label,
+    this.description,
+  });
+
+  /// What choosing it returns.
+  final T value;
+
+  /// The answer: "45 minutes".
+  final String label;
+
+  /// What it means, in one sentence.
+  final String? description;
+}
+
+/// Asks the person to pick one of [choices] in a sheet of option rows, and
+/// resolves to the value picked, or null if they close it. [selected] is
+/// marked as the current answer.
+Future<T?> showPennyChoice<T>(
+  BuildContext context, {
+  required String title,
+  required List<PennyChoice<T>> choices,
+  T? selected,
+}) {
+  return showPennySheet<T>(
+    context,
+    title: title,
+    builder: (sheetContext) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final choice in choices)
+          Padding(
+            padding: const EdgeInsets.only(bottom: PennySpace.s2),
+            child: PennyOptionRow(
+              title: choice.label,
+              body: choice.description,
+              selected: choice.value == selected,
+              onSelected: () => Navigator.of(sheetContext).pop(choice.value),
+            ),
+          ),
+      ],
+    ),
+  );
 }

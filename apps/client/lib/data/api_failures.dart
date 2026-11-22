@@ -59,3 +59,17 @@ Failure failureFromProblem(int status, Problem? problem) {
     },
   };
 }
+
+/// Builds a generated request body, which checks the contract's limits as
+/// it is made and throws a plain Exception when one is broken, and turns
+/// that into a ValidationFailure saying [detail]. Repositories check what
+/// people type first; this catches what slips through.
+T buildRequest<T>(T Function() build, {required String detail}) {
+  try {
+    return build();
+  } on FormatException {
+    throw ValidationFailure('invalid request', detail: detail);
+  } on Exception {
+    throw ValidationFailure('invalid request', detail: detail);
+  }
+}

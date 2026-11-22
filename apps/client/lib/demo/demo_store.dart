@@ -1,16 +1,24 @@
 import '../core/capability.dart';
 import '../features/auth/domain/session.dart';
 import '../features/team/domain/team_member.dart';
+import 'demo_schedule.dart';
+import 'scenarios/scenario_kit.dart';
+import 'scenarios/solo.dart';
+import 'scenarios/studio.dart';
 
 /// The demo's in-memory data: teams and who is in them. Every demo
 /// repository reads and changes this one store, so a change on one screen
 /// shows everywhere, as it would against the server.
 ///
 /// The studio matches the designs: Koh Guitar Studio, the owner and seven
-/// teachers. The solo team is Priya Shah teaching on her own.
+/// teachers. The solo team is Priya Shah teaching on her own. Their
+/// students, places and lessons come from `scenarios/`, placed around
+/// [now]'s week so the demo always looks current.
 class DemoStore {
-  /// Creates the store with the demo's teams.
-  DemoStore() {
+  /// Creates the store with the demo's teams. [clock] says what "now" is;
+  /// tests fix it, the running demo uses the real time.
+  DemoStore({DateTime Function()? clock})
+    : now = clock ?? (() => DateTime.now().toUtc()) {
     _addTeam(studioId, 'Koh Guitar Studio');
     _addTeam(soloId, 'Priya Shah Piano');
     _member(
@@ -48,6 +56,45 @@ class DemoStore {
       'priya@example.com',
       TeamRole.owner,
     );
+    seedStudio(_kit(studioId));
+    seedSolo(_kit(soloId));
+  }
+
+  /// What "now" is in the demo.
+  final DateTime Function() now;
+
+  /// Students, places, lessons and policies.
+  final schedule = DemoSchedule();
+
+  ScenarioKit _kit(String teamId) => ScenarioKit(
+    schedule: schedule,
+    teamId: teamId,
+    now: now(),
+    nameOf: nameOf,
+    userOf: userOf,
+  );
+
+  /// The name of the member with [membershipId], in any team.
+  String nameOf(String membershipId) => _find(membershipId)?.member.name ?? '';
+
+  /// The demo user signed in as [membershipId], if any.
+  String? userOf(String membershipId) => _find(membershipId)?.userId;
+
+  /// The member with [membershipId] in [teamId], if they are there.
+  TeamMember? memberIn(String teamId, String membershipId) {
+    for (final m in _members[teamId] ?? <_DemoMember>[]) {
+      if (m.member.id == membershipId) return m.member;
+    }
+    return null;
+  }
+
+  _DemoMember? _find(String membershipId) {
+    for (final list in _members.values) {
+      for (final m in list) {
+        if (m.member.id == membershipId) return m;
+      }
+    }
+    return null;
   }
 
   /// The studio's workspace ID.
