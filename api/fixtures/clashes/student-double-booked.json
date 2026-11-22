@@ -1,0 +1,11 @@
+{
+  "name": "a student booked into two lessons at once clashes, even with different tutors",
+  "lessons": [
+    {"id": "a", "start": "2026-11-19T17:00:00+08:00", "end": "2026-11-19T17:45:00+08:00", "status": "scheduled", "tutors": ["mei"], "students": ["arjun"]},
+    {"id": "b", "start": "2026-11-19T17:30:00+08:00", "end": "2026-11-19T18:00:00+08:00", "status": "no_show", "tutors": ["ravi"], "students": ["arjun", "hana"]}
+  ],
+  "clashes": [
+    {"lesson": "a", "with": "b", "student": "arjun"},
+    {"lesson": "b", "with": "a", "student": "arjun"}
+  ]
+}

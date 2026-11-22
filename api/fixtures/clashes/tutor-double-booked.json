@@ -1,0 +1,11 @@
+{
+  "name": "a tutor booked into two overlapping lessons clashes in both",
+  "lessons": [
+    {"id": "a", "start": "2026-11-19T16:00:00+08:00", "end": "2026-11-19T16:45:00+08:00", "status": "scheduled", "tutors": ["mei"], "students": ["sofia"]},
+    {"id": "b", "start": "2026-11-19T16:30:00+08:00", "end": "2026-11-19T17:15:00+08:00", "status": "scheduled", "tutors": ["mei"], "students": ["ben"]}
+  ],
+  "clashes": [
+    {"lesson": "a", "with": "b", "tutor": "mei"},
+    {"lesson": "b", "with": "a", "tutor": "mei"}
+  ]
+}
