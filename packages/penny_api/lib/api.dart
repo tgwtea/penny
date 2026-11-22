@@ -3,6 +3,7 @@ export 'package:penny_api/api/identity_api.dart';
 export 'package:penny_api/api/system_api.dart';
 export 'package:penny_api/api_client.dart';
 export 'package:penny_api/api_exception.dart';
+export 'package:penny_api/messages/update_me_request.dart';
 export 'package:penny_api/models/capability.dart';
 export 'package:penny_api/models/health.dart';
 export 'package:penny_api/models/health_check.dart';

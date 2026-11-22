@@ -23,13 +23,17 @@ const testOrigin = "https://app.example.com"
 // generated client pointed at it.
 func newTestAPI(t *testing.T, checks ...health.Check) (*gen.ClientWithResponses, *httptest.Server) {
 	t.Helper()
-	srv := httptest.NewServer(NewHandler(Options{
+	h, err := NewHandler(Options{
 		Logger:          slog.New(slog.DiscardHandler),
 		Build:           buildinfo.Info{Version: "1.2.3", Commit: "abc123"},
 		ReadinessChecks: checks,
 		CORSOrigins:     []string{testOrigin},
 		Metrics:         metrics.NewHTTP(metrics.NewRegistry()),
-	}))
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	client, err := gen.NewClientWithResponses(srv.URL)
 	if err != nil {
@@ -104,7 +108,7 @@ func TestVersionReportsTheBuild(t *testing.T) {
 	}
 }
 
-func TestMeIsUnauthenticatedUntilSignInExists(t *testing.T) {
+func TestSecuredOperationsNeedABearerToken(t *testing.T) {
 	client, _ := newTestAPI(t)
 	resp, err := client.GetMeWithResponse(context.Background())
 	if err != nil {
@@ -134,13 +138,13 @@ func TestUnknownRoutesAreProblems(t *testing.T) {
 		t.Errorf("instance = %v, want /v1/nowhere", p.Instance)
 	}
 
-	resp = do(t, http.MethodDelete, srv.URL+"/v1/me", nil)
+	resp = do(t, http.MethodPut, srv.URL+"/v1/me", nil)
 	p = decodeProblem(t, resp, readAll(t, resp))
 	if resp.StatusCode != http.StatusMethodNotAllowed || p.Type != "urn:penny:problem:method-not-allowed" {
-		t.Errorf("DELETE /v1/me = %d %+v, want 405", resp.StatusCode, p)
+		t.Errorf("PUT /v1/me = %d %+v, want 405", resp.StatusCode, p)
 	}
-	if got := resp.Header.Get("Allow"); got != "GET, HEAD" {
-		t.Errorf("Allow = %q, want GET, HEAD", got)
+	if got := resp.Header.Get("Allow"); got != "GET, PATCH, DELETE, HEAD" {
+		t.Errorf("Allow = %q, want GET, PATCH, DELETE, HEAD", got)
 	}
 }
 

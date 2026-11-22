@@ -17,8 +17,20 @@ func env(vars map[string]string) LookupFunc {
 
 const testDatabaseURL = "postgres://penny:secret@localhost:5432/penny"
 
+// minimalAPI is the smallest valid API environment, plus extra.
+func minimalAPI(extra map[string]string) LookupFunc {
+	vars := map[string]string{
+		"PENNY_DATABASE_URL":        testDatabaseURL,
+		"PENNY_FIREBASE_PROJECT_ID": "penny-dev",
+	}
+	for k, v := range extra {
+		vars[k] = v
+	}
+	return env(vars)
+}
+
 func TestLoadAPIDefaults(t *testing.T) {
-	cfg, err := LoadAPI(env(map[string]string{"PENNY_DATABASE_URL": testDatabaseURL}))
+	cfg, err := LoadAPI(minimalAPI(nil))
 	if err != nil {
 		t.Fatalf("LoadAPI: %v", err)
 	}
@@ -38,13 +50,14 @@ func TestLoadAPIDefaults(t *testing.T) {
 
 func TestLoadAPIReadsEveryVariable(t *testing.T) {
 	cfg, err := LoadAPI(env(map[string]string{
-		"PENNY_HTTP_ADDR":        "127.0.0.1:8000",
-		"PENNY_ADMIN_ADDR":       ":9100",
-		"PENNY_DATABASE_URL":     testDatabaseURL,
-		"PENNY_CORS_ORIGINS":     "https://app.example.com/, http://localhost:5173",
-		"PENNY_SHUTDOWN_TIMEOUT": "5s",
-		"PENNY_LOG_LEVEL":        "debug",
-		"PENNY_LOG_FORMAT":       "TEXT",
+		"PENNY_HTTP_ADDR":           "127.0.0.1:8000",
+		"PENNY_ADMIN_ADDR":          ":9100",
+		"PENNY_DATABASE_URL":        testDatabaseURL,
+		"PENNY_CORS_ORIGINS":        "https://app.example.com/, http://localhost:5173",
+		"PENNY_SHUTDOWN_TIMEOUT":    "5s",
+		"PENNY_LOG_LEVEL":           "debug",
+		"PENNY_LOG_FORMAT":          "TEXT",
+		"PENNY_FIREBASE_PROJECT_ID": "penny-prod",
 	}))
 	if err != nil {
 		t.Fatalf("LoadAPI: %v", err)
@@ -159,4 +172,45 @@ func TestLoadMigrate(t *testing.T) {
 	if _, err := LoadMigrate(env(map[string]string{})); err == nil {
 		t.Error("LoadMigrate without PENNY_DATABASE_URL succeeded, want error")
 	}
+}
+
+func TestLoadAPIFirebase(t *testing.T) {
+	t.Run("project ID is required", func(t *testing.T) {
+		_, err := LoadAPI(env(map[string]string{"PENNY_DATABASE_URL": testDatabaseURL}))
+		if err == nil || !strings.Contains(err.Error(), "PENNY_FIREBASE_PROJECT_ID: is required") {
+			t.Fatalf("LoadAPI without a project = %v, want a missing-project error", err)
+		}
+	})
+
+	t.Run("real project verifies signed tokens", func(t *testing.T) {
+		cfg, err := LoadAPI(minimalAPI(nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Firebase.ProjectID != "penny-dev" || cfg.Firebase.UsesEmulator() {
+			t.Errorf("Firebase = %+v, want penny-dev without the emulator", cfg.Firebase)
+		}
+	})
+
+	t.Run("emulator with a demo project", func(t *testing.T) {
+		cfg, err := LoadAPI(minimalAPI(map[string]string{
+			"PENNY_FIREBASE_PROJECT_ID":         "demo-penny",
+			"PENNY_FIREBASE_AUTH_EMULATOR_HOST": "localhost:9099",
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !cfg.Firebase.UsesEmulator() {
+			t.Error("UsesEmulator = false, want true")
+		}
+	})
+
+	t.Run("emulator refused for a real project", func(t *testing.T) {
+		_, err := LoadAPI(minimalAPI(map[string]string{
+			"PENNY_FIREBASE_AUTH_EMULATOR_HOST": "localhost:9099",
+		}))
+		if err == nil || !strings.Contains(err.Error(), "demo- project ID") {
+			t.Fatalf("LoadAPI = %v, want the emulator refused for penny-dev", err)
+		}
+	})
 }

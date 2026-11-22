@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -27,8 +28,24 @@ type API struct {
 	// ShutdownTimeout bounds how long in-flight requests may take to finish
 	// after SIGTERM (PENNY_SHUTDOWN_TIMEOUT, default 20s).
 	ShutdownTimeout time.Duration
+	Firebase        Firebase
 	Log             Log
 }
+
+// Firebase configures how bearer tokens are verified (ADR 004).
+type Firebase struct {
+	// ProjectID is the Firebase project whose ID tokens are accepted
+	// (PENNY_FIREBASE_PROJECT_ID, required).
+	ProjectID string
+	// AuthEmulatorHost is the host:port of the Firebase Auth emulator
+	// (PENNY_FIREBASE_AUTH_EMULATOR_HOST). Set only locally and in CI:
+	// the API then accepts the emulator's unsigned tokens, so the project
+	// ID must be a demo- project, which cannot exist outside the emulator.
+	AuthEmulatorHost string
+}
+
+// UsesEmulator reports whether tokens come from the Auth emulator.
+func (f Firebase) UsesEmulator() bool { return f.AuthEmulatorHost != "" }
 
 // Migrate configures the schema migration binary.
 type Migrate struct {
@@ -47,6 +64,7 @@ func LoadAPI(lookup LookupFunc) (API, error) {
 		DatabaseURL:     r.databaseURL("PENNY_DATABASE_URL"),
 		CORSOrigins:     r.origins("PENNY_CORS_ORIGINS"),
 		ShutdownTimeout: r.duration("PENNY_SHUTDOWN_TIMEOUT", 20*time.Second),
+		Firebase:        readFirebase(r),
 		Log:             readLog(r),
 	}
 	if cfg.HTTPAddr == cfg.AdminAddr {
@@ -63,6 +81,18 @@ func LoadMigrate(lookup LookupFunc) (Migrate, error) {
 		Log:         readLog(r),
 	}
 	return cfg, r.err()
+}
+
+func readFirebase(r *reader) Firebase {
+	f := Firebase{
+		ProjectID:        r.required("PENNY_FIREBASE_PROJECT_ID"),
+		AuthEmulatorHost: r.value("PENNY_FIREBASE_AUTH_EMULATOR_HOST"),
+	}
+	if f.UsesEmulator() && f.ProjectID != "" && !strings.HasPrefix(f.ProjectID, "demo-") {
+		r.fail("PENNY_FIREBASE_AUTH_EMULATOR_HOST",
+			"may only be set with a demo- project ID; the emulator's tokens are unsigned")
+	}
+	return f
 }
 
 func readLog(r *reader) Log {

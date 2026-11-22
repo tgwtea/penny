@@ -7,6 +7,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -14,6 +15,7 @@ import (
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/tgwtea/penny/services/api/internal/app"
 	"github.com/tgwtea/penny/services/api/internal/httpapi/gen"
 	"github.com/tgwtea/penny/services/api/internal/platform/buildinfo"
 	"github.com/tgwtea/penny/services/api/internal/platform/health"
@@ -30,15 +32,38 @@ type Options struct {
 	CORSOrigins []string
 	// Metrics records request counts and latencies. Optional in tests.
 	Metrics *metrics.HTTP
+
+	// Services are the modules handlers call (internal/app). Tests of
+	// public routes only, such as the health probes, may leave it nil.
+	Services *app.Services
 }
 
-// NewHandler returns the complete API handler with its middleware.
-func NewHandler(opts Options) http.Handler {
+// NewHandler returns the complete API handler with its middleware. It fails
+// only if the embedded contract cannot be read, which is a build defect.
+func NewHandler(opts Options) (http.Handler, error) {
 	problems := problemWriter{logger: opts.Logger}
-	srv := &server{build: opts.Build, readinessChecks: opts.ReadinessChecks}
+	srv := &server{
+		build:           opts.Build,
+		readinessChecks: opts.ReadinessChecks,
+		Services:        opts.Services,
+	}
+	var auth Authenticator
+	if opts.Services != nil {
+		auth = opts.Services.Users
+	}
+
+	spec, err := gen.GetSpec()
+	if err != nil {
+		return nil, fmt.Errorf("read embedded contract: %w", err)
+	}
+	secured, err := securedOperations(spec)
+	if err != nil {
+		return nil, fmt.Errorf("read operation security: %w", err)
+	}
+	middlewares := []gen.StrictMiddlewareFunc{authenticate(auth, secured)}
 
 	mux := http.NewServeMux()
-	strict := gen.NewStrictHandlerWithOptions(srv, nil, gen.StrictHTTPServerOptions{
+	strict := gen.NewStrictHandlerWithOptions(srv, middlewares, gen.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc:  problems.writeDecodeError,
 		ResponseErrorHandlerFunc: problems.writeError,
 	})
@@ -61,7 +86,7 @@ func NewHandler(opts Options) http.Handler {
 	h = accessLog(opts.Logger)(h)
 	h = withRouteInfo(h)
 	h = withRequestID(h)
-	return h
+	return h, nil
 }
 
 // unmatched answers requests no route accepts: 405 with an Allow header when
