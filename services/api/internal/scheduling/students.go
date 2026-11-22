@@ -168,6 +168,11 @@ func (s *Service) UpdateStudent(ctx context.Context, userID, workspaceID, studen
 			map[string]any{"archived": row.ArchivedAt != nil, "primary_teacher_membership_id": row.PrimaryTeacherMembershipID}); err != nil {
 			return err
 		}
+		if row.ArchivedAt != nil {
+			if row, err = s.unlinkStudent(ctx, tx, st, a, row); err != nil {
+				return err
+			}
+		}
 		out, err = s.student(ctx, tx, st, row)
 		return err
 	})
@@ -199,6 +204,13 @@ func (s *Service) UpdateContact(ctx context.Context, userID, workspaceID, studen
 	}
 	var out Contact
 	err = s.asStudentManager(ctx, userID, workspaceID, studentID, func(tx pgx.Tx, a authz.Actor, st store) error {
+		before, err := st.q.GetContact(ctx, schedulingsql.GetContactParams{WorkspaceID: workspaceID, ID: contactID})
+		if err != nil || before.StudentID != studentID {
+			return apperr.ErrNotFound
+		}
+		if before.CanSignIn && !sameEmail(before.Email, in.Email) {
+			return apperr.New(apperr.ErrConflict, "This contact signs in with their email. Turn off their sign-in before changing it.")
+		}
 		row, err := st.q.UpdateContact(ctx, schedulingsql.UpdateContactParams{
 			Name: in.Name, Email: in.Email, Phone: in.Phone, Relationship: schedulingsql.ContactRelationship(in.Relationship),
 			ReceivesReminders: in.ReceivesReminders, ReceivesBilling: in.ReceivesBilling,
@@ -217,12 +229,21 @@ func (s *Service) UpdateContact(ctx context.Context, userID, workspaceID, studen
 // RemoveContact removes a contact.
 func (s *Service) RemoveContact(ctx context.Context, userID, workspaceID, studentID, contactID uuid.UUID) error {
 	return s.asStudentManager(ctx, userID, workspaceID, studentID, func(tx pgx.Tx, a authz.Actor, st store) error {
+		before, err := st.q.GetContact(ctx, schedulingsql.GetContactParams{WorkspaceID: workspaceID, ID: contactID})
+		if err != nil || before.StudentID != studentID {
+			return apperr.ErrNotFound
+		}
 		n, err := st.q.DeleteContact(ctx, schedulingsql.DeleteContactParams{WorkspaceID: workspaceID, StudentID: studentID, ID: contactID})
 		if err != nil {
 			return fmt.Errorf("remove contact: %w", err)
 		}
 		if n == 0 {
 			return apperr.ErrNotFound
+		}
+		if before.CanSignIn && before.Email != nil {
+			if err := s.endFamilyIfUnused(ctx, tx, st, a, before.UserID, *before.Email); err != nil {
+				return err
+			}
 		}
 		return s.record(ctx, tx, a, "contact.removed", "student", studentID, map[string]any{"contact_id": contactID}, nil)
 	})
@@ -337,7 +358,10 @@ func (s *Service) student(ctx context.Context, tx pgx.Tx, st store, row scheduli
 	if err != nil {
 		return Student{}, fmt.Errorf("list goals: %w", err)
 	}
-	out := Student{StudentSummary: summaries[0], Notes: row.Notes, Contacts: []Contact{}, Goals: []Goal{}}
+	out := Student{
+		StudentSummary: summaries[0], Notes: row.Notes, Contacts: []Contact{}, Goals: []Goal{},
+		SignInEmail: row.SignInEmail, SignedIn: row.UserID != nil,
+	}
 	for _, c := range contacts {
 		out.Contacts = append(out.Contacts, toContact(c))
 	}

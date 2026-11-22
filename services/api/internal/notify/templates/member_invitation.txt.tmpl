@@ -1,9 +1,9 @@
 {{define "subject"}}{{.InviterName}} added you to {{.TeamName}} on Penny{{end}}
 {{define "text"}}Hi {{.InviteeName}},
 
-{{.InviterName}} added you to {{.TeamName}} as a {{.Role}}. Penny keeps the team's lessons, timetable and payments in order.
+{{if eq .Role "parent"}}{{.InviterName}} added you to {{.TeamName}} as a parent, so you can follow your children's lessons and payments on Penny.{{else if eq .Role "student"}}{{.InviterName}} added you to {{.TeamName}} as a student, so you can see your lessons and what to work on.{{else}}{{.InviterName}} added you to {{.TeamName}} as a {{.Role}}. Penny keeps the team's lessons, timetable and payments in order.{{end}}
 
-Sign in or create an account with this email address, {{.Email}}, to see your lessons:
+Sign in or create an account with this email address, {{.Email}}, to see {{if eq .Role "parent"}}them{{else}}your lessons{{end}}:
 {{.SignInURL}}
 
 {{.TeamName}}, via Penny.

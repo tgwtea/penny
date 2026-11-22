@@ -20,9 +20,11 @@ WHERE id = @id
 RETURNING *;
 
 -- name: CountActiveMembers :one
+-- Staff only: a team of one hides team features however many families
+-- sign in.
 SELECT count(*)::int AS active
 FROM workspace_memberships
-WHERE workspace_id = @workspace_id AND status = 'active';
+WHERE workspace_id = @workspace_id AND status = 'active' AND role IN ('owner', 'teacher');
 
 -- name: GetWorkspaceTimezone :one
 SELECT timezone FROM workspaces WHERE id = @id;

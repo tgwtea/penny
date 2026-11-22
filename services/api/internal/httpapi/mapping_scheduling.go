@@ -24,6 +24,7 @@ func toStudent(s scheduling.Student) gen.Student {
 	out := gen.Student{
 		Id: s.ID, Name: s.Name, Archived: s.Archived, PrimaryTeacher: toMemberRef(s.PrimaryTeacher),
 		Notes: optional(s.Notes), Contacts: make([]gen.Contact, 0, len(s.Contacts)), Goals: make([]gen.Goal, 0, len(s.Goals)),
+		SignInEmail: s.SignInEmail, SignedIn: &s.SignedIn,
 	}
 	for _, c := range s.Contacts {
 		out.Contacts = append(out.Contacts, toContact(c))
@@ -38,7 +39,7 @@ func toContact(c scheduling.Contact) gen.Contact {
 	out := gen.Contact{
 		Id: c.ID, Name: c.Name, Phone: c.Phone, Relationship: gen.ContactRelationship(c.Relationship),
 		ReceivesReminders: c.ReceivesReminders, ReceivesBilling: c.ReceivesBilling,
-		ReceivesPaymentReminders: &c.ReceivesPaymentReminders,
+		ReceivesPaymentReminders: &c.ReceivesPaymentReminders, CanSignIn: &c.CanSignIn, SignedIn: &c.SignedIn,
 	}
 	if c.Email != nil {
 		e := openapi_types.Email(*c.Email)
@@ -109,15 +110,7 @@ func toLesson(l scheduling.Lesson) gen.Lesson {
 		}
 		out.Students = append(out.Students, st)
 	}
-	if l.Location != nil {
-		out.Location = &gen.LessonLocation{
-			LocationId: l.Location.LocationID, Kind: gen.LocationKind(l.Location.Kind), Name: l.Location.Name,
-			Address: optional(l.Location.Address), MeetingUrl: optional(l.Location.MeetingURL),
-		}
-	}
-	if c := l.Cancellation; c != nil {
-		out.Cancellation = &gen.Cancellation{At: c.At, Party: gen.CancellationParty(c.Party), Reason: optional(c.Reason), Late: c.Late}
-	}
+	out.Location, out.Cancellation = toLessonLocation(l.Location), toCancellation(l.Cancellation)
 	for _, c := range l.Clashes {
 		out.Clashes = append(out.Clashes, gen.Clash{
 			LessonId: c.LessonID, StartsAt: c.StartsAt, EndsAt: c.EndsAt, MembershipId: c.MembershipID, StudentId: c.StudentID, Who: c.Who,
@@ -145,6 +138,23 @@ func toItem(it scheduling.LessonItem) gen.LessonItem {
 		Done: it.DoneAt != nil, DoneAt: it.DoneAt, GoalId: it.GoalID, CreatedAt: it.CreatedAt,
 		Author: gen.MemberRef{MembershipId: it.Author.MembershipID, DisplayName: it.Author.DisplayName},
 	}
+}
+
+func toLessonLocation(l *scheduling.LessonLocation) *gen.LessonLocation {
+	if l == nil {
+		return nil
+	}
+	return &gen.LessonLocation{
+		LocationId: l.LocationID, Kind: gen.LocationKind(l.Kind), Name: l.Name,
+		Address: optional(l.Address), MeetingUrl: optional(l.MeetingURL),
+	}
+}
+
+func toCancellation(c *scheduling.Cancellation) *gen.Cancellation {
+	if c == nil {
+		return nil
+	}
+	return &gen.Cancellation{At: c.At, Party: gen.CancellationParty(c.Party), Reason: optional(c.Reason), Late: c.Late}
 }
 
 func toPolicy(p scheduling.Policy) gen.CancellationPolicy {

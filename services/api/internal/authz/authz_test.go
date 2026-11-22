@@ -11,28 +11,35 @@ import (
 // Changing a cell here and there is the whole of an authorization change.
 func TestMatrix(t *testing.T) {
 	tests := []struct {
-		capability Capability
-		owner      bool
-		teacher    bool
+		capability                      Capability
+		owner, teacher, student, parent bool
 	}{
-		{ViewOwnLessons, true, true},
-		{ViewTeamTimetable, true, false},
-		{ManageTeam, true, false},
-		{ManageLessons, true, false},
-		{ReassignLessons, true, false},
-		{CompleteOwnLessons, true, true},
-		{EditOwnLessonItems, true, true},
-		{ManageStudents, true, false},
-		{ViewOwnStudents, true, true},
-		{ManagePayments, true, false},
-		{ManageOwnPayments, true, true},
+		{ViewOwnLessons, true, true, false, false},
+		{ViewTeamTimetable, true, false, false, false},
+		{ManageTeam, true, false, false, false},
+		{ManageLessons, true, false, false, false},
+		{ReassignLessons, true, false, false, false},
+		{CompleteOwnLessons, true, true, false, false},
+		{EditOwnLessonItems, true, true, false, false},
+		{ManageStudents, true, false, false, false},
+		{ViewOwnStudents, true, true, false, false},
+		{ManagePayments, true, false, false, false},
+		{ManageOwnPayments, true, true, false, false},
+		{ViewLinkedLessons, false, false, true, true},
+		{ViewLinkedPayments, false, false, false, true},
 	}
-	if len(tests) != len(matrix[Owner]) {
-		t.Fatalf("the test covers %d capabilities, the matrix has %d", len(tests), len(matrix[Owner]))
+	all := map[Capability]bool{}
+	for _, caps := range matrix {
+		for _, c := range caps {
+			all[c] = true
+		}
+	}
+	if len(tests) != len(all) {
+		t.Fatalf("the test covers %d capabilities, the matrix has %d", len(tests), len(all))
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.capability), func(t *testing.T) {
-			for role, want := range map[Role]bool{Owner: tt.owner, Teacher: tt.teacher, Student: false, Parent: false} {
+			for role, want := range map[Role]bool{Owner: tt.owner, Teacher: tt.teacher, Student: tt.student, Parent: tt.parent} {
 				if got := (Actor{Role: role}).Can(tt.capability); got != want {
 					t.Errorf("%s can %s = %v, want %v", role, tt.capability, got, want)
 				}
@@ -41,13 +48,10 @@ func TestMatrix(t *testing.T) {
 	}
 }
 
-func TestReservedRolesExistWithNoCapabilities(t *testing.T) {
-	for _, r := range []Role{Student, Parent} {
+func TestOnlyTheFourRolesExist(t *testing.T) {
+	for _, r := range []Role{Owner, Teacher, Student, Parent} {
 		if !r.Valid() {
 			t.Errorf("%s is not a valid role", r)
-		}
-		if n := len(CapabilitiesOf(r)); n != 0 {
-			t.Errorf("%s has %d capabilities, want none until the role is built", r, n)
 		}
 	}
 	if Role("admin").Valid() {

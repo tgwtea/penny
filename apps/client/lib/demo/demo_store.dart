@@ -230,7 +230,19 @@ String demoId(String suffix) =>
 
 /// What [role] may do. Mirrors the server's matrix in docs/architecture.md.
 Set<Capability> capabilitiesOf(TeamRole role) => switch (role) {
-  TeamRole.owner => const {...Capability.values},
+  TeamRole.owner => const {
+    Capability.viewOwnLessons,
+    Capability.viewTeamTimetable,
+    Capability.manageTeam,
+    Capability.manageLessons,
+    Capability.reassignLessons,
+    Capability.completeOwnLessons,
+    Capability.editOwnLessonItems,
+    Capability.manageStudents,
+    Capability.viewOwnStudents,
+    Capability.managePayments,
+    Capability.manageOwnPayments,
+  },
   TeamRole.teacher => const {
     Capability.viewOwnLessons,
     Capability.completeOwnLessons,
@@ -238,7 +250,11 @@ Set<Capability> capabilitiesOf(TeamRole role) => switch (role) {
     Capability.viewOwnStudents,
     Capability.manageOwnPayments,
   },
-  TeamRole.student || TeamRole.parent => const {},
+  TeamRole.student => const {Capability.viewLinkedLessons},
+  TeamRole.parent => const {
+    Capability.viewLinkedLessons,
+    Capability.viewLinkedPayments,
+  },
 };
 
 class _DemoMember {

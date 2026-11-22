@@ -435,6 +435,81 @@ func (q *Queries) ListLessons(ctx context.Context, arg ListLessonsParams) ([]Les
 	return items, nil
 }
 
+const listLessonsForStudents = `-- name: ListLessonsForStudents :many
+SELECT l.id, l.workspace_id, l.starts_at, l.ends_at, l.status, l.kind, l.title, l.makeup_for_lesson_id, l.location_id, l.location_kind, l.location_name, l.location_address, l.meeting_url, l.fee_cents, l.currency, l.billable, l.completed_at, l.no_show_at, l.marked_by, l.cancelled_at, l.cancelled_by, l.cancellation_party, l.cancellation_reason, l.cancellation_late, l.created_by, l.version, l.created_at, l.updated_at, l.series_id, l.series_date FROM lessons l
+WHERE l.workspace_id = $1
+  AND l.starts_at < $2 AND l.ends_at > $3
+  AND EXISTS (SELECT 1 FROM lesson_participants p
+              WHERE p.workspace_id = l.workspace_id AND p.lesson_id = l.id AND p.student_id = ANY($4::uuid[]))
+ORDER BY l.starts_at, l.id
+LIMIT 500
+`
+
+type ListLessonsForStudentsParams struct {
+	WorkspaceID uuid.UUID
+	RangeTo     time.Time
+	RangeFrom   time.Time
+	StudentIds  []uuid.UUID
+}
+
+// Lessons any of the students is in, overlapping [from, to), for a family
+// account's view.
+func (q *Queries) ListLessonsForStudents(ctx context.Context, arg ListLessonsForStudentsParams) ([]Lesson, error) {
+	rows, err := q.db.Query(ctx, listLessonsForStudents,
+		arg.WorkspaceID,
+		arg.RangeTo,
+		arg.RangeFrom,
+		arg.StudentIds,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Lesson
+	for rows.Next() {
+		var i Lesson
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.StartsAt,
+			&i.EndsAt,
+			&i.Status,
+			&i.Kind,
+			&i.Title,
+			&i.MakeupForLessonID,
+			&i.LocationID,
+			&i.LocationKind,
+			&i.LocationName,
+			&i.LocationAddress,
+			&i.MeetingUrl,
+			&i.FeeCents,
+			&i.Currency,
+			&i.Billable,
+			&i.CompletedAt,
+			&i.NoShowAt,
+			&i.MarkedBy,
+			&i.CancelledAt,
+			&i.CancelledBy,
+			&i.CancellationParty,
+			&i.CancellationReason,
+			&i.CancellationLate,
+			&i.CreatedBy,
+			&i.Version,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SeriesID,
+			&i.SeriesDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStudentLessons = `-- name: ListStudentLessons :many
 SELECT l.id, l.workspace_id, l.starts_at, l.ends_at, l.status, l.kind, l.title, l.makeup_for_lesson_id, l.location_id, l.location_kind, l.location_name, l.location_address, l.meeting_url, l.fee_cents, l.currency, l.billable, l.completed_at, l.no_show_at, l.marked_by, l.cancelled_at, l.cancelled_by, l.cancellation_party, l.cancellation_reason, l.cancellation_late, l.created_by, l.version, l.created_at, l.updated_at, l.series_id, l.series_date FROM lessons l
 WHERE l.workspace_id = $1

@@ -10,6 +10,7 @@ package account
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -25,17 +26,24 @@ type Me struct {
 	Memberships []workspace.Membership
 }
 
+// Family links student and parent records to the person when they first
+// sign in (ADR 025). scheduling.Service is the real one.
+type Family interface {
+	LinkClaimed(ctx context.Context, tx pgx.Tx, userID uuid.UUID, email string, claimed []workspace.Member) error
+}
+
 // Service implements the account use cases.
 type Service struct {
-	pool  *pgxpool.Pool
-	users *identity.Service
-	teams *workspace.Service
-	audit *audit.Recorder
+	pool   *pgxpool.Pool
+	users  *identity.Service
+	teams  *workspace.Service
+	family Family
+	audit  *audit.Recorder
 }
 
 // NewService returns the account service.
-func NewService(pool *pgxpool.Pool, users *identity.Service, teams *workspace.Service, rec *audit.Recorder) *Service {
-	return &Service{pool: pool, users: users, teams: teams, audit: rec}
+func NewService(pool *pgxpool.Pool, users *identity.Service, teams *workspace.Service, family Family, rec *audit.Recorder) *Service {
+	return &Service{pool: pool, users: users, teams: teams, family: family, audit: rec}
 }
 
 // Me returns the person signed in as user and their teams. It is also the
@@ -45,7 +53,11 @@ func (s *Service) Me(ctx context.Context, user identity.User) (Me, error) {
 	// Across teams: invitations and memberships in any team are the
 	// person's own.
 	err := database.InCrossTeamTx(ctx, s.pool, func(tx pgx.Tx) error {
-		if err := s.teams.ClaimInvitations(ctx, tx, user); err != nil {
+		claimed, err := s.teams.ClaimInvitations(ctx, tx, user)
+		if err != nil {
+			return err
+		}
+		if err := s.family.LinkClaimed(ctx, tx, user.ID, user.Email, claimed); err != nil {
 			return err
 		}
 		return s.teams.SyncProfile(ctx, tx, user)

@@ -95,6 +95,14 @@ func toReceipt(r billing.Receipt) gen.Receipt {
 	return out
 }
 
+func toReceiptSummary(r billing.Receipt) gen.ReceiptSummary {
+	return gen.ReceiptSummary{
+		Id: r.ID, Number: r.Number, IssuedAt: r.IssuedAt, AmountCents: r.AmountCents, Currency: r.Currency,
+		Student: gen.StudentRef{Id: r.Student.ID, Name: r.Student.Name},
+		Payee:   gen.MemberRef{MembershipId: r.Payee.MembershipID, DisplayName: r.Payee.DisplayName}, Voided: r.Voided != nil,
+	}
+}
+
 func toPublicRequest(p billing.PublicRequest) gen.PublicPaymentRequest {
 	out := gen.PublicPaymentRequest{
 		TeamName: p.TeamName, PayeeName: p.PayeeName, StudentFirstName: p.StudentFirstName, AmountCents: p.AmountCents,

@@ -717,6 +717,8 @@ type Student struct {
 	ArchivedAt *time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// The owner gave the student an account at this address; user_id is set at their first verified sign-in.
+	SignInEmail *string
 }
 
 // Who gets a student's reminders and receipts: parents, guardians, or the student.
@@ -734,6 +736,8 @@ type StudentContact struct {
 	CreatedAt                time.Time
 	UpdatedAt                time.Time
 	ReceivesPaymentReminders bool
+	// The owner gave this contact a parent account; user_id is set at their first verified sign-in.
+	CanSignIn bool
 }
 
 type StudentGoal struct {

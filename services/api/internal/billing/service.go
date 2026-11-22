@@ -630,44 +630,51 @@ func (s *Service) PublicRequest(ctx context.Context, token string) (PublicReques
 func (s *Service) PayerConfirmed(ctx context.Context, token string) (PublicRequest, error) {
 	var out PublicRequest
 	err := s.withLink(ctx, token, func(tx pgx.Tx, q *billingsql.Queries, row billingsql.PaymentRequest) error {
-		switch row.Status {
-		case billingsql.PaymentRequestStatusCancelled:
-			return apperr.New(apperr.ErrConflict, "This payment request was withdrawn.")
-		case billingsql.PaymentRequestStatusOpen:
-			if row.PayerConfirmedAt == nil {
-				now := s.clock.Now()
-				updated, err := q.MarkPayerConfirmed(ctx, billingsql.MarkPayerConfirmedParams{WorkspaceID: row.WorkspaceID, ID: row.ID, Now: &now})
-				if err != nil {
-					return fmt.Errorf("record payer confirmation: %w", err)
-				}
-				row = updated
-				if err := s.record(ctx, tx, row.WorkspaceID, nil, "payment_request.payer_confirmed", "payment_request", row.ID, nil, nil); err != nil {
-					return err
-				}
-				if s.hooks.PayerConfirmed != nil {
-					if err := s.hooks.PayerConfirmed(ctx, tx, row.WorkspaceID, row.ID); err != nil {
-						return err
-					}
-				}
-				rec, err := q.LivePaymentRecord(ctx, billingsql.LivePaymentRecordParams{WorkspaceID: row.WorkspaceID, RequestID: row.ID})
-				switch {
-				case err == nil:
-					if err := s.close(ctx, tx, q, row, rec, nil); err != nil {
-						return err
-					}
-					if row, err = q.GetPaymentRequest(ctx, billingsql.GetPaymentRequestParams{WorkspaceID: row.WorkspaceID, ID: row.ID}); err != nil {
-						return readErr(err)
-					}
-				case !errors.Is(err, pgx.ErrNoRows):
-					return fmt.Errorf("read payment: %w", err)
-				}
-			}
+		row, err := s.payerConfirms(ctx, tx, q, row, nil)
+		if err != nil {
+			return err
 		}
-		var err error
 		out, err = s.public(ctx, tx, q, row)
 		return err
 	})
 	return out, err
+}
+
+// payerConfirms records the payer's "I've paid" on a locked request, by
+// the public link (actor nil) or a signed-in parent, and closes it if the
+// payee has confirmed too. Saying it twice changes nothing.
+func (s *Service) payerConfirms(ctx context.Context, tx pgx.Tx, q *billingsql.Queries, row billingsql.PaymentRequest, actor *uuid.UUID) (billingsql.PaymentRequest, error) {
+	switch {
+	case row.Status == billingsql.PaymentRequestStatusCancelled:
+		return row, apperr.New(apperr.ErrConflict, "This payment request was withdrawn.")
+	case row.Status != billingsql.PaymentRequestStatusOpen || row.PayerConfirmedAt != nil:
+		return row, nil
+	}
+	now := s.clock.Now()
+	row, err := q.MarkPayerConfirmed(ctx, billingsql.MarkPayerConfirmedParams{WorkspaceID: row.WorkspaceID, ID: row.ID, Now: &now})
+	if err != nil {
+		return row, fmt.Errorf("record payer confirmation: %w", err)
+	}
+	if err := s.record(ctx, tx, row.WorkspaceID, actor, "payment_request.payer_confirmed", "payment_request", row.ID, nil, nil); err != nil {
+		return row, err
+	}
+	if s.hooks.PayerConfirmed != nil {
+		if err := s.hooks.PayerConfirmed(ctx, tx, row.WorkspaceID, row.ID); err != nil {
+			return row, err
+		}
+	}
+	rec, err := q.LivePaymentRecord(ctx, billingsql.LivePaymentRecordParams{WorkspaceID: row.WorkspaceID, RequestID: row.ID})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return row, nil
+	case err != nil:
+		return row, fmt.Errorf("read payment: %w", err)
+	}
+	if err := s.close(ctx, tx, q, row, rec, nil); err != nil {
+		return row, err
+	}
+	row, err = q.GetPaymentRequest(ctx, billingsql.GetPaymentRequestParams{WorkspaceID: row.WorkspaceID, ID: row.ID})
+	return row, readErr(err)
 }
 
 // withLink runs fn on the request a live link opens. Unknown, expired and

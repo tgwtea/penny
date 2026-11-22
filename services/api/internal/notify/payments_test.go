@@ -136,3 +136,21 @@ func TestPostmarkSendsAttachments(t *testing.T) {
 		t.Errorf("attachments = %+v", got.Attachments)
 	}
 }
+
+func TestFamilyInvitationsSayWhatTheyAreFor(t *testing.T) {
+	for role, want := range map[string]string{
+		"parent":  "as a parent, so you can follow your children's lessons and payments on Penny.",
+		"student": "as a student, so you can see your lessons and what to work on.",
+	} {
+		r, err := render("member_invitation", Invitation{
+			InviteeName: "Priya", InviterName: "Daniel Koh", TeamName: "Koh Guitar Studio", Role: role,
+			Email: "priya@example.com", SignInURL: "http://localhost:5173/sign-in",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(r.Text, want) || !strings.Contains(r.HTML, want) {
+			t.Errorf("%s invitation lacks %q:\n%s", role, want, r.Text)
+		}
+	}
+}

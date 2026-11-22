@@ -86,7 +86,7 @@ func New(d Deps) (*Services, error) {
 
 	return &Services{
 		Users:      users,
-		Account:    account.NewService(d.Pool, users, teams, rec),
+		Account:    account.NewService(d.Pool, users, teams, lessons, rec),
 		Teams:      teams,
 		Scheduling: lessons,
 		Billing:    payments,

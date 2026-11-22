@@ -36,6 +36,7 @@ type Lessons interface {
 	BillableLessons(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, f scheduling.BillableFilter) ([]scheduling.BillableLesson, error)
 	StudentNames(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]scheduling.StudentSummary, error)
 	PolicyFor(ctx context.Context, db database.DBTX, workspaceID, membershipID uuid.UUID) (scheduling.Policy, error)
+	LinkedStudents(ctx context.Context, db database.DBTX, workspaceID uuid.UUID, a authz.Actor) ([]scheduling.StudentSummary, error)
 }
 
 // Hooks let notify email people about billing changes, inside the same

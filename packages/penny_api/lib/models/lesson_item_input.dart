@@ -41,8 +41,9 @@ class LessonItemInput {
   final ItemKind kind;
   final String body;
 
-  /// Who may see the item. `student` and `contacts` take effect when those
-  /// roles can sign in (build plan, Phase 10); today only staff sign in.
+  /// Who may see the item besides the team's staff: `student` items are
+  /// seen by the signed-in student, `contacts` items by the student and
+  /// their signed-in parents (ADR 025).
   final ItemVisibility? visibility;
   final String? goalId;
 

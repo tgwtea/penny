@@ -306,17 +306,18 @@ func (s *Service) MembershipsOf(ctx context.Context, userID uuid.UUID) ([]Member
 	return out, err
 }
 
-// ClaimInvitations activates every invitation for user's email, inside tx.
-// The identity module only lets verified emails through, so matching on
-// the email is safe.
-func (s *Service) ClaimInvitations(ctx context.Context, tx pgx.Tx, user identity.User) error {
+// ClaimInvitations activates every invitation for user's email, inside tx,
+// and returns the memberships it activated. The identity module only lets
+// verified emails through, so matching on the email is safe.
+func (s *Service) ClaimInvitations(ctx context.Context, tx pgx.Tx, user identity.User) ([]Member, error) {
 	now := s.clock.Now()
 	claimed, err := workspacesql.New(tx).ClaimInvitations(ctx, workspacesql.ClaimInvitationsParams{
 		UserID: &user.ID, DisplayName: user.DisplayName, JoinedAt: &now, Email: user.Email,
 	})
 	if err != nil {
-		return fmt.Errorf("claim invitations: %w", err)
+		return nil, fmt.Errorf("claim invitations: %w", err)
 	}
+	out := make([]Member, 0, len(claimed))
 	for _, m := range claimed {
 		err := s.audit.Record(ctx, tx, audit.Event{
 			WorkspaceID: audit.Ptr(m.WorkspaceID), Actor: audit.Ptr(user.ID),
@@ -324,10 +325,98 @@ func (s *Service) ClaimInvitations(ctx context.Context, tx pgx.Tx, user identity
 			Before: map[string]any{"status": Invited}, After: map[string]any{"status": Active},
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
+		out = append(out, toMember(m))
 	}
-	return nil
+	return out, nil
+}
+
+// Family accounts (ADR 025). Scheduling decides who gets one; these keep
+// the membership in step, inside scheduling's transaction.
+
+// InviteFamily gives an address a parent or student account in the team,
+// for whom actorID gave access. It returns the membership: an existing one
+// for the address and role (active or still invited), or a new invitation,
+// which is emailed. An address that is already staff, or already the other
+// family role, is refused.
+func (s *Service) InviteFamily(ctx context.Context, tx pgx.Tx, workspaceID uuid.UUID, role authz.Role, name, email string, actorID uuid.UUID) (Member, error) {
+	if role != authz.Parent && role != authz.Student {
+		return Member{}, fmt.Errorf("InviteFamily: %s is not a family role", role)
+	}
+	st := newStore(tx)
+	existing, err := st.q.MembershipByEmail(ctx, workspacesql.MembershipByEmailParams{WorkspaceID: workspaceID, Email: email})
+	switch {
+	case err == nil && authz.Role(existing.Role) == role:
+		return toMember(existing), nil
+	case err == nil:
+		return Member{}, apperr.New(apperr.ErrConflict, fmt.Sprintf("%s already has a %s account in the team. Use a different email.", email, existing.Role))
+	case !errors.Is(err, pgx.ErrNoRows):
+		return Member{}, fmt.Errorf("find membership: %w", err)
+	}
+	if name, err = validName(name, "The person needs a name."); err != nil {
+		return Member{}, err
+	}
+	actor, err := s.Actor(ctx, tx, workspaceID, actorID)
+	if err != nil {
+		return Member{}, err
+	}
+	added, err := st.createMembership(ctx, workspacesql.CreateMembershipParams{
+		WorkspaceID: workspaceID, Role: workspacesql.MembershipRole(role), Status: workspacesql.MembershipStatusInvited,
+		DisplayName: name, Email: email, InvitedBy: &actorID,
+	})
+	if err != nil {
+		return Member{}, err
+	}
+	if err := s.audit.Record(ctx, tx, audit.Event{
+		WorkspaceID: audit.Ptr(workspaceID), Actor: audit.Ptr(actorID),
+		Action: "member.invited", EntityType: "membership", EntityID: added.ID,
+		After: map[string]any{"role": added.Role, "status": added.Status},
+	}); err != nil {
+		return Member{}, err
+	}
+	if s.hooks.MemberInvited == nil {
+		return added, nil
+	}
+	team, err := st.workspace(ctx, workspaceID)
+	if err != nil {
+		return Member{}, err
+	}
+	inviter, err := st.membership(ctx, workspaceID, actor.MembershipID)
+	if err != nil {
+		return Member{}, err
+	}
+	return added, s.hooks.MemberInvited(ctx, tx, added, team.Name, inviter.DisplayName)
+}
+
+// EndFamily removes a parent or student membership, found by its active
+// user or its invited address, once nothing gives it access any more.
+func (s *Service) EndFamily(ctx context.Context, tx pgx.Tx, workspaceID uuid.UUID, userID *uuid.UUID, email string, actorID uuid.UUID) error {
+	st := newStore(tx)
+	var m workspacesql.WorkspaceMembership
+	var err error
+	if userID != nil {
+		m, err = st.q.ActiveMembershipOfUserForUpdate(ctx, workspacesql.ActiveMembershipOfUserForUpdateParams{WorkspaceID: workspaceID, UserID: userID})
+	} else {
+		m, err = st.q.MembershipByEmail(ctx, workspacesql.MembershipByEmailParams{WorkspaceID: workspaceID, Email: email})
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("find family membership: %w", err)
+	}
+	if r := authz.Role(m.Role); r != authz.Parent && r != authz.Student {
+		return nil
+	}
+	if err := st.remove(ctx, workspaceID, m.ID, s.clock.Now()); err != nil {
+		return err
+	}
+	return s.audit.Record(ctx, tx, audit.Event{
+		WorkspaceID: audit.Ptr(workspaceID), Actor: audit.Ptr(actorID),
+		Action: "member.removed", EntityType: "membership", EntityID: m.ID,
+		Before: map[string]any{"role": m.Role, "status": m.Status},
+	})
 }
 
 // SyncProfile copies user's current name and email to their memberships.

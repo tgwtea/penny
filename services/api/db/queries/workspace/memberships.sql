@@ -19,9 +19,10 @@ SELECT * FROM workspace_memberships
 WHERE workspace_id = @workspace_id AND user_id = @user_id AND status = 'active';
 
 -- name: ListMembers :many
--- Owners first, then teachers, then by name; invitations among them.
+-- The team's staff: owners first, then teachers, then by name;
+-- invitations among them. Family accounts are listed with their students.
 SELECT * FROM workspace_memberships
-WHERE workspace_id = @workspace_id AND status <> 'removed'
+WHERE workspace_id = @workspace_id AND status <> 'removed' AND role IN ('owner', 'teacher')
 ORDER BY role, lower(display_name), id;
 
 -- name: ListActiveMembershipsOfUser :many
@@ -35,7 +36,7 @@ SELECT
     w.timezone AS workspace_timezone,
     w.reminder_hours AS workspace_reminder_hours,
     (SELECT count(*)::int FROM workspace_memberships c
-     WHERE c.workspace_id = w.id AND c.status = 'active') AS member_count
+     WHERE c.workspace_id = w.id AND c.status = 'active' AND c.role IN ('owner', 'teacher')) AS member_count
 FROM workspace_memberships m
 JOIN workspaces w ON w.id = m.workspace_id
 WHERE m.user_id = @user_id AND m.status = 'active'
@@ -129,3 +130,13 @@ ORDER BY user_id, (status = 'active') DESC, updated_at DESC;
 SELECT id, user_id, display_name, role, status FROM workspace_memberships
 WHERE workspace_id = @workspace_id AND status = 'active' AND role IN ('owner', 'teacher')
 ORDER BY role, lower(display_name), id;
+
+-- name: MembershipByEmail :one
+-- The team's current or invited membership for an address.
+SELECT * FROM workspace_memberships
+WHERE workspace_id = @workspace_id AND email = @email AND status <> 'removed';
+
+-- name: ActiveMembershipOfUserForUpdate :one
+SELECT * FROM workspace_memberships
+WHERE workspace_id = @workspace_id AND user_id = @user_id AND status = 'active'
+FOR UPDATE;

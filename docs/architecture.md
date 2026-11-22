@@ -6,7 +6,7 @@ Nov 15, 2026 · @leifsen
 
 Penny is a modular monolith: one Go codebase building an `api` and a `worker` binary, one PostgreSQL database run by CloudNativePG on the homelab K3s cluster, and one Flutter client for web, Android, iOS and desktop (Windows, macOS, Linux). A single OpenAPI contract sits between client and server. The client reaches data only through domain repository interfaces, so the in-memory demo backend from the team-timetable PRD and the real Go server swap at one composition root.
 
-Build order: monorepo and CI skeleton, a design system and key screen designs, a deployed walking skeleton, authentication (email/password and Google), teams and roles (owner, teacher, solo), then lessons and the timetable. Email reminders, PayNow payment links and receipts follow. Student and parent roles and encrypted messaging are reserved in the model, not built.
+Build order: monorepo and CI skeleton, a design system and key screen designs, a deployed walking skeleton, authentication (email/password and Google), teams and roles (owner, teacher, solo), then lessons and the timetable. Email reminders, PayNow payment links and receipts follow. Read-only student and parent accounts come last; encrypted messaging is reserved in the model, not built.
 
 ### Decisions (settled 15 Nov 2026)
 
@@ -27,10 +27,10 @@ Penny handles the admin side of tutoring for solo tutors and small studios: who 
 | Capability | In first release | Reserved for later |
 | --- | --- | --- |
 | Authentication | Email/password and Google sign-in | Other identity providers, SSO |
-| Authorization | Owner, teacher, solo tutor (a team of one) | Student, parent |
+| Authorization | Owner, teacher, solo tutor (a team of one); read-only student and parent accounts (ADR 025) | Family accounts that can act, such as booking or cancelling |
 | Scheduling | Lessons as individual events, recurring series, day/week/month views, team timetable, tasks, goals and notes per lesson, structured locations | Two-way Google Calendar sync, rooms and resources |
 | Notifications | Email reminders for lessons and payments | Push notifications, SMS |
-| Payments | PayNow QR on a unique link per payment request; payee confirms receipt | Any automated bank reconciliation |
+| Payments | PayNow QR on a unique link per payment request; payee and payer both confirm (ADR 024) | Any automated bank reconciliation |
 | Receipts | Immutable, numbered, traceable to one payment record | Tax invoices |
 | Messaging | None (email covers it) | End-to-end encrypted messaging between two people |
 
@@ -289,19 +289,19 @@ Firebase proves who someone is; Penny's database decides what they may do. Keepi
 
 **Authorization model.** Role-based per team, plus resource rules. A person can hold different roles in different teams (a teacher at a studio who also has private students is a teacher in one team and the owner of another).
 
-| Capability | Owner | Teacher | Student (reserved) | Parent (reserved) |
+| Capability | Owner | Teacher | Student | Parent |
 | --- | --- | --- | --- | --- |
-| View own lessons | Yes | Yes |  |  |
-| View every teacher's lessons and the team timetable | Yes | No |  |  |
-| View and manage the team list | Yes | No |  |  |
-| Create, edit, move, cancel any lesson | Yes | No |  |  |
-| Reassign a lesson to another teacher | Yes | No |  |  |
-| Mark own lesson complete | Yes | Yes |  |  |
-| Add tasks, goals and notes on own lesson | Yes | Yes |  |  |
-| Manage students | Yes | View own students only |  |  |
-| Create payment requests and confirm payments | Yes | For their own lessons, as payee (ADR 024) |  |  |
+| View own lessons | Yes | Yes | Their own, read-only (ADR 025) | Their children's, read-only (ADR 025) |
+| View every teacher's lessons and the team timetable | Yes | No | No | No |
+| View and manage the team list | Yes | No | No | No |
+| Create, edit, move, cancel any lesson | Yes | No | No | No |
+| Reassign a lesson to another teacher | Yes | No | No | No |
+| Mark own lesson complete | Yes | Yes | No | No |
+| Add tasks, goals and notes on own lesson | Yes | Yes | No | No |
+| Manage students | Yes | View own students only | No | No |
+| Create payment requests and confirm payments | Yes | For their own lessons, as payee (ADR 024) | No | Their children's: pay and say "I've paid", see receipts |
 
-The two reserved roles exist in the `membership_role` enum and in the `authz` package with an empty capability set, so adding them is a data and policy change with no schema migration.
+Students and parents sign in once an owner gives them access (ADR 025): their capabilities are `view_linked_lessons` and, for parents, `view_linked_payments`, and every family endpoint is scoped to the students they are linked to.
 
 **Enforcement, in three layers**
 
@@ -634,6 +634,8 @@ Server done on 22 Nov 2026 except the deployment steps (prod overlay, first prom
 ### Phase 10: Student and parent roles
 
 Invitations by email, linking `students.user_id` and `student_contacts.user_id`, capability sets for the two roles, a parent view of upcoming lessons, receipts and payment links.
+
+Server done on 22 Nov 2026 (ADR 025). An owner gives a contact a parent account, or a student their own, at an email address; Penny invites it, and the first verified sign-in links the record (migration 00013). Family accounts are read-only under `/v1/workspaces/{id}/family/...`: their students, those students' lessons with only the items meant for them and other students counted rather than named, and for parents the open and paid payment requests with the PayNow code, "I've paid" and receipts. Team lists and member counts are staff only, and saved places are closed to family accounts, since a place can be a student's home.
 
 ### Phase 11: Encrypted messaging
 

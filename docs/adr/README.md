@@ -28,3 +28,4 @@ One file per decision. Copy `000-template.md` to propose a new one in the same P
 | [022](022-space-gen-for-the-dart-client.md) | Generate the Dart client with space_gen | Accepted |
 | [023](023-stay-on-the-sdk-material-library.md) | Stay on the SDK's Material library until the catalogue can move | Accepted |
 | [024](024-payment-requests-close-on-mutual-confirmation.md) | Payment requests close on mutual confirmation; teachers bill their own lessons | Accepted |
+| [025](025-family-accounts-read-only-and-linked-by-invitation.md) | Family accounts are read-only and linked by invitation | Accepted |

@@ -46,7 +46,7 @@ func TestLessonRules(t *testing.T) {
 		{"owner views any lesson", ViewLesson(owner, othersLesson), "allowed"},
 		{"teacher views own lesson", ViewLesson(teacher, teachersLesson), "allowed"},
 		{"teacher cannot see another tutor's lesson", ViewLesson(teacher, othersLesson), "hidden"},
-		{"reserved roles see nothing", ViewLesson(student, othersLesson), "hidden"},
+		{"family accounts see no staff lesson", ViewLesson(student, othersLesson), "hidden"},
 
 		{"owner completes any lesson", CompleteLesson(owner, othersLesson), "allowed"},
 		{"teacher completes own lesson", CompleteLesson(teacher, teachersLesson), "allowed"},
@@ -84,7 +84,7 @@ func TestStudentRules(t *testing.T) {
 		{"owner manages any student's goals", ManageGoals(owner, false), "allowed"},
 		{"teacher manages goals of a student they teach", ManageGoals(teacher, true), "allowed"},
 		{"teacher cannot touch others' students' goals", ManageGoals(teacher, false), "hidden"},
-		{"reserved roles cannot manage goals", ManageGoals(student, true), "forbidden"},
+		{"family accounts cannot manage goals", ManageGoals(student, true), "forbidden"},
 	}
 	for _, tt := range tests {
 		if got := outcome(tt.err); got != tt.want {
@@ -114,9 +114,9 @@ func TestPaymentRules(t *testing.T) {
 		{"owner bills for any payee", ManagePaymentsFor(owner, teacherM), "allowed"},
 		{"teacher bills for herself", ManagePaymentsFor(teacher, teacherM), "allowed"},
 		{"teacher cannot touch another payee's requests", ManagePaymentsFor(teacher, ownerM), "hidden"},
-		{"reserved roles cannot bill", ManagePaymentsFor(student, student.MembershipID), "forbidden"},
+		{"family accounts cannot bill", ManagePaymentsFor(student, student.MembershipID), "forbidden"},
 		{"teachers see payments", SeePayments(teacher), "allowed"},
-		{"reserved roles see none", SeePayments(student), "forbidden"},
+		{"family accounts see no staff payments", SeePayments(student), "forbidden"},
 		{"teacher sets her own PayNow", ManagePayeeAccount(teacher, teacherM), "allowed"},
 		{"teacher cannot set another's PayNow", ManagePayeeAccount(teacher, ownerM), "forbidden"},
 		{"owner sets anyone's PayNow", ManagePayeeAccount(owner, teacherM), "allowed"},
@@ -136,7 +136,7 @@ func TestPrivacyRules(t *testing.T) {
 	}{
 		{"owner exports a student's record", ExportStudentData(owner), "allowed"},
 		{"teacher cannot", ExportStudentData(teacher), "forbidden"},
-		{"reserved roles cannot", ExportStudentData(student), "forbidden"},
+		{"family accounts cannot", ExportStudentData(student), "forbidden"},
 	} {
 		if got := outcome(tt.err); got != tt.want {
 			t.Errorf("%s: %s, want %s", tt.name, got, tt.want)
