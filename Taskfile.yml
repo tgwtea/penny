@@ -253,7 +253,10 @@ tasks:
     cmds:
       - for: [apps/client, packages/penny_ui, packages/penny_ui/widgetbook]
         cmd: cd {{.ITEM}} && flutter pub get
-      - for: [tools/checks, tools/design, tools/codegen]
+      # packages/penny_api is pure Dart. Its dependencies must be fetched too,
+      # or `dart format` cannot read its analysis options and formats it with
+      # the wrong language version.
+      - for: [packages/penny_api, tools/checks, tools/design, tools/codegen]
         cmd: cd {{.ITEM}} && dart pub get
 
   gen:

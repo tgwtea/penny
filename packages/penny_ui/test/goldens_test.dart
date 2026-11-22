@@ -6,6 +6,7 @@
 @Tags(['golden'])
 library;
 
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:penny_ui/penny_ui.dart';
@@ -104,6 +105,8 @@ void main() {
         onPressed: () {},
       ),
     ]),
+    // The variants wrap onto three rows at phone width.
+    size: const Size(390, 300),
   );
 
   pennyGoldens(

@@ -8,6 +8,7 @@ library;
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,11 +29,13 @@ Future<void> loadPennyFonts() async {
           in (entry['fonts'] as List<dynamic>).cast<Map<String, dynamic>>())
         font['asset'] as String,
     ];
-    // In penny_ui's own tests its font is registered without the package
-    // prefix that PennyText asks for; register both names.
+    // In penny_ui's own tests its fonts (IBM Plex Sans and the Phosphor
+    // icon fonts) are registered without the package prefix that PennyText
+    // and PennyIcons ask for; register both names. In an app's tests the
+    // manifest already carries the prefix.
     final names = {
       family,
-      if (family == PennyText.fontFamily)
+      if (!family.startsWith('packages/'))
         'packages/${PennyText.fontPackage}/$family',
     };
     for (final name in names) {

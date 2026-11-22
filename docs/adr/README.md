@@ -26,3 +26,4 @@ One file per decision. Copy `000-template.md` to propose a new one in the same P
 | [020](020-ink-and-copper-plex-phosphor.md) | Ink and copper, IBM Plex Sans, Phosphor icons | Accepted; icon package superseded by 021 |
 | [021](021-bundle-phosphor-icon-fonts.md) | Bundle the Phosphor icon fonts in penny_ui (supersedes ADR 020's package choice) | Accepted |
 | [022](022-space-gen-for-the-dart-client.md) | Generate the Dart client with space_gen | Accepted |
+| [023](023-stay-on-the-sdk-material-library.md) | Stay on the SDK's Material library until the catalogue can move | Accepted |

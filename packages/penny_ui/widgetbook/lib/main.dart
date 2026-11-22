@@ -2,6 +2,7 @@
 // phone and laptop sizes and at up to 200% text. Run it with
 // `task ui:catalogue`. When a component gains a state, add a use case here
 // and a golden in packages/penny_ui/test/goldens_test.dart.
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:penny_ui/penny_ui.dart';
 import 'package:widgetbook/widgetbook.dart';

@@ -1,3 +1,4 @@
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:penny_ui/penny_ui.dart';
 
