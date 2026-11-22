@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -13,51 +11,11 @@ import 'package:penny/core/env.dart';
 import 'package:penny/demo/demo_personas.dart';
 import 'package:penny/demo/demo_repositories.dart';
 import 'package:penny/features/auth/application/session_controller.dart';
-import 'package:penny/features/system/application/server_info_provider.dart';
 import 'package:penny_ui/penny_ui.dart';
 
 import '../fakes/fake_api.dart';
 import '../fakes/fake_identity_provider.dart';
-
-const _phone = Size(390, 844);
-const _laptop = Size(1440, 900);
-
-/// Starts the app as [persona] at [size] and returns its provider container.
-Future<ProviderContainer> pumpApp(
-  WidgetTester tester, {
-  DemoPersona persona = DemoPersona.owner,
-  Size size = _phone,
-}) async {
-  tester.view.physicalSize = size;
-  tester.view.devicePixelRatio = 1;
-  addTearDown(tester.view.reset);
-
-  final session = DemoSessionRepository(persona: persona);
-  final container = ProviderContainer(
-    overrides: [
-      sessionRepositoryProvider.overrideWithValue(session),
-      authRepositoryProvider.overrideWithValue(session),
-      serverInfoRepositoryProvider.overrideWithValue(
-        DemoServerInfoRepository(),
-      ),
-    ],
-  );
-  addTearDown(container.dispose);
-  await tester.pumpWidget(
-    UncontrolledProviderScope(container: container, child: const PennyApp()),
-  );
-  await tester.pumpAndSettle();
-  return container;
-}
-
-List<String> navLabels(WidgetTester tester) => [
-  for (final nav in tester.widgetList<PennyBottomNav>(
-    find.byType(PennyBottomNav),
-  ))
-    for (final d in nav.destinations) d.label,
-  for (final bar in tester.widgetList<PennySidebar>(find.byType(PennySidebar)))
-    for (final d in bar.destinations) d.label,
-];
+import '../support/pump_app.dart';
 
 void main() {
   group('navigation follows capabilities', () {
@@ -94,7 +52,7 @@ void main() {
     testWidgets('laptop: a sidebar with the team and the person', (
       tester,
     ) async {
-      await pumpApp(tester, size: _laptop);
+      await pumpApp(tester, size: laptop);
       expect(find.byType(PennySidebar), findsOneWidget);
       expect(find.byType(PennyBottomNav), findsNothing);
       expect(find.text('Koh Guitar Studio'), findsOneWidget);
@@ -126,7 +84,7 @@ void main() {
       container.read(routerProvider).go('/team');
       await tester.pumpAndSettle();
       expect(find.text('Only the team owner can see this.'), findsNothing);
-      expect(find.text('No teachers listed yet'), findsOneWidget);
+      expect(find.text('Mei Lin Tan'), findsOneWidget);
     });
   });
 
@@ -151,7 +109,7 @@ void main() {
   });
 
   group('account', () {
-    for (final (name, size) in [('phone', _phone), ('laptop', _laptop)]) {
+    for (final (name, size) in [('phone', phone), ('laptop', laptop)]) {
       testWidgets('opens from the avatar and renames the person ($name)', (
         tester,
       ) async {
@@ -193,7 +151,7 @@ void main() {
       String? signedInAs,
       void Function(FakeIdentityProvider)? seed,
     }) async {
-      tester.view.physicalSize = _phone;
+      tester.view.physicalSize = phone;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final identity = FakeIdentityProvider();
@@ -240,7 +198,10 @@ void main() {
     });
 
     testWidgets('signs in with email and lands on Today', (tester) async {
-      final api = FakeApi();
+      final api = FakeApi()
+        ..memberships['hana@example.com'] = [
+          FakeApi.membership(teamId: 'team-1', teamName: 'Hana Lim'),
+        ];
       await pumpHttpApp(
         tester,
         api.client,

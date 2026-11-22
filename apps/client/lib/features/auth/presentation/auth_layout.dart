@@ -76,14 +76,3 @@ class AuthLayout extends StatelessWidget {
 
 /// A gap between form fields.
 const formGap = SizedBox(height: PennySpace.s4);
-
-/// Checks an email address on submit, returning what to fix or null.
-String? emailProblem(String email) {
-  final e = email.trim();
-  if (e.isEmpty) return 'Enter your email address.';
-  final at = e.indexOf('@');
-  if (at < 1 || at == e.length - 1 || !e.substring(at + 1).contains('.')) {
-    return 'Enter an email address like name@example.com.';
-  }
-  return null;
-}
