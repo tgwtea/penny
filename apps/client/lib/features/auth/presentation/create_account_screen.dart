@@ -6,6 +6,7 @@ import 'package:penny_ui/penny_ui.dart';
 
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
+import '../../shared/presentation/validation.dart';
 import '../application/session_controller.dart';
 import 'auth_layout.dart';
 

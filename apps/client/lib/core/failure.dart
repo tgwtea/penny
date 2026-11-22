@@ -28,7 +28,10 @@ final class UnauthenticatedFailure extends Failure {
 /// this means the client's view of permissions is stale.
 final class ForbiddenFailure extends Failure {
   /// Creates a forbidden failure.
-  const ForbiddenFailure(super.message);
+  const ForbiddenFailure(super.message, {this.detail});
+
+  /// The server's explanation, safe to show.
+  final String? detail;
 }
 
 /// The thing asked for does not exist (any more).
@@ -37,10 +40,14 @@ final class NotFoundFailure extends Failure {
   const NotFoundFailure(super.message);
 }
 
-/// Someone else changed it first; reload and try again.
+/// The request clashes with how things are: someone else changed it first,
+/// or it would break a rule such as "a team needs an owner".
 final class ConflictFailure extends Failure {
   /// Creates a conflict failure.
-  const ConflictFailure(super.message);
+  const ConflictFailure(super.message, {this.detail});
+
+  /// The server's explanation, safe to show.
+  final String? detail;
 }
 
 /// The request was rejected as invalid. [detail] is written for the person.

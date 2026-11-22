@@ -63,12 +63,28 @@ void main() {
     });
   });
 
+  group('signed in without a team', () {
+    final newcomer = sessionFor(DemoPersona.newcomer);
+
+    test('goes to onboarding, remembering where they were headed', () {
+      expect(newcomer.needsOnboarding, isTrue);
+      expect(guard(newcomer, '/today'), '/onboarding');
+      expect(guard(newcomer, '/students'), '/onboarding?from=%2Fstudents');
+      expect(
+        guard(newcomer, '/verify-email?from=%2Fpayments'),
+        '/onboarding?from=%2Fpayments',
+      );
+      expect(guard(newcomer, '/onboarding'), isNull);
+    });
+  });
+
   group('signed in', () {
     test('leaves entry pages for where they were headed', () {
       expect(guard(signedIn, '/sign-in?from=%2Fstudents'), '/students');
       expect(guard(signedIn, '/sign-in'), '/today');
       expect(guard(signedIn, '/verify-email?from=%2Fpayments'), '/payments');
       expect(guard(signedIn, '/starting'), '/today');
+      expect(guard(signedIn, '/onboarding?from=%2Fstudents'), '/students');
     });
 
     test('never follows a return path to another site', () {

@@ -17,6 +17,9 @@ abstract final class Routes {
   /// While the session loads, or when loading it failed.
   static const starting = '/starting';
 
+  /// "Do you teach on your own, or run a team?": signed in with no team.
+  static const onboarding = '/onboarding';
+
   /// The signed-in person's account: name, sign out, delete.
   static const account = '/account';
 
@@ -43,7 +46,12 @@ abstract final class Routes {
 
   /// Pages that only make sense before someone is fully in; a signed-in
   /// person is sent on from them.
-  static const entryPages = {...signedOutPages, verifyEmail, starting};
+  static const entryPages = {
+    ...signedOutPages,
+    verifyEmail,
+    starting,
+    onboarding,
+  };
 }
 
 /// The guard hook: where the router should send someone at [location]
@@ -73,6 +81,8 @@ String? redirectFor(Session session, Uri location) {
       return Routes.signedOutPages.contains(path) ? null : to(Routes.signIn);
     case AwaitingVerification():
       return path == Routes.verifyEmail ? null : to(Routes.verifyEmail);
+    case SignedIn(needsOnboarding: true):
+      return path == Routes.onboarding ? null : to(Routes.onboarding);
     case SignedIn():
       if (Routes.entryPages.contains(path)) return headedFor ?? Routes.today;
       if (path == '/') return Routes.today;

@@ -12,6 +12,7 @@ import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/starting_screen.dart';
 import '../features/auth/presentation/verify_email_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
+import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/payments/presentation/payments_screen.dart';
 import '../features/students/presentation/students_screen.dart';
 import '../features/team/presentation/team_screen.dart';
@@ -41,6 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       _entry(Routes.createAccount, (_) => const CreateAccountScreen()),
       _entry(Routes.resetPassword, (_) => const ResetPasswordScreen()),
       _entry(Routes.verifyEmail, (_) => const VerifyEmailScreen()),
+      _entry(Routes.onboarding, (_) => const OnboardingScreen()),
       ShellRoute(
         builder: (context, state, child) =>
             AppShell(location: state.uri.path, child: child),

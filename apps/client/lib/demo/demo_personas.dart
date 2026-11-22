@@ -1,102 +1,74 @@
-import '../core/capability.dart';
 import '../features/auth/domain/session.dart';
+import 'demo_store.dart';
 
 /// The people a demo can be viewed as (PRD R2). The studio matches the
 /// designs: Koh Guitar Studio with eight tutors.
 enum DemoPersona {
   /// The studio owner: sees everything.
-  owner('Daniel Koh', 'Owner of Koh Guitar Studio, 8 tutors'),
+  owner(
+    'a1',
+    'Daniel Koh',
+    'daniel@kohguitar.example',
+    'Owner of Koh Guitar Studio, 8 tutors',
+  ),
 
   /// A teacher at the studio: sees their own lessons and students.
-  teacher('Mei Lin Tan', 'Teacher at Koh Guitar Studio'),
+  teacher(
+    'a2',
+    'Mei Lin Tan',
+    'meilin@kohguitar.example',
+    'Teacher at Koh Guitar Studio',
+  ),
 
   /// A solo tutor: a team of one, so no team features.
-  solo('Priya Shah', 'Teaches piano on her own');
+  solo('a3', 'Priya Shah', 'priya@example.com', 'Teaches piano on her own'),
 
-  const DemoPersona(this.displayName, this.description);
+  /// Someone who has just signed up: no team yet, so onboarding.
+  newcomer('a4', 'Hana Lim', 'hana@example.com', 'New to Penny, no team yet');
+
+  const DemoPersona(
+    this.userId,
+    this.displayName,
+    this.email,
+    this.description,
+  );
+
+  /// The end of the persona's demo user ID (see [user]).
+  final String userId;
 
   /// The persona's name.
   final String displayName;
 
+  /// The persona's email address.
+  final String email;
+
   /// Who they are, on the sign-in page.
   final String description;
+
+  /// The persona as a signed-in user.
+  SessionUser get user =>
+      SessionUser(id: demoId(userId), displayName: displayName, email: email);
 }
 
-/// What the owner may do. Mirrors the server's matrix in docs/architecture.md.
-const Set<Capability> ownerCapabilities = {...Capability.values};
-
-/// What a teacher may do.
-const Set<Capability> teacherCapabilities = {
-  Capability.viewOwnLessons,
-  Capability.completeOwnLessons,
-  Capability.editOwnLessonItems,
-  Capability.viewOwnStudents,
-};
-
-const _studio = Team(
-  id: '019a8f00-0000-7000-8000-000000000001',
-  name: 'Koh Guitar Studio',
-  timezone: 'Asia/Singapore',
-  memberCount: 8,
-);
-
-const _soloTeam = Team(
-  id: '019a8f00-0000-7000-8000-000000000002',
-  name: 'Priya Shah Piano',
-  timezone: 'Asia/Singapore',
-  memberCount: 1,
-);
-
-/// The session for [persona].
-SignedIn sessionFor(DemoPersona persona) {
-  return switch (persona) {
-    DemoPersona.owner => SignedIn(
-      user: SessionUser(
-        id: '019a8f00-0000-7000-8000-0000000000a1',
-        displayName: DemoPersona.owner.displayName,
-        email: 'daniel@kohguitar.example',
-      ),
-      memberships: const [
-        TeamMembership(
-          id: '019a8f00-0000-7000-8000-0000000000b1',
-          team: _studio,
-          role: TeamRole.owner,
-          capabilities: ownerCapabilities,
-        ),
-      ],
-      activeTeamId: _studio.id,
-    ),
-    DemoPersona.teacher => SignedIn(
-      user: SessionUser(
-        id: '019a8f00-0000-7000-8000-0000000000a2',
-        displayName: DemoPersona.teacher.displayName,
-        email: 'meilin@kohguitar.example',
-      ),
-      memberships: const [
-        TeamMembership(
-          id: '019a8f00-0000-7000-8000-0000000000b2',
-          team: _studio,
-          role: TeamRole.teacher,
-          capabilities: teacherCapabilities,
-        ),
-      ],
-      activeTeamId: _studio.id,
-    ),
-    DemoPersona.solo => SignedIn(
-      user: SessionUser(
-        id: '019a8f00-0000-7000-8000-0000000000a3',
-        displayName: DemoPersona.solo.displayName,
-        email: 'priya@example.com',
-      ),
-      memberships: const [
-        TeamMembership(
-          id: '019a8f00-0000-7000-8000-0000000000b3',
-          team: _soloTeam,
-          role: TeamRole.owner,
-          capabilities: ownerCapabilities,
-        ),
-      ],
-      activeTeamId: _soloTeam.id,
-    ),
-  };
+/// The session for [persona], with their teams as [store] has them now.
+/// [activeTeamId] keeps the team they were looking at, when they still
+/// belong to it.
+SignedIn sessionFor(
+  DemoPersona persona, {
+  DemoStore? store,
+  String? activeTeamId,
+  String? displayName,
+}) {
+  final user = persona.user;
+  final memberships = (store ?? DemoStore()).membershipsOf(user.id);
+  final active = memberships.any((m) => m.team.id == activeTeamId)
+      ? activeTeamId
+      : memberships.firstOrNull?.team.id;
+  return SignedIn(
+    user: displayName == null
+        ? user
+        : SessionUser(id: user.id, displayName: displayName, email: user.email),
+    memberships: memberships,
+    activeTeamId: active,
+  );
 }

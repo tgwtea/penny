@@ -7,6 +7,7 @@ import 'package:penny_ui/penny_ui.dart';
 import '../../features/auth/application/session_controller.dart';
 import '../../features/auth/domain/session.dart';
 import '../../features/auth/presentation/persona_switcher.dart';
+import '../../features/team/presentation/team_switcher.dart';
 import '../routes.dart';
 import 'destinations.dart';
 
@@ -49,6 +50,9 @@ class AppShell extends ConsumerWidget {
               onSelected: go,
               personName: session.user.displayName,
               onOpenAccount: openAccount,
+              onSwitchTeam: session.hasSeveralTeams
+                  ? () => showTeamSwitcher(context, ref)
+                  : null,
               footer: const PersonaSwitcher(),
             ),
             Expanded(child: child),

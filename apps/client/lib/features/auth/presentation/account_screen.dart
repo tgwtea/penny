@@ -1,11 +1,14 @@
 // ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:penny_ui/penny_ui.dart';
 
+import '../../../core/capability.dart';
 import '../../../core/failure.dart';
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
+import '../../team/presentation/team_switcher.dart';
 import '../application/session_controller.dart';
 import '../domain/session.dart';
 
@@ -107,6 +110,41 @@ class _AccountScreenState extends ConsumerState<AccountScreen>
           Text('Email', style: PennyText.smallStrong.copyWith(color: c.text)),
           const SizedBox(height: PennySpace.s1),
           Text(email, style: PennyText.body.copyWith(color: c.textSecondary)),
+          if (session is SignedIn && session.hasSeveralTeams) ...[
+            const SizedBox(height: PennySpace.s6),
+            Text(
+              'Your teams',
+              style: PennyText.heading.copyWith(color: c.text),
+            ),
+            const SizedBox(height: PennySpace.s3),
+            TeamChoices(
+              session: session,
+              onChosen: (id) =>
+                  ref.read(sessionProvider.notifier).switchTeam(id),
+            ),
+          ],
+          if (session is SignedIn &&
+              session.isTeamOfOne &&
+              session.can(Capability.manageTeam)) ...[
+            const SizedBox(height: PennySpace.s6),
+            Text(
+              'Teach with others?',
+              style: PennyText.heading.copyWith(color: c.text),
+            ),
+            const SizedBox(height: PennySpace.s1),
+            Text(
+              'Add a teacher to share your timetable and students. Team '
+              'features appear once someone joins.',
+              style: PennyText.body.copyWith(color: c.textSecondary),
+            ),
+            const SizedBox(height: PennySpace.s3),
+            PennyButton(
+              label: 'Add a teacher',
+              icon: PennyIcons.addPerson,
+              variant: PennyButtonVariant.secondary,
+              onPressed: () => context.go('/team'),
+            ),
+          ],
           const SizedBox(height: PennySpace.s6),
           const PennyDivider(),
           const SizedBox(height: PennySpace.s6),

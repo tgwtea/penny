@@ -511,4 +511,80 @@ void main() {
       PennyDemoChip(label: 'Viewing as Daniel Koh', onPressed: () {}),
     ]),
   );
+
+  pennyGoldens(
+    'option_row',
+    (_) => _gallery([
+      PennyOptionRow(
+        title: 'I teach on my own',
+        body: 'Your lessons, students and payments. No team features.',
+        selected: false,
+        onSelected: () {},
+      ),
+      PennyOptionRow(
+        title: 'I run a team',
+        body: 'Add teachers, see everyone\'s timetable, and bill for the team.',
+        selected: true,
+        onSelected: () {},
+      ),
+    ]),
+    size: const Size(390, 260),
+  );
+
+  pennyGoldens(
+    'list_row',
+    (_) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: PennySpace.s4),
+      child: Column(
+        children: [
+          PennyListRow(
+            leading: const PennyAvatar(name: 'Daniel Koh'),
+            title: 'Daniel Koh',
+            tag: 'You',
+            subtitle: 'daniel@kohguitar.example',
+            trailing: [
+              const Text('Owner'),
+              PennyMenuButton(
+                tooltip: 'Actions for Daniel Koh',
+                items: const [],
+              ),
+            ],
+          ),
+          const PennyDivider(),
+          PennyListRow(
+            leading: const PennyAvatar(name: 'Ravi Kumar'),
+            title: 'Ravi Kumar',
+            subtitle: 'ravi@example.com',
+            trailing: [
+              const StatusBadge(PennyStatus.invited),
+              PennyMenuButton(
+                tooltip: 'Actions for Ravi Kumar',
+                items: [PennyMenuItem(label: 'Remove', onSelected: () {})],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+    size: const Size(390, 180),
+  );
+
+  pennyGoldens(
+    'sheet',
+    (_) => PennySheet(
+      title: 'Add teacher',
+      onClose: () {},
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const PennyTextField(label: 'Name'),
+          const SizedBox(height: PennySpace.s4),
+          const PennyTextField(label: 'Email'),
+          const SizedBox(height: PennySpace.s6),
+          PennyButton(label: 'Add teacher', expand: true, onPressed: () {}),
+        ],
+      ),
+    ),
+    size: const Size(390, 320),
+  );
 }
