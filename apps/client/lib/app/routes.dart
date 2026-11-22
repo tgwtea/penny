@@ -35,6 +35,15 @@ abstract final class Routes {
   /// Payment requests.
   static const payments = '/payments';
 
+  /// One payment request: `/payments/:id`.
+  static const paymentRequest = '/payments/:id';
+
+  /// Receipts.
+  static const receipts = '/receipts';
+
+  /// One receipt: `/receipts/:id`.
+  static const receipt = '/receipts/:id';
+
   /// The team list. Owners only.
   static const team = '/team';
 

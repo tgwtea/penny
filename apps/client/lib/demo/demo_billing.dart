@@ -366,8 +366,9 @@ mixin _DemoBillingRules {
     return 'https://app.penny.example/pay/$token';
   }
 
-  /// Marks [r] paid and issues its receipt from its payment record.
-  void close(DemoRequest r, {DemoReceipt? replaces}) {
+  /// Marks [r] paid and issues its receipt from its payment record, [at]
+  /// now unless given.
+  void close(DemoRequest r, {DemoReceipt? replaces, DateTime? at}) {
     final p = r.payment!;
     r.status = PaymentStatus.paid;
     final receipt = DemoReceipt(
@@ -375,7 +376,7 @@ mixin _DemoBillingRules {
       teamId: r.teamId,
       number: billing.nextNumber(r.teamId),
       requestId: r.id,
-      issuedAt: store.now(),
+      issuedAt: at ?? store.now(),
       teamName: store.team(r.teamId).name,
       payeeName:
           billing.accounts[r.payeeId]?.displayName ?? store.nameOf(r.payeeId),
@@ -1170,7 +1171,7 @@ void seedBilling(DemoStore store) {
       recordedBy: 'Mei Lin Tan',
       recordedAt: now.subtract(const Duration(days: 21)),
     );
-  _SeedCloser(store).close(paid);
+  _SeedCloser(store).close(paid, at: paid.payment!.recordedAt);
 
   request(owners[0], owner, daysAgo: 1, dueIn: 14, lessons: 2);
 }

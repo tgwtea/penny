@@ -7,6 +7,7 @@ import 'package:penny_ui/penny_ui.dart';
 import '../../../core/capability.dart';
 import '../../../core/failure.dart';
 import '../../lessons/presentation/policy_form.dart';
+import '../../payments/presentation/payee_account_section.dart';
 import '../../shared/presentation/async_action.dart';
 import '../../shared/presentation/failure_text.dart';
 import '../../team/presentation/reminder_setting.dart';
@@ -147,6 +148,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen>
               variant: PennyButtonVariant.secondary,
               onPressed: () => context.go('/team'),
             ),
+          ],
+          if (session is SignedIn &&
+              session.can(Capability.manageOwnPayments) &&
+              session.activeMembership != null) ...[
+            const PennySectionHeader(title: 'PayNow'),
+            PayeeAccountSection(membershipId: session.activeMembership!.id),
           ],
           if (session is SignedIn &&
               session.can(Capability.viewOwnLessons) &&

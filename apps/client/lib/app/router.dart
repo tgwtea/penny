@@ -16,7 +16,10 @@ import '../features/lessons/presentation/places_screen.dart';
 import '../features/lessons/presentation/today_screen.dart';
 import '../features/notifications/presentation/unsubscribe_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
+import '../features/payments/presentation/payment_request_screen.dart';
 import '../features/payments/presentation/payments_screen.dart';
+import '../features/payments/presentation/public_payment_screen.dart';
+import '../features/payments/presentation/receipts_screen.dart';
 import '../features/students/presentation/student_details_screen.dart';
 import '../features/students/presentation/students_screen.dart';
 import '../features/team/presentation/team_screen.dart';
@@ -48,6 +51,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       _entry(Routes.verifyEmail, (_) => const VerifyEmailScreen()),
       _entry(Routes.onboarding, (_) => const OnboardingScreen()),
       _public(
+        Routes.publicPayment,
+        (token) => PublicPaymentScreen(key: ValueKey(token), token: token),
+      ),
+      _public(
         Routes.unsubscribe,
         (token) => UnsubscribeScreen(key: ValueKey(token), token: token),
       ),
@@ -58,7 +65,38 @@ final routerProvider = Provider<GoRouter>((ref) {
           _page(Routes.today, (_) => const TodayScreen()),
           _page(Routes.calendar, (_) => const CalendarScreen()),
           _page(Routes.students, (_) => const StudentsScreen()),
-          _page(Routes.payments, (_) => const PaymentsScreen()),
+          _page(
+            Routes.payments,
+            (_) => const CapabilityGate(
+              capability: Capability.manageOwnPayments,
+              title: 'Payments',
+              child: PaymentsScreen(),
+            ),
+          ),
+          _page(
+            Routes.receipts,
+            (_) => const CapabilityGate(
+              capability: Capability.manageOwnPayments,
+              title: 'Receipts',
+              child: ReceiptsScreen(),
+            ),
+          ),
+          _detail(
+            Routes.paymentRequest,
+            (id) => CapabilityGate(
+              capability: Capability.manageOwnPayments,
+              title: 'Payment request',
+              child: PaymentRequestScreen(key: ValueKey(id), requestId: id),
+            ),
+          ),
+          _detail(
+            Routes.receipt,
+            (id) => CapabilityGate(
+              capability: Capability.manageOwnPayments,
+              title: 'Receipt',
+              child: ReceiptScreen(key: ValueKey(id), receiptId: id),
+            ),
+          ),
           _page(Routes.account, (_) => const AccountScreen()),
           _detail(
             Routes.lesson,
