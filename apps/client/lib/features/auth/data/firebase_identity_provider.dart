@@ -86,9 +86,10 @@ class FirebaseIdentityProvider implements IdentityProvider {
   Future<void> reload() => _guard(() async {
     final user = _auth.currentUser;
     if (user == null) return;
-    await user.reload();
-    // The ID token's email_verified claim was fixed when it was issued.
+    // A token's email_verified claim is fixed when it is issued: fetch a
+    // fresh one first, so the reload's change event already carries it.
     await user.getIdToken(true);
+    await user.reload();
   });
 
   @override

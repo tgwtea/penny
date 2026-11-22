@@ -66,7 +66,7 @@ class HttpSessionRepository implements SessionRepository, AuthRepository {
   }
 
   @override
-  Future<void> refresh() => _onAccount(_identity.currentAccount);
+  Future<void> refresh() => _load(_identity.currentAccount);
 
   @override
   Future<void> rename(String displayName) async {
@@ -126,8 +126,21 @@ class HttpSessionRepository implements SessionRepository, AuthRepository {
 
   // Loading -----------------------------------------------------------------
 
+  /// The account the current session was built from.
+  IdentityAccount? _loadedFor;
+
+  /// Reacts to the identity provider. It also reports hourly token
+  /// refreshes; those change nothing Penny shows, so they load nothing.
   Future<void> _onAccount(IdentityAccount? account) async {
+    if (account != null && account == _loadedFor && _current is SignedIn) {
+      return;
+    }
+    await _load(account);
+  }
+
+  Future<void> _load(IdentityAccount? account) async {
     final generation = ++_generation;
+    _loadedFor = account;
     if (account == null) return _emit(const SignedOut());
     if (!account.emailVerified) {
       return _emit(AwaitingVerification(email: account.email));

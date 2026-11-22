@@ -202,6 +202,11 @@ tasks:
       - for: [tools/checks, tools/design]
         cmd: cd {{.ITEM}} && dart test
 
+  test:e2e:
+    desc: Run the web client in headless Chrome against the real API, a fresh database and the Auth emulator (needs task dev, Chrome and chromedriver)
+    cmds:
+      - tools/e2e/run.sh
+
   flutter:image:
     desc: Build the Linux Flutter image used for golden images
     internal: true

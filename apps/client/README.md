@@ -14,8 +14,13 @@ task run:client:web               # Chrome on :5173 against the local API
 | --- | --- | --- |
 | `PENNY_BACKEND` | `demo` (in-memory data in `lib/demo/`) or `http` (the Go API) | `demo` |
 | `PENNY_API_URL` | The API's address | `http://localhost:8080`; on the web, `config.json` beside `index.html` first |
+| `PENNY_FIREBASE_*` | The Firebase project for the `http` backend (`PROJECT_ID`, `API_KEY`, `APP_ID`, `AUTH_DOMAIN`, `MESSAGING_SENDER_ID`) | None: the local Auth emulator under `demo-penny`. See `docs/runbooks/firebase-auth-setup.md` |
 
-The web image is built once and promoted between environments, so it reads the API address at run time from `/config.json`, which nginx writes from `PENNY_API_URL` when the container starts (`Dockerfile`, `nginx/`).
+The web image is built once and promoted between environments, so it reads the API address and Firebase settings at run time from `/config.json`, which nginx writes from `PENNY_API_URL` and `PENNY_FIREBASE_*` when the container starts (`Dockerfile`, `nginx/`).
+
+## Signing in
+
+Every session state has one page (`app/routes.dart`, `redirectFor`): loading or a failed load, signed out, email not verified, signed in. In `http` mode `FirebaseIdentityProvider` (the only Firebase code, in `features/auth/data/`) signs people in and `HttpSessionRepository` turns that plus `GET /v1/me` into the session; `ApiConnection` (`data/`) attaches a fresh ID token to every API call. In `demo` mode the sign-in page offers the demo personas instead, and the shell shows "Viewing as".
 
 ## Structure
 
@@ -55,3 +60,10 @@ The app icon is pixel art generated from `tools/brand/penny_icon.py`; see `asset
 ## Tests
 
 `task test:client` runs every test here and in penny_ui. Golden images run on Linux only; `task test:goldens` runs them in Docker from any machine.
+
+| Folder | What it tests |
+| --- | --- |
+| `test/contract/` | Each repository contract, against the demo and the HTTP implementation (the latter on `test/fakes/`) |
+| `test/app/` | The router guard, and the whole app driven as a person would, at phone and laptop widths |
+| `test/data/` | HTTP plumbing and repositories against a fake API and identity provider |
+| `integration_test/` | End to end in a real browser against the real API, a fresh database and the Auth emulator: `task test:e2e` (`tools/e2e/run.sh`) |

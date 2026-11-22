@@ -64,4 +64,14 @@ class IdentityAccount {
 
   /// Whether they have proven they own [email].
   final bool emailVerified;
+
+  @override
+  bool operator ==(Object other) =>
+      other is IdentityAccount &&
+      other.uid == uid &&
+      other.email == email &&
+      other.emailVerified == emailVerified;
+
+  @override
+  int get hashCode => Object.hash(uid, email, emailVerified);
 }

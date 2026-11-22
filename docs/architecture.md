@@ -581,13 +581,15 @@ Code done on 15 Nov 2026. The client targets web, Android, iOS, Windows, macOS a
 
 ### Phase 3: Authentication
 
-- [ ] Firebase dev and prod projects; email/password with verification, Google provider, one account per email
-- [ ] Client: `AuthRepository` interface, `FirebaseAuthRepository`, sign-up, sign-in, verify-email, reset password, sign-out, delete account
-- [ ] Client: `DemoAuthRepository` backing the "Viewing as" persona switcher (PRD R2), visibly labelled and isolated in `demo/`
-- [ ] Server: `identity.Verifier` with Firebase and fake implementations; auth middleware; `GET /v1/me` upserts the user
-- [ ] CI runs auth tests against the Firebase emulator
+- [ ] Firebase dev and prod projects; email/password with verification, Google provider, one account per email (steps in `docs/runbooks/firebase-auth-setup.md`)
+- [x] Client: `AuthRepository` interface, `FirebaseAuthRepository`, sign-up, sign-in, verify-email, reset password, sign-out, delete account
+- [x] Client: `DemoAuthRepository` backing the "Viewing as" persona switcher (PRD R2), visibly labelled and isolated in `demo/`
+- [x] Server: `identity.Verifier` with Firebase and fake implementations; auth middleware; `GET /v1/me` upserts the user
+- [x] CI runs auth tests against the Firebase emulator
 
 Done when: a user can sign up both ways on web and Android, `/v1/me` returns them, and an expired or forged token gets 401.
+
+Code done on 22 Nov 2026 for web, against the Firebase Auth emulator; mobile builds and the real Firebase projects are deferred. The server has a third verifier for the emulator's unsigned tokens, refused for any project ID not starting with `demo-`. The client's Firebase code is `FirebaseIdentityProvider` behind a data-layer `IdentityProvider`, and the demo's `DemoSessionRepository` doubles as its `AuthRepository`. The persona switcher is generic (it shows whatever personas the `AuthRepository` offers) because the shell may not import `demo/`. `task test:e2e` runs the web client in headless Chrome against the real API, a fresh database and the emulator.
 
 ### Phase 4: Teams, roles, onboarding
 

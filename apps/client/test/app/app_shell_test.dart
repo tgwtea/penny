@@ -150,6 +150,42 @@ void main() {
     expect(find.text('This page does not exist.'), findsOneWidget);
   });
 
+  group('account', () {
+    for (final (name, size) in [('phone', _phone), ('laptop', _laptop)]) {
+      testWidgets('opens from the avatar and renames the person ($name)', (
+        tester,
+      ) async {
+        await pumpApp(tester, size: size);
+        await tester.tap(find.bySemanticsLabel(RegExp('^Account: ')));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(PennyTextField, 'Your name'),
+          'Daniel K.',
+        );
+        await tester.tap(find.widgetWithText(PennyButton, 'Save name'));
+        await tester.pumpAndSettle();
+        expect(find.text('Name saved'), findsOneWidget);
+        expect(find.text('Daniel K.'), findsWidgets);
+      });
+    }
+
+    testWidgets('signing out returns to sign-in with the personas', (
+      tester,
+    ) async {
+      final container = await pumpApp(tester);
+      container.read(routerProvider).go('/account');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(PennyButton, 'Sign out'));
+      await tester.pumpAndSettle();
+      expect(find.text('Sign in to Penny'), findsOneWidget);
+      expect(find.text('Mei Lin Tan'), findsOneWidget);
+
+      await tester.tap(find.text('Priya Shah'));
+      await tester.pumpAndSettle();
+      expect(navLabels(tester), ['Today', 'Calendar', 'Students', 'Payments']);
+    });
+  });
+
   group('HTTP mode', () {
     Future<FakeIdentityProvider> pumpHttpApp(
       WidgetTester tester,

@@ -2,7 +2,7 @@
 
 Penny handles the admin side of tutoring for solo tutors and small studios: who teaches whom, when and where, who has paid, and who needs a reminder. It generates PayNow payment links and records payments and receipts. It never moves money.
 
-> **Status:** Phases 1 and 2 (walking skeletons): the API serves health, version and a stubbed `/v1/me`; the client runs on demo data or against the API, on Penny's own design system; manifests for dev are ready to sync. See the [build plan](docs/architecture.md#component-by-component-build-plan).
+> **Status:** see the [build plan](docs/architecture.md#component-by-component-build-plan) for which phases are done. Sign-in works against the local Firebase Auth emulator; [`docs/runbooks/firebase-auth-setup.md`](docs/runbooks/firebase-auth-setup.md) moves an environment to a real Firebase project.
 
 ## Repository map
 
@@ -33,6 +33,7 @@ task dev:down         # stops the local stack
 task run:api          # migrates the local database and serves the API on :8080
 task run:client       # the app on demo data; task run:client:web runs it against the local API
 task ui:catalogue     # the design system's Widgetbook catalogue
+task test:e2e         # the web client in headless Chrome against the real API (needs Chrome and chromedriver)
 ```
 
 If another PostgreSQL already listens on 5432, pick another port for Penny's: `export PENNY_POSTGRES_PORT=55432` before `task dev` and every other task.
@@ -44,7 +45,7 @@ Local services once `task dev` is running:
 | PostgreSQL 18 + PostGIS | `postgres://penny:penny@localhost:5432/penny` (port from `PENNY_POSTGRES_PORT`) |
 | Penny API (`task run:api`) | http://localhost:8080, metrics on http://localhost:9090/metrics |
 | Mailpit (catches all outgoing email) | UI at http://localhost:8025, SMTP on `localhost:1025` |
-| Firebase Auth emulator | `localhost:9099`, emulator UI at http://localhost:4000 |
+| Firebase Auth emulator | `localhost:9099`, emulator UI at http://localhost:4000: accounts, and the verification and reset emails it "sent" |
 
 ## Documentation
 

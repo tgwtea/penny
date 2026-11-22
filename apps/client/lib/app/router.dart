@@ -1,4 +1,5 @@
-import 'package:flutter/widgets.dart';
+// ignore: deprecated_member_use, see docs/adr/023-stay-on-the-sdk-material-library.md
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -75,12 +76,19 @@ GoRoute _entry(String path, WidgetBuilder builder) => _page(path, builder);
 
 /// A top-level destination. Switching between them does not animate: they
 /// are places, not steps (brand book, "Motion").
+///
+/// Each page gets its own Material: pages in the shell sit in a nested
+/// navigator, and text fields and ink look for a Material only within
+/// their own route.
 GoRoute _page(String path, WidgetBuilder builder) {
   return GoRoute(
     path: path,
     pageBuilder: (context, state) => NoTransitionPage(
       key: state.pageKey,
-      child: Builder(builder: builder),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Builder(builder: builder),
+      ),
     ),
   );
 }
