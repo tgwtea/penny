@@ -8,9 +8,11 @@ import 'package:penny/features/auth/data/http_session_repository.dart';
 import 'package:penny/demo/demo_store.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
 import 'package:penny/demo/demo_scheduling.dart';
+import 'package:penny/demo/demo_billing.dart';
 import 'package:penny/demo/demo_notifications.dart';
 import 'package:penny/demo/demo_series.dart';
 import 'package:penny/features/notifications/data/http_unsubscribe_repository.dart';
+import 'package:penny/features/payments/data/http_payment_repository.dart';
 import 'package:penny/features/lessons/data/http_series_repository.dart';
 import 'package:penny/features/timetable/data/http_timetable_repository.dart';
 import 'package:penny/features/lessons/data/http_lesson_repository.dart';
@@ -23,6 +25,7 @@ import 'auth_repository_contract.dart';
 import 'server_info_repository_contract.dart';
 import 'session_repository_contract.dart';
 import 'lesson_repository_contract.dart';
+import 'payment_repository_contract.dart';
 import 'student_repository_contract.dart';
 import 'team_repository_contract.dart';
 import 'unsubscribe_repository_contract.dart';
@@ -128,6 +131,42 @@ Future<LessonFixture> httpLessons() async {
   );
 }
 
+Future<PaymentFixture> demoPayments() async {
+  final session = _demoOwner();
+  return (
+    accounts: DemoPayeeAccountRepository(session),
+    payments: DemoPaymentRepository(session),
+    public: DemoPublicPaymentRepository(session),
+    lessons: DemoLessonRepository(session),
+    students: DemoStudentRepository(session),
+    teamId: DemoStore.studioId,
+    payeeId: demoId('b1'),
+    otherMemberId: demoId('b10'),
+  );
+}
+
+Future<PaymentFixture> httpPayments() async {
+  final api = FakeApi()..names['daniel@example.com'] = 'Daniel Koh';
+  final connection = api.connection(
+    idToken: () async => 'token-daniel@example.com-0',
+  );
+  final teams = HttpTeamRepository(connection);
+  final teamId = await teams.createTeam(name: 'Koh Guitar Studio');
+  await teams.addTeacher(teamId, name: 'Mei', email: 'meilin@example.com');
+  api.signIn('meilin@example.com');
+  final members = api.teams[teamId]!.members;
+  return (
+    accounts: HttpPayeeAccountRepository(connection),
+    payments: HttpPaymentRepository(connection),
+    public: HttpPublicPaymentRepository(connection),
+    lessons: HttpLessonRepository(connection),
+    students: HttpStudentRepository(connection),
+    teamId: teamId,
+    payeeId: members.first['id']! as String,
+    otherMemberId: members.last['id']! as String,
+  );
+}
+
 void main() {
   serverInfoRepositoryContract(
     'DemoServerInfoRepository',
@@ -166,6 +205,9 @@ void main() {
 
   lessonRepositoryContract('Demo lesson repositories', demoLessons);
   lessonRepositoryContract('Http lesson repositories', httpLessons);
+
+  paymentRepositoryContract('Demo payment repositories', demoPayments);
+  paymentRepositoryContract('Http payment repositories', httpPayments);
 
   unsubscribeRepositoryContract(
     'DemoUnsubscribeRepository',

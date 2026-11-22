@@ -26,6 +26,9 @@ dependencies:
     path: ../../packages/penny_api
   penny_ui:
     path: ../../packages/penny_ui
+  # The browser's own APIs (Blob, object URLs), to hand a receipt's PDF to
+  # the person as a download. Only lib/data/file_saver_web.dart uses it.
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4

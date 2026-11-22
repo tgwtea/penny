@@ -1,6 +1,7 @@
 import '../core/capability.dart';
 import '../features/auth/domain/session.dart';
 import '../features/team/domain/team_member.dart';
+import 'demo_billing.dart';
 import 'demo_schedule.dart';
 import 'scenarios/scenario_kit.dart';
 import 'scenarios/solo.dart';
@@ -58,6 +59,7 @@ class DemoStore {
     );
     seedStudio(_kit(studioId));
     seedSolo(_kit(soloId));
+    seedBilling(this);
   }
 
   /// What "now" is in the demo.
@@ -65,6 +67,9 @@ class DemoStore {
 
   /// Students, places, lessons and policies.
   final schedule = DemoSchedule();
+
+  /// PayNow accounts, payment requests and receipts.
+  final billing = DemoBilling();
 
   ScenarioKit _kit(String teamId) => ScenarioKit(
     schedule: schedule,

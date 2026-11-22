@@ -239,6 +239,14 @@ class DemoLessonRepository implements LessonRepository {
       );
     }
     a.requireReopen(l.tutorIds, l.markedBy);
+    if (_store.billing.isBilled(l.id)) {
+      throw const ConflictFailure(
+        'billed',
+        detail:
+            'A payment request covers this lesson. Withdraw the request, or '
+            'void its receipt, before reopening the lesson.',
+      );
+    }
     l
       ..status = LessonStatus.scheduled
       ..billable = false

@@ -48,6 +48,20 @@ class FakeSchedulingApi {
 
   String _id(String kind) => '$kind-${++_seq}';
 
+  /// [teamId]'s lessons as stored, for the billing routes.
+  Iterable<Map<String, Object?>> lessonsIn(String teamId) =>
+      _lessons.values.where((l) => l['team'] == teamId);
+
+  /// The name of [teamId]'s student [id], or null if there is none.
+  String? studentName(String teamId, String id) {
+    final s = _students[id];
+    return s == null || s['team'] != teamId ? null : s['name'] as String?;
+  }
+
+  /// [membershipId]'s cancellation policy summary.
+  String policySummary(String membershipId) =>
+      (_policy(membershipId)['summary'] as String?) ?? '';
+
   /// Answers [request] if it is one of these routes.
   http.Response? handle(http.Request request, String email) {
     final p = request.url.pathSegments;

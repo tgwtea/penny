@@ -5,6 +5,7 @@ import 'package:http/testing.dart';
 import 'package:penny/data/api_connection.dart';
 import 'package:penny/data/api_settings.dart';
 
+import 'fake_billing_api.dart';
 import 'fake_scheduling_api.dart';
 
 /// A fake Penny API speaking the contract in api/openapi.yaml, kept in
@@ -59,6 +60,14 @@ class FakeApi {
     ],
   );
 
+  /// PayNow accounts, payment requests, receipts and the public payment
+  /// page (Phase 8 routes).
+  late final billing = FakeBillingApi(
+    scheduling: scheduling,
+    memberOf: scheduling.memberOf,
+    nameOf: scheduling.nameOf,
+  );
+
   /// Unsubscribe links the fake knows, by token, with what they stop
   /// (`lesson_reminders` or `payment_reminders`).
   final unsubscribeLinks = <String, String>{};
@@ -90,6 +99,8 @@ class FakeApi {
     if (route == 'GET /v1/version') {
       return json({'version': '0.1.0', 'commit': '3f2c1a9'});
     }
+    final publicPayment = billing.handlePublic(request);
+    if (publicPayment != null) return publicPayment;
     final segments = request.url.pathSegments;
     if (segments.length == 3 && segments[1] == 'unsubscribe') {
       final category = unsubscribeLinks[segments[2]];
@@ -108,6 +119,8 @@ class FakeApi {
     }
     final schedulingRoute = scheduling.handle(request, email);
     if (schedulingRoute != null) return schedulingRoute;
+    final billingRoute = billing.handle(request, email);
+    if (billingRoute != null) return billingRoute;
     final teamRoute = _teamRoute(request, email);
     if (teamRoute != null) return teamRoute;
     switch (route) {
