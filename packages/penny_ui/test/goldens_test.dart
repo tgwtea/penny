@@ -139,7 +139,7 @@ void main() {
         children: [for (final s in PennyStatus.values) StatusBadge(s)],
       ),
     ]),
-    size: const Size(390, 140),
+    size: const Size(390, 180),
   );
 
   pennyGoldens(
@@ -759,5 +759,18 @@ void main() {
       ),
     ]),
     size: const Size(390, 420),
+  );
+
+  pennyGoldens(
+    'qr_code',
+    (context) => _gallery([
+      const PennyQrCode(
+        data:
+            '00020101021226500009SG.PAYNOW010100211+6591234567030100408202612035204000053037025406120.005802SG5911Mei Lin Tan6009Singapore62140110PNY-7K3Q9X630473AD',
+        semanticLabel: 'PayNow code for S\$ 120.00',
+        size: 200,
+      ),
+    ]),
+    size: const Size(390, 260),
   );
 }

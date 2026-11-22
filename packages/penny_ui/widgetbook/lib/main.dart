@@ -352,6 +352,23 @@ class PennyCatalogue extends StatelessWidget {
           ],
         ),
         WidgetbookFolder(
+          name: 'Payments',
+          children: [
+            _component('PennyQrCode', {
+              'PayNow request': (_) => const PennyQrCode(
+                data:
+                    '00020101021226500009SG.PAYNOW010100211+6591234567030100408202612035204000053037025406120.005802SG5911Mei Lin Tan6009Singapore62140110PNY-7K3Q9X630473AD',
+                semanticLabel: 'PayNow code for S\$ 120.00',
+              ),
+              'Small': (_) => const PennyQrCode(
+                data: 'PNY-7K3Q9X',
+                semanticLabel: 'A small code',
+                size: 160,
+              ),
+            }),
+          ],
+        ),
+        WidgetbookFolder(
           name: 'People',
           children: [
             _component('PennyAvatar', {

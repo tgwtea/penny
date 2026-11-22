@@ -10,10 +10,20 @@ class AppDestination {
     required this.path,
     required this.nav,
     required this.isVisibleTo,
+    this.alsoFor = const [],
   });
 
   /// The route it opens.
   final String path;
+
+  /// Other pages that belong to it, such as receipts to Payments.
+  final List<String> alsoFor;
+
+  /// Whether the page at [location] belongs to this destination.
+  bool contains(String location) => [
+    path,
+    ...alsoFor,
+  ].any((p) => location == p || location.startsWith('$p/'));
 
   /// How it looks in the bottom navigation and sidebar.
   final PennyDestination nav;
@@ -55,14 +65,16 @@ final List<AppDestination> appDestinations = [
     ),
     isVisibleTo: _always,
   ),
-  const AppDestination(
+  AppDestination(
     path: Routes.payments,
-    nav: PennyDestination(
+    nav: const PennyDestination(
       label: 'Payments',
       icon: PennyIcons.payments,
       activeIcon: PennyIcons.paymentsActive,
     ),
-    isVisibleTo: _always,
+    isVisibleTo: (s) =>
+        s.can(Capability.managePayments) || s.can(Capability.manageOwnPayments),
+    alsoFor: const [Routes.receipts],
   ),
   AppDestination(
     path: Routes.team,

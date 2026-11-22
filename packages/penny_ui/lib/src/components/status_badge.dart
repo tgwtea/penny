@@ -37,6 +37,15 @@ enum PennyStatus {
   /// A payment request past its due date.
   overdue('Overdue', PennyIcons.warning, _Tone.danger),
 
+  /// A payment request not sent yet.
+  draft('Draft', PennyIcons.edit, _Tone.neutral),
+
+  /// A payment request taken back before it was paid.
+  withdrawn('Withdrawn', PennyIcons.cancelled, _Tone.neutral),
+
+  /// A receipt that was voided; a correction, if any, replaces it.
+  voided('Void', PennyIcons.voided, _Tone.neutral),
+
   /// A team member who has not signed in yet.
   invited('Invited', PennyIcons.pending, _Tone.neutral);
 

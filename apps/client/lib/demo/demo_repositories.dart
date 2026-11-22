@@ -8,6 +8,7 @@ import '../features/auth/domain/session_repository.dart';
 import '../features/system/domain/server_info.dart';
 import '../features/team/domain/team_member.dart';
 import '../features/team/domain/team_repository.dart';
+import 'demo_actor.dart';
 import 'demo_personas.dart';
 import 'demo_store.dart';
 
@@ -234,6 +235,18 @@ class DemoTeamRepository implements TeamRepository {
       );
     }
     return _store.createTeam(name.trim(), session.user);
+  }
+
+  @override
+  Future<void> setReminderHours(String teamId, int hours) async {
+    DemoActor.of(_session, teamId).require(Capability.manageTeam);
+    if (hours < 0 || hours > 168) {
+      throw const ValidationFailure(
+        'reminder hours',
+        detail: 'Remind between 1 and 168 hours ahead, or not at all.',
+      );
+    }
+    _store.setReminderHours(teamId, hours);
   }
 
   TeamMember _find(String teamId, String memberId) => _store

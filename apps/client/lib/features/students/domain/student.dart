@@ -75,6 +75,7 @@ class Contact {
     this.phone,
     this.receivesReminders = true,
     this.receivesBilling = true,
+    this.receivesPaymentReminders = true,
   });
 
   /// The contact's ID.
@@ -97,6 +98,10 @@ class Contact {
 
   /// Whether they get payment requests and receipts.
   final bool receivesBilling;
+
+  /// Whether overdue payment requests are chased with them by email. They
+  /// can stop this from the email's link.
+  final bool receivesPaymentReminders;
 }
 
 /// What it takes to add or change a contact.
@@ -110,6 +115,7 @@ class ContactDraft {
     this.phone,
     this.receivesReminders = true,
     this.receivesBilling = true,
+    this.receivesPaymentReminders = true,
   });
 
   /// Their name.
@@ -129,6 +135,9 @@ class ContactDraft {
 
   /// Whether they get payment requests and receipts.
   final bool receivesBilling;
+
+  /// Whether overdue payment requests are chased with them.
+  final bool receivesPaymentReminders;
 }
 
 /// Something a student works towards over several lessons.

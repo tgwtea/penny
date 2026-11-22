@@ -206,6 +206,8 @@ class _ContactFormState extends ConsumerState<ContactForm> with AsyncAction {
       widget.contact?.relationship ?? ContactRelationship.parent;
   late bool _reminders = widget.contact?.receivesReminders ?? true;
   late bool _billing = widget.contact?.receivesBilling ?? true;
+  late bool _paymentReminders =
+      widget.contact?.receivesPaymentReminders ?? true;
   String? _nameError;
   String? _emailError;
 
@@ -234,6 +236,7 @@ class _ContactFormState extends ConsumerState<ContactForm> with AsyncAction {
       phone: _phone.text.trim().isEmpty ? null : _phone.text,
       receivesReminders: _reminders,
       receivesBilling: _billing,
+      receivesPaymentReminders: _paymentReminders,
     );
     final actions = ref.read(studentActionsProvider);
     final contact = widget.contact;
@@ -293,6 +296,13 @@ class _ContactFormState extends ConsumerState<ContactForm> with AsyncAction {
           value: _billing,
           onChanged: (v) => setState(() => _billing = v),
         ),
+        if (_billing)
+          PennyToggleRow(
+            title: 'Payment reminders',
+            body: 'A weekly email while a request is overdue.',
+            value: _paymentReminders,
+            onChanged: (v) => setState(() => _paymentReminders = v),
+          ),
         const SizedBox(height: PennySpace.s6),
         PennyButton(
           label: widget.contact == null ? 'Add contact' : 'Save contact',

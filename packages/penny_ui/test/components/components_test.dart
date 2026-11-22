@@ -83,6 +83,31 @@ void main() {
     });
   });
 
+  group('PennyQrCode', () {
+    testWidgets('is one image to a screen reader, with its label', (
+      tester,
+    ) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(
+        pennyTestApp(
+          const PennyQrCode(
+            data: 'PNY-7K3Q9X',
+            semanticLabel: 'PayNow code for S\$ 240.00',
+          ),
+        ),
+      );
+      expect(
+        find.bySemanticsLabel('PayNow code for S\$ 240.00'),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSize(find.byType(PennyQrCode)),
+        const Size.square(PennyQrCode.defaultSize),
+      );
+      handle.dispose();
+    });
+  });
+
   group('StatusBadge', () {
     testWidgets('always shows the word with the icon', (tester) async {
       await tester.pumpWidget(

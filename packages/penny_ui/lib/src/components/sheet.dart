@@ -11,12 +11,14 @@ import 'option_row.dart';
 /// beside the list instead.
 ///
 /// [builder] builds the sheet's content; it sits in a PennySheet with
-/// [title] and a close button, and rises above the keyboard.
+/// [title] and a close button, and rises above the keyboard. A snackbar
+/// still showing is put away first, so it never covers the sheet's button.
 Future<T?> showPennySheet<T>(
   BuildContext context, {
   required String title,
   required WidgetBuilder builder,
 }) {
+  ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,

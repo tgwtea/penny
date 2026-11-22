@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../core/env.dart';
 import '../data/api_connection.dart';
 import '../data/api_settings.dart';
+import '../data/file_saver.dart';
 import '../demo/demo_backend.dart';
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/data/http_session_repository.dart';
@@ -11,6 +12,11 @@ import '../features/auth/data/identity_provider.dart';
 import '../features/lessons/application/lesson_providers.dart';
 import '../features/lessons/data/http_lesson_repository.dart';
 import '../features/lessons/data/http_series_repository.dart';
+import '../features/notifications/application/unsubscribe_providers.dart';
+import '../features/notifications/data/http_unsubscribe_repository.dart';
+import '../features/payments/application/payment_providers.dart';
+import '../features/payments/data/http_payment_repository.dart';
+import '../features/shared/application/file_saver_provider.dart';
 import '../features/students/application/student_providers.dart';
 import '../features/students/data/http_student_repository.dart';
 import '../features/system/application/server_info_provider.dart';
@@ -33,17 +39,23 @@ List<Override> backendOverrides(
   IdentityProvider? identity,
   http.Client? httpClient,
 }) {
+  final files = fileSaverProvider.overrideWithValue(PlatformFileSaver());
   return switch (config.backend) {
-    BackendKind.demo => demoOverrides(),
-    BackendKind.http => httpOverrides(
-      ApiSettings(
-        baseUrl: config.apiBaseUrl,
-        client: httpClient ?? http.Client(),
+    BackendKind.demo => [...demoOverrides(), files],
+    BackendKind.http => [
+      ...httpOverrides(
+        ApiSettings(
+          baseUrl: config.apiBaseUrl,
+          client: httpClient ?? http.Client(),
+        ),
+        identity:
+            identity ??
+            (throw ArgumentError(
+              'The http backend needs an identity provider',
+            )),
       ),
-      identity:
-          identity ??
-          (throw ArgumentError('The http backend needs an identity provider')),
-    ),
+      files,
+    ],
   };
 }
 
@@ -69,6 +81,16 @@ List<Override> httpOverrides(
     timetableRepositoryProvider.overrideWithValue(HttpTimetableRepository(api)),
     calendarFeedRepositoryProvider.overrideWithValue(
       HttpCalendarFeedRepository(api),
+    ),
+    unsubscribeRepositoryProvider.overrideWithValue(
+      HttpUnsubscribeRepository(api),
+    ),
+    payeeAccountRepositoryProvider.overrideWithValue(
+      HttpPayeeAccountRepository(api),
+    ),
+    paymentRepositoryProvider.overrideWithValue(HttpPaymentRepository(api)),
+    publicPaymentRepositoryProvider.overrideWithValue(
+      HttpPublicPaymentRepository(api),
     ),
   ];
 }

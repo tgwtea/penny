@@ -26,4 +26,8 @@ abstract interface class TeamRepository {
 
   /// Creates a team owned by the signed-in person and returns its ID.
   Future<String> createTeam({required String name});
+
+  /// Sets how many hours before a lesson its contacts are reminded, 0 to
+  /// 168 (0 sends none). Owners only.
+  Future<void> setReminderHours(String teamId, int hours);
 }

@@ -1,6 +1,7 @@
 import '../core/capability.dart';
 import '../features/auth/domain/session.dart';
 import '../features/team/domain/team_member.dart';
+import 'demo_billing.dart';
 import 'demo_schedule.dart';
 import 'scenarios/scenario_kit.dart';
 import 'scenarios/solo.dart';
@@ -19,7 +20,7 @@ class DemoStore {
   /// tests fix it, the running demo uses the real time.
   DemoStore({DateTime Function()? clock})
     : now = clock ?? (() => DateTime.now().toUtc()) {
-    _addTeam(studioId, 'Koh Guitar Studio');
+    _addTeam(studioId, studioName);
     _addTeam(soloId, 'Priya Shah Piano');
     _member(
       studioId,
@@ -58,6 +59,7 @@ class DemoStore {
     );
     seedStudio(_kit(studioId));
     seedSolo(_kit(soloId));
+    seedBilling(this);
   }
 
   /// What "now" is in the demo.
@@ -65,6 +67,9 @@ class DemoStore {
 
   /// Students, places, lessons and policies.
   final schedule = DemoSchedule();
+
+  /// PayNow accounts, payment requests and receipts.
+  final billing = DemoBilling();
 
   ScenarioKit _kit(String teamId) => ScenarioKit(
     schedule: schedule,
@@ -100,6 +105,9 @@ class DemoStore {
   /// The studio's workspace ID.
   static final studioId = demoId('1');
 
+  /// The studio's name, as the designs show it.
+  static const studioName = 'Koh Guitar Studio';
+
   /// The solo tutor's workspace ID.
   static final soloId = demoId('2');
 
@@ -113,7 +121,8 @@ class DemoStore {
     'Farah Ismail',
   ];
 
-  final _teams = <String, ({String name, String timezone})>{};
+  final _teams =
+      <String, ({String name, String timezone, int reminderHours})>{};
   final _members = <String, List<_DemoMember>>{};
   int _seq = 0;
 
@@ -137,6 +146,7 @@ class DemoStore {
       id: teamId,
       name: t.name,
       timezone: t.timezone,
+      reminderHours: t.reminderHours,
       memberCount: membersOf(
         teamId,
       ).where((m) => m.status == MemberStatus.active).length,
@@ -195,8 +205,14 @@ class DemoStore {
     return id;
   }
 
+  /// Changes how far ahead [teamId] reminds contacts of lessons.
+  void setReminderHours(String teamId, int hours) {
+    final t = _teams[teamId]!;
+    _teams[teamId] = (name: t.name, timezone: t.timezone, reminderHours: hours);
+  }
+
   void _addTeam(String id, String name) {
-    _teams[id] = (name: name, timezone: 'Asia/Singapore');
+    _teams[id] = (name: name, timezone: 'Asia/Singapore', reminderHours: 24);
     _members[id] = [];
   }
 

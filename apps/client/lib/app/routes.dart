@@ -35,6 +35,15 @@ abstract final class Routes {
   /// Payment requests.
   static const payments = '/payments';
 
+  /// One payment request: `/payments/:id`.
+  static const paymentRequest = '/payments/:id';
+
+  /// Receipts.
+  static const receipts = '/receipts';
+
+  /// One receipt: `/receipts/:id`.
+  static const receipt = '/receipts/:id';
+
   /// The team list. Owners only.
   static const team = '/team';
 
@@ -49,6 +58,18 @@ abstract final class Routes {
 
   /// Public payment pages, reached from a link without signing in.
   static const publicPaymentPrefix = '/pay/';
+
+  /// A public payment page: `/pay/:token`.
+  static const publicPayment = '/pay/:token';
+
+  /// Pages that stop an email, from its link: `/unsubscribe/:token`.
+  static const unsubscribePrefix = '/unsubscribe/';
+
+  /// One unsubscribe page.
+  static const unsubscribe = '/unsubscribe/:token';
+
+  /// Prefixes of pages anyone may open, signed in or not.
+  static const publicPrefixes = [publicPaymentPrefix, unsubscribePrefix];
 
   /// Pages for people who are not signed in.
   static const signedOutPages = {signIn, createAccount, resetPassword};
@@ -75,7 +96,7 @@ abstract final class Routes {
 /// more than a silent bounce (docs/design/screens.md, "No permission").
 String? redirectFor(Session session, Uri location) {
   final path = location.path;
-  if (path.startsWith(Routes.publicPaymentPrefix)) return null;
+  if (Routes.publicPrefixes.any(path.startsWith)) return null;
 
   final headedFor = _headedFor(location);
   String to(String page) => Uri(

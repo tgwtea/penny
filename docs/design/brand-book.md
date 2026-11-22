@@ -56,6 +56,8 @@ The look is **ink and copper**. Cool white surfaces and deep ink do the work; co
 | Make-up | as its status | arrow-counter-clockwise | "Make-up" tag |
 | Shared (several tutors) | as its status | users | "Shared" tag, all tutor names in the detail |
 | Paid / Open / Overdue | `success-subtle` / `surface-sunken` / `danger-subtle` | check / clock / warning | "Paid" / "Open" / "Overdue" |
+| Draft / Withdrawn (payment request) | `surface-sunken` | pencil / x | "Draft" / "Withdrawn" |
+| Void (receipt) | `surface-sunken` | prohibit | "Void" |
 | Invited (team member) | `surface-sunken` | hourglass | "Invited" |
 
 A clash warns; it never blocks saving.

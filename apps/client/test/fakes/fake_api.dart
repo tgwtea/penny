@@ -5,6 +5,7 @@ import 'package:http/testing.dart';
 import 'package:penny/data/api_connection.dart';
 import 'package:penny/data/api_settings.dart';
 
+import 'fake_billing_api.dart';
 import 'fake_scheduling_api.dart';
 
 /// A fake Penny API speaking the contract in api/openapi.yaml, kept in
@@ -21,6 +22,9 @@ class FakeApi {
   /// Teams created through the API, by ID, with their members as the
   /// members routes return them.
   final teams = <String, ({String name, List<Map<String, Object?>> members})>{};
+
+  /// Each team's reminder hours, when changed from the default 24.
+  final reminderHours = <String, int>{};
   int _seq = 0;
 
   /// Students, places, lessons, policies, series, the timetable and
@@ -56,6 +60,21 @@ class FakeApi {
     ],
   );
 
+  /// PayNow accounts, payment requests, receipts and the public payment
+  /// page (Phase 8 routes).
+  late final billing = FakeBillingApi(
+    scheduling: scheduling,
+    memberOf: scheduling.memberOf,
+    nameOf: scheduling.nameOf,
+  );
+
+  /// Unsubscribe links the fake knows, by token, with what they stop
+  /// (`lesson_reminders` or `payment_reminders`).
+  final unsubscribeLinks = <String, String>{};
+
+  /// Tokens whose emails were stopped.
+  final stopped = <String>{};
+
   /// Every request, for assertions: "GET /v1/me".
   final requests = <String>[];
 
@@ -80,6 +99,19 @@ class FakeApi {
     if (route == 'GET /v1/version') {
       return json({'version': '0.1.0', 'commit': '3f2c1a9'});
     }
+    final publicPayment = billing.handlePublic(request);
+    if (publicPayment != null) return publicPayment;
+    final segments = request.url.pathSegments;
+    if (segments.length == 3 && segments[1] == 'unsubscribe') {
+      final category = unsubscribeLinks[segments[2]];
+      if (category == null) return problem(404, 'urn:penny:problem:not-found');
+      if (request.method == 'POST') stopped.add(segments[2]);
+      return json({
+        'category': category,
+        'teamName': 'Koh Guitar Studio',
+        'maskedEmail': 'p***@example.com',
+      });
+    }
 
     final email = _emailFrom(request.headers['authorization']);
     if (email == null) {
@@ -87,6 +119,8 @@ class FakeApi {
     }
     final schedulingRoute = scheduling.handle(request, email);
     if (schedulingRoute != null) return schedulingRoute;
+    final billingRoute = billing.handle(request, email);
+    if (billingRoute != null) return billingRoute;
     final teamRoute = _teamRoute(request, email);
     if (teamRoute != null) return teamRoute;
     switch (route) {
@@ -132,7 +166,7 @@ class FakeApi {
     'id': id,
     'name': teams[id]!.name,
     'timezone': 'Asia/Singapore',
-    'reminderHours': 24,
+    'reminderHours': reminderHours[id] ?? 24,
     'memberCount': teams[id]!.members
         .where((m) => m['status'] == 'active')
         .length,
@@ -200,6 +234,17 @@ class FakeApi {
         'urn:penny:problem:forbidden',
         detail: 'Only the team owner can do this.',
       );
+    }
+    if (parts.length == 3 && request.method == 'PATCH') {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final hours = body['reminderHours'] as int?;
+      if (hours != null) {
+        if (hours < 0 || hours > 168) {
+          return problem(400, 'urn:penny:problem:validation');
+        }
+        reminderHours[parts[2]] = hours;
+      }
+      return json(_workspace(parts[2]));
     }
     if (parts.length == 4 && parts[3] == 'members') {
       if (request.method == 'GET') {

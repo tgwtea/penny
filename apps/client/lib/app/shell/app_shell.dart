@@ -30,9 +30,7 @@ class AppShell extends ConsumerWidget {
     if (session is! SignedIn) return child;
 
     final destinations = destinationsFor(session);
-    final selected = destinations.indexWhere(
-      (d) => location == d.path || location.startsWith('${d.path}/'),
-    );
+    final selected = destinations.indexWhere((d) => d.contains(location));
     void go(int index) => context.go(destinations[index].path);
     void openAccount() => context.go(Routes.account);
     final membership = session.activeMembership;

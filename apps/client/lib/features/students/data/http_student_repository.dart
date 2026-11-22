@@ -195,6 +195,7 @@ class HttpStudentRepository implements StudentRepository {
         phone: blank(d.phone),
         receivesReminders: d.receivesReminders,
         receivesBilling: d.receivesBilling,
+        receivesPaymentReminders: d.receivesPaymentReminders,
       ),
       detail: 'Check the contact\'s name, email and phone number.',
     );
@@ -232,6 +233,7 @@ class HttpStudentRepository implements StudentRepository {
     },
     receivesReminders: c.receivesReminders,
     receivesBilling: c.receivesBilling,
+    receivesPaymentReminders: c.receivesPaymentReminders ?? true,
   );
 
   static Goal _goal(api.Goal g) => Goal(

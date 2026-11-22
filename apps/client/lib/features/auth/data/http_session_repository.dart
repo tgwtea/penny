@@ -194,6 +194,7 @@ TeamMembership _membership(api.Membership m) => TeamMembership(
     name: m.workspace.name,
     timezone: m.workspace.timezone,
     memberCount: m.workspace.memberCount,
+    reminderHours: m.workspace.reminderHours,
   ),
   role: switch (m.role) {
     api.MembershipRole.owner => TeamRole.owner,
