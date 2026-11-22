@@ -8,6 +8,9 @@ import 'package:penny/features/auth/data/http_session_repository.dart';
 import 'package:penny/demo/demo_store.dart';
 import 'package:penny/features/system/data/http_server_info_repository.dart';
 import 'package:penny/demo/demo_scheduling.dart';
+import 'package:penny/demo/demo_series.dart';
+import 'package:penny/features/lessons/data/http_series_repository.dart';
+import 'package:penny/features/timetable/data/http_timetable_repository.dart';
 import 'package:penny/features/lessons/data/http_lesson_repository.dart';
 import 'package:penny/features/students/data/http_student_repository.dart';
 import 'package:penny/features/team/data/http_team_repository.dart';
@@ -68,13 +71,18 @@ Future<StudentFixture> demoStudents() async => (
 
 Future<LessonFixture> demoLessons() async {
   final session = _demoOwner();
+  final lessons = DemoLessonRepository(session);
   return (
-    lessons: DemoLessonRepository(session),
+    lessons: lessons,
     locations: DemoLocationRepository(session),
     policies: DemoPolicyRepository(session),
     students: DemoStudentRepository(session),
+    series: DemoSeriesRepository(session, lessons),
+    timetable: DemoTimetableRepository(session, lessons),
+    feeds: DemoCalendarFeedRepository(session),
     teamId: DemoStore.studioId,
     tutorId: demoId('b1'),
+    otherTutorId: demoId('b2'),
   );
 }
 
@@ -98,16 +106,22 @@ Future<LessonFixture> httpLessons() async {
   final connection = api.connection(
     idToken: () async => 'token-daniel@example.com-0',
   );
-  final teamId = await HttpTeamRepository(
-    connection,
-  ).createTeam(name: 'Koh Guitar Studio');
+  final teams = HttpTeamRepository(connection);
+  final teamId = await teams.createTeam(name: 'Koh Guitar Studio');
+  await teams.addTeacher(teamId, name: 'Mei', email: 'meilin@example.com');
+  api.signIn('meilin@example.com');
+  final members = api.teams[teamId]!.members;
   return (
     lessons: HttpLessonRepository(connection),
     locations: HttpLocationRepository(connection),
     policies: HttpPolicyRepository(connection),
     students: HttpStudentRepository(connection),
+    series: HttpSeriesRepository(connection),
+    timetable: HttpTimetableRepository(connection),
+    feeds: HttpCalendarFeedRepository(connection),
     teamId: teamId,
-    tutorId: api.teams[teamId]!.members.first['id']! as String,
+    tutorId: members.first['id']! as String,
+    otherTutorId: members.last['id']! as String,
   );
 }
 

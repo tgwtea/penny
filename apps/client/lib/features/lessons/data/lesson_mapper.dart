@@ -3,6 +3,7 @@ import 'package:penny_api/api.dart' as api;
 import '../domain/lesson.dart';
 import '../domain/location.dart';
 import '../domain/policy.dart';
+import '../domain/series.dart';
 
 /// Converts the contract's lesson types to the domain's and back. Generated
 /// types never leave `data/` (ADR 012).
@@ -51,6 +52,7 @@ abstract final class LessonMapper {
     billable: l.billable,
     makeupForLessonId: l.makeupForLessonId,
     makeupLessonId: l.makeupLessonId,
+    seriesId: l.seriesId,
     cancellation: l.cancellation == null
         ? null
         : Cancellation(
@@ -91,6 +93,50 @@ abstract final class LessonMapper {
           ),
     version: l.version,
   );
+
+  /// A series from the API.
+  static Series series(api.Series s) => Series(
+    id: s.id,
+    startsOn: s.startsOn.toUtcDateTime(),
+    startTime: s.startTime,
+    durationMinutes: s.durationMinutes,
+    recurrence: s.recurrence,
+    timezone: s.timezone,
+    until: s.until?.toUtcDateTime(),
+    tutors: [for (final t in s.tutors) tutor(t)],
+    students: [
+      for (final st in s.students)
+        LessonStudent(studentId: st.studentId, name: st.name),
+    ],
+    place: s.location == null ? null : place(s.location!),
+    title: s.title ?? '',
+    feeCents: s.feeCents,
+    currency: s.currency,
+    bookedUntil: s.bookedUntil.toUtcDateTime(),
+    version: s.version,
+  );
+
+  /// A tutor from the API.
+  static LessonTutor tutor(api.LessonTutor t) => LessonTutor(
+    membershipId: t.membershipId,
+    name: t.displayName,
+    role: t.role == api.TutorRole.lead ? TutorRole.lead : TutorRole.assisting,
+  );
+
+  /// Where a lesson or series is, from the API.
+  static LessonPlace place(api.LessonLocation l) => LessonPlace(
+    locationId: l.locationId,
+    kind: locationKind(l.kind),
+    name: l.name,
+    address: l.address ?? '',
+    meetingUrl: l.meetingUrl ?? '',
+  );
+
+  /// A calendar date (UTC midnight) for the API.
+  static api.Date date(DateTime d) => api.Date(d.year, d.month, d.day);
+
+  /// The If-Match value for [series]: its version, quoted.
+  static String seriesIfMatch(Series series) => '"${series.version}"';
 
   /// A lesson item from the API.
   static LessonItem item(api.LessonItem i) => LessonItem(

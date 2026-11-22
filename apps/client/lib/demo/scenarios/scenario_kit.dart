@@ -1,6 +1,7 @@
 import '../../core/team_time.dart';
 import '../../features/lessons/domain/lesson.dart';
 import '../../features/lessons/domain/location.dart';
+import '../../features/lessons/domain/series.dart';
 import '../../features/students/domain/student.dart';
 import '../demo_schedule.dart';
 
@@ -158,6 +159,36 @@ class ScenarioKit {
     if (wanted == LessonStatus.completed) markDone(lesson);
     if (wanted == LessonStatus.noShow) markNoShow(lesson);
     return lesson;
+  }
+
+  /// Makes [lessons], one a week at the same time, the first occurrences
+  /// of a weekly series that has booked them so far.
+  DemoSeries weekly(List<DemoLesson> lessons) {
+    final first = lessons.first;
+    final day = time.dateOf(first.startsAt);
+    final wall = time.wallClock(first.startsAt);
+    final series = DemoSeries(
+      id: schedule.nextId('s'),
+      teamId: teamId,
+      startsOn: day,
+      startMinute: wall.hour * 60 + wall.minute,
+      durationMinutes: first.endsAt.difference(first.startsAt).inMinutes,
+      recurrence: Recurrence.weekly({day.weekday}),
+      timezone: time.timezone,
+      tutors: [...first.tutors],
+      studentIds: [...first.studentIds],
+      place: first.place,
+      title: first.title,
+      feeCents: first.feeCents,
+      bookedUntil: time.dateOf(lessons.last.startsAt),
+    );
+    schedule.series[series.id] = series;
+    for (final l in lessons) {
+      l
+        ..seriesId = series.id
+        ..seriesDate = time.dateOf(l.startsAt);
+    }
+    return series;
   }
 
   /// Marks [l] done by its lead tutor at its end.
