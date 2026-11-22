@@ -56,6 +56,33 @@ func (w *bookAheadWorker) Work(ctx context.Context, _ *river.Job[BookAheadArgs])
 	return err
 }
 
+// PaymentRemindersEvery is how often the worker looks for overdue requests
+// to chase. Each is chased at most once a notify.PaymentReminderEvery.
+const PaymentRemindersEvery = time.Hour
+
+// PaymentRemindersArgs queues reminders for overdue payment requests.
+type PaymentRemindersArgs struct{}
+
+// Kind names the job in River's table.
+func (PaymentRemindersArgs) Kind() string { return "payment_reminders" }
+
+// InsertOpts makes the job unique within its period.
+func (PaymentRemindersArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{UniqueOpts: river.UniqueOpts{ByPeriod: PaymentRemindersEvery}}
+}
+
+type paymentRemindersWorker struct {
+	river.WorkerDefaults[PaymentRemindersArgs]
+	services *app.Services
+	logger   *slog.Logger
+}
+
+func (w *paymentRemindersWorker) Work(ctx context.Context, _ *river.Job[PaymentRemindersArgs]) error {
+	queued, err := w.services.Notify.QueuePaymentReminders(ctx)
+	w.logger.InfoContext(ctx, "queued payment reminders", slog.Int("requests", queued))
+	return err
+}
+
 type lessonReminderWorker struct {
 	river.WorkerDefaults[notify.LessonReminderArgs]
 	services *app.Services
@@ -74,12 +101,53 @@ func (w *invitationWorker) Work(ctx context.Context, job *river.Job[notify.Invit
 	return w.services.Notify.SendInvitation(ctx, job.Args)
 }
 
+type paymentRequestWorker struct {
+	river.WorkerDefaults[notify.PaymentRequestArgs]
+	services *app.Services
+}
+
+func (w *paymentRequestWorker) Work(ctx context.Context, job *river.Job[notify.PaymentRequestArgs]) error {
+	return w.services.Notify.SendPaymentRequest(ctx, job.Args)
+}
+
+type payerConfirmedWorker struct {
+	river.WorkerDefaults[notify.PayerConfirmedArgs]
+	services *app.Services
+}
+
+func (w *payerConfirmedWorker) Work(ctx context.Context, job *river.Job[notify.PayerConfirmedArgs]) error {
+	return w.services.Notify.SendPayerConfirmed(ctx, job.Args)
+}
+
+type receiptWorker struct {
+	river.WorkerDefaults[notify.ReceiptArgs]
+	services *app.Services
+}
+
+func (w *receiptWorker) Work(ctx context.Context, job *river.Job[notify.ReceiptArgs]) error {
+	return w.services.Notify.SendReceipt(ctx, job.Args)
+}
+
+type paymentReminderWorker struct {
+	river.WorkerDefaults[notify.PaymentReminderArgs]
+	services *app.Services
+}
+
+func (w *paymentReminderWorker) Work(ctx context.Context, job *river.Job[notify.PaymentReminderArgs]) error {
+	return w.services.Notify.SendPaymentReminder(ctx, job.Args)
+}
+
 // Workers registers how to run every job.
 func Workers(services *app.Services, logger *slog.Logger) *river.Workers {
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &bookAheadWorker{services: services, logger: logger})
 	river.AddWorker(workers, &lessonReminderWorker{services: services})
 	river.AddWorker(workers, &invitationWorker{services: services})
+	river.AddWorker(workers, &paymentRemindersWorker{services: services, logger: logger})
+	river.AddWorker(workers, &paymentRequestWorker{services: services})
+	river.AddWorker(workers, &payerConfirmedWorker{services: services})
+	river.AddWorker(workers, &receiptWorker{services: services})
+	river.AddWorker(workers, &paymentReminderWorker{services: services})
 	return workers
 }
 
@@ -97,6 +165,11 @@ func NewWorkerClient(pool *pgxpool.Pool, services *app.Services, logger *slog.Lo
 				river.PeriodicInterval(BookAheadEvery),
 				func() (river.JobArgs, *river.InsertOpts) { return BookAheadArgs{}, nil },
 				&river.PeriodicJobOpts{ID: "book_ahead", RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(PaymentRemindersEvery),
+				func() (river.JobArgs, *river.InsertOpts) { return PaymentRemindersArgs{}, nil },
+				&river.PeriodicJobOpts{ID: "payment_reminders", RunOnStart: true},
 			),
 		},
 	})

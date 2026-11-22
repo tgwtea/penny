@@ -1,0 +1,13 @@
+{
+  "name": "a payee's test code: no amount, editable, no reference",
+  "input": {
+    "proxyType": "mobile",
+    "proxy": "+6581234567",
+    "amountCents": 0,
+    "editable": true,
+    "expiry": "",
+    "merchantName": "Priya Shah",
+    "reference": ""
+  },
+  "payload": "00020101021226380009SG.PAYNOW010100211+6581234567030115204000053037025802SG5910Priya Shah6009Singapore6304EDA0"
+}

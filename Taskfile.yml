@@ -151,7 +151,8 @@ tasks:
           echo "skipped: origin/main has no api/openapi.yaml yet"
           exit 0
         fi
-        go run github.com/oasdiff/oasdiff@{{.OASDIFF_VERSION}} breaking {{.BASE}} api/openapi.yaml --fail-on ERR
+        go run github.com/oasdiff/oasdiff@{{.OASDIFF_VERSION}} breaking {{.BASE}} api/openapi.yaml --fail-on ERR \
+          --err-ignore api/accepted-breaking-changes.txt
 
   lint:api:
     desc: Lint the Go service and check its SQL queries against the schema

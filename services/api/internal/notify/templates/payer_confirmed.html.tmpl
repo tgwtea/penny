@@ -1,0 +1,5 @@
+{{define "subject"}}{{if .Closed}}{{.Reference}} is paid{{else}}{{.StudentFirstName}}'s parent says they paid {{.Reference}}{{end}}{{end}}
+{{define "body"}}<p style="margin:0 0 16px;">Hi {{.PayeeName}},</p>
+{{if .Closed}}<p style="margin:0 0 16px;">{{.StudentFirstName}}'s parent confirmed they paid <strong>{{.Amount}}</strong> for {{.Reference}}. You had confirmed it arrived, so the request is paid{{if .ReceiptNumber}} and receipt {{.ReceiptNumber}} is on its way to them{{end}}.</p>{{else}}<p style="margin:0 0 16px;">{{.StudentFirstName}}'s parent says they paid <strong>{{.Amount}}</strong> for {{.Reference}}.</p>
+<p style="margin:0 0 16px;">Check that the money arrived with the reference <strong>{{.Reference}}</strong>, then record it in Penny. The request closes and the receipt goes out when you do.</p>{{end}}
+<p style="margin:0;"><a href="{{.RequestURL}}" style="display:inline-block;padding:12px 20px;background:#1C2B3A;color:#FFFFFF;border-radius:8px;text-decoration:none;font-weight:600;">Open the request</a></p>{{end}}

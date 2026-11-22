@@ -3,6 +3,7 @@ package notify
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,6 +49,13 @@ type postmarkMessage struct {
 	Tag           string           `json:"Tag"`
 	MessageStream string           `json:"MessageStream"`
 	Headers       []postmarkHeader `json:"Headers,omitempty"`
+	Attachments   []postmarkFile   `json:"Attachments,omitempty"`
+}
+
+type postmarkFile struct {
+	Name        string `json:"Name"`
+	Content     string `json:"Content"`
+	ContentType string `json:"ContentType"`
 }
 
 type postmarkResult struct {
@@ -67,6 +75,9 @@ func (m *PostmarkMailer) Send(ctx context.Context, msg Message) (string, error) 
 			{Name: "List-Unsubscribe", Value: "<" + msg.Unsubscribe + ">"},
 			{Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click"},
 		}
+	}
+	for _, a := range msg.Attachments {
+		pm.Attachments = append(pm.Attachments, postmarkFile{Name: a.Filename, Content: base64.StdEncoding.EncodeToString(a.Content), ContentType: a.ContentType})
 	}
 	body, err := json.Marshal(pm)
 	if err != nil {

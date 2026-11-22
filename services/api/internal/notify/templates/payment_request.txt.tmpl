@@ -1,0 +1,22 @@
+{{define "subject"}}Payment request from {{.PayeeName}}: {{.Amount}} for {{.StudentFirstName}}'s lessons{{end}}
+{{define "text"}}Hi {{.ContactName}},
+
+{{.PayeeName}} asks for {{.Amount}} for {{.StudentFirstName}}'s lessons, by {{.DueDate}}.
+{{range .Lines}}
+- {{.Description}}: {{.Amount}}{{end}}
+
+Total: {{.Amount}}
+{{if .Note}}
+Note: {{.Note}}
+{{end}}
+Pay with PayNow: open this link and scan the code, or copy its details into your banking app. Use the reference {{.Reference}} so the payment is matched.
+{{.PayURL}}
+
+When you have paid, tap "I've paid" on that page. The request closes, and you get a receipt, once {{.PayeeName}} confirms the money arrived too.
+{{if .CoTaught}}
+A lesson here was shared by several tutors. {{.PayeeName}}, the lead tutor, bills it.
+{{end}}{{if .Policy}}
+Cancellation policy: {{.Policy}}
+{{end}}
+{{.TeamName}}, via Penny.
+{{end}}

@@ -1,0 +1,22 @@
+Hi Priya,
+
+Mei Lin Tan asks for S$ 138.90 for Arjun's lessons, by Thursday 26 November.
+
+- Guitar, Grade 5, Tue 10 Nov 2026: S$ 60.00
+- Guitar, Grade 5, Tue 17 Nov 2026 (missed): S$ 60.00
+- Grade 5 theory book: S$ 18.90
+
+Total: S$ 138.90
+
+Note: Thank you for a lovely term.
+
+Pay with PayNow: open this link and scan the code, or copy its details into your banking app. Use the reference PNY-7K3Q9X so the payment is matched.
+http://localhost:5173/pay/token
+
+When you have paid, tap "I've paid" on that page. The request closes, and you get a receipt, once Mei Lin Tan confirms the money arrived too.
+
+A lesson here was shared by several tutors. Mei Lin Tan, the lead tutor, bills it.
+
+Cancellation policy: Cancel at least 24 hours before the lesson. Missed lessons are charged; late cancellations are not.
+
+Koh Guitar Studio, via Penny.

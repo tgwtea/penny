@@ -129,3 +129,18 @@ JOIN lesson_participants b
 JOIN students s ON s.workspace_id = a.workspace_id AND s.id = a.student_id
 WHERE a.workspace_id = @workspace_id AND a.lesson_id = ANY(@lesson_ids::uuid[]) AND a.active
 ORDER BY a.lesson_id, other_starts_at, b.lesson_id;
+
+-- name: BillableLessons :many
+-- Billable lessons with their lead tutor, filtered by student, lead or IDs.
+-- Billing removes those already on a live request.
+SELECT l.id, l.starts_at, l.title, l.status, l.fee_cents, l.currency, t.membership_id AS lead_id,
+       (SELECT count(*) FROM lesson_tutors t2 WHERE t2.lesson_id = l.id)::int AS tutor_count
+FROM lessons l
+JOIN lesson_tutors t ON t.lesson_id = l.id AND t.role = 'lead'
+WHERE l.workspace_id = @workspace_id AND l.billable
+  AND (sqlc.narg('student')::uuid IS NULL OR EXISTS (
+       SELECT 1 FROM lesson_participants p WHERE p.lesson_id = l.id AND p.student_id = sqlc.narg('student')))
+  AND (sqlc.narg('lead')::uuid IS NULL OR t.membership_id = sqlc.narg('lead'))
+  AND (sqlc.narg('ids')::uuid[] IS NULL OR l.id = ANY(sqlc.narg('ids')::uuid[]))
+ORDER BY l.starts_at, l.id
+LIMIT 500;

@@ -86,3 +86,11 @@ sql:
         <<: *go
         package: notifysql
         out: internal/notify/notifysql
+  - engine: postgresql
+    schema: db/migrations
+    queries: db/queries/billing
+    gen:
+      go:
+        <<: *go
+        package: billingsql
+        out: internal/billing/billingsql

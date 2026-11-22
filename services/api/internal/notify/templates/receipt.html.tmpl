@@ -1,0 +1,5 @@
+{{define "subject"}}Receipt {{.Number}} from {{.PayeeName}}: {{.Amount}}{{end}}
+{{define "body"}}<p style="margin:0 0 16px;">Hi {{.ContactName}},</p>
+<p style="margin:0 0 16px;">Thank you. {{.PayeeName}} and you both confirmed the payment of <strong>{{.Amount}}</strong> for {{.StudentFirstName}}'s lessons ({{.Reference}}), received on {{.PaidOn}}. Receipt <strong>{{.Number}}</strong> is attached.</p>
+{{if .Replaces}}<p style="margin:0 0 16px;">This receipt replaces {{.Replaces}}, which was voided. Keep this one.</p>{{end}}
+<p style="margin:0;font-size:12px;color:#5B6B7B;word-break:break-all;">SHA-256 of the attached PDF: {{.SHA256}}</p>{{end}}

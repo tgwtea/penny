@@ -35,6 +35,8 @@ tags:
     description: Lessons, where they happen, what happens in them, and cancellation policies.
   - name: notifications
     description: The emails Penny sends, and how people stop them.
+  - name: payments
+    description: PayNow payment requests, payments and receipts. Penny never moves money.
 
 paths:
   /livez:
@@ -1006,7 +1008,8 @@ paths:
       description: |
         Owners may reopen any lesson; the tutor who marked a lesson done or
         no-show may reopen it, which is how Undo works. Refused with 409
-        once a receipt covers the lesson.
+        while a payment request covers the lesson: withdraw the request, or
+        void its receipt, first.
       responses:
         "200":
           description: The scheduled lesson.
@@ -1510,6 +1513,485 @@ paths:
         default:
           $ref: "#/components/responses/Problem"
 
+  /v1/workspaces/{workspaceId}/members/{memberId}/payee-account:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getPayeeAccount
+      tags: [payments]
+      summary: Where a tutor receives PayNow
+      description: The tutor themselves, or an owner.
+      responses:
+        "200":
+          description: The account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayeeAccount"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: setPayeeAccount
+      tags: [payments]
+      summary: Set where a tutor receives PayNow
+      description: |
+        The tutor themselves, or an owner. Changing the proxy clears
+        `verified`: the tutor scans the new test code before any parent sees it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayeeAccountInput"
+      responses:
+        "200":
+          description: The account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayeeAccount"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/members/{memberId}/payee-account/verify:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/MemberId"
+    post:
+      operationId: verifyPayeeAccount
+      tags: [payments]
+      summary: Confirm the test code showed the right recipient
+      description: |
+        The tutor scanned `testPayload` in their own banking app and saw their
+        registered name. Only verified accounts can receive payment requests.
+      responses:
+        "200":
+          description: The verified account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayeeAccount"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/billable-lessons:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listBillableLessons
+      tags: [payments]
+      summary: Billable lessons not yet on a payment request
+      description: |
+        Done lessons, and no-shows and late cancellations the lead tutor's
+        policy bills, that no open or paid request covers. Owners see every
+        payee's; teachers only lessons they lead.
+      parameters:
+        - name: studentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: payeeId
+          in: query
+          description: Only lessons this membership leads.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lessons, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillableLessonList"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/payment-requests:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listPaymentRequests
+      tags: [payments]
+      summary: List payment requests
+      description: Owners see every request; teachers those they are the payee of.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/PaymentRequestStatus"
+        - name: studentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Requests, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequestList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createPaymentRequest
+      tags: [payments]
+      summary: Ask for payment
+      description: |
+        Owners for any payee, teachers for themselves (ADR 024). The payee
+        needs a verified PayNow account. Lesson lines take the lesson's fee and
+        must be billable and led by the payee (ADR 018). If the payee sends
+        automatically, the request is sent at once; otherwise it is a draft.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequestInput"
+      responses:
+        "201":
+          description: The request, and its link if it was sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequestWithLink"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/payment-requests/{requestId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/RequestId"
+    get:
+      operationId: getPaymentRequest
+      tags: [payments]
+      summary: Get a payment request with what it covers and its confirmations
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequest"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/payment-requests/{requestId}/send:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: sendPaymentRequest
+      tags: [payments]
+      summary: Send a draft, or send an open request again
+      description: |
+        Emails the student's billing contacts a fresh link. Any earlier link
+        stops working: Penny keeps only a hash of the current one.
+      responses:
+        "200":
+          description: The request and its new link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequestWithLink"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/payment-requests/{requestId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: cancelPaymentRequest
+      tags: [payments]
+      summary: Withdraw a request that is not paid
+      description: Its link stops working and its lessons can be billed again.
+      responses:
+        "200":
+          description: The cancelled request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequest"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/payment-requests/{requestId}/payment:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/RequestId"
+    post:
+      operationId: recordPayment
+      tags: [payments]
+      summary: Confirm the money arrived
+      description: |
+        The payee, or an owner, records what their bank shows. When the parent
+        has confirmed too, the request is paid and the receipt is issued and
+        emailed (ADR 024).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "200":
+          description: The request with its payment, and its receipt if both have confirmed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentRequest"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/receipts:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+    get:
+      operationId: listReceipts
+      tags: [payments]
+      summary: List receipts
+      description: Owners see every receipt; teachers those they issued as payee.
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Receipts, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiptList"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/receipts/{receiptId}:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ReceiptId"
+    get:
+      operationId: getReceipt
+      tags: [payments]
+      summary: Get a receipt and everything it traces back to
+      responses:
+        "200":
+          description: The receipt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/receipts/{receiptId}/pdf:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ReceiptId"
+    get:
+      operationId: getReceiptPdf
+      tags: [payments]
+      summary: The receipt as a PDF
+      description: |
+        Rendered the same way every time from the receipt's record; its SHA-256
+        matches the receipt's `contentSha256`, so a copy can be shown to be
+        unaltered.
+      responses:
+        "200":
+          description: The PDF.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/workspaces/{workspaceId}/receipts/{receiptId}/void:
+    parameters:
+      - $ref: "#/components/parameters/WorkspaceId"
+      - $ref: "#/components/parameters/ReceiptId"
+    post:
+      operationId: voidReceipt
+      tags: [payments]
+      summary: Void a receipt, optionally issuing a corrected one
+      description: |
+        The payee or an owner. Receipts are never edited: a correction voids
+        this one with a reason and issues a new one that references it.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoidReceiptInput"
+      responses:
+        "200":
+          description: The voided receipt, with `replacedByReceiptId` if a correction was issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Receipt"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/pay/{token}:
+    parameters:
+      - $ref: "#/components/parameters/PayToken"
+    get:
+      operationId: getPublicPaymentRequest
+      tags: [payments]
+      summary: The public payment page's data
+      description: |
+        Anyone with the link. Shows the payee, what is owed and the PayNow
+        code, and no more about the student than a first name.
+      security: []
+      responses:
+        "200":
+          description: The request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPaymentRequest"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
+  /v1/pay/{token}/paid:
+    parameters:
+      - $ref: "#/components/parameters/PayToken"
+    post:
+      operationId: confirmPaidByPayer
+      tags: [payments]
+      summary: The payer says they have paid
+      description: |
+        Records the parent's confirmation and tells the payee. When the payee
+        has confirmed the money too, the request is paid and the receipt is
+        issued (ADR 024).
+      security: []
+      responses:
+        "200":
+          description: The request as the payer now sees it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPaymentRequest"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+
 components:
   securitySchemes:
     firebaseIdToken:
@@ -1571,6 +2053,40 @@ components:
       schema:
         type: string
         format: uuid
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ReceiptId:
+      name: receiptId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PayToken:
+      name: token
+      in: path
+      required: true
+      description: The secret part of a payment link.
+      schema:
+        type: string
+        maxLength: 100
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        A unique value per intended change, such as a UUID made when the form
+        opened. Retrying with the same key returns the first result instead of
+        doing it twice.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 100
     SeriesId:
       name: seriesId
       in: path
@@ -2802,6 +3318,457 @@ components:
           type: string
           description: The address, partly hidden, such as p***@example.com.
 
+    ProxyType:
+      type: string
+      description: How a PayNow account is addressed.
+      enum: [mobile, uen]
+
+    PayeeAccount:
+      type: object
+      required: [membershipId, proxyType, proxyValue, displayName, sendAutomatically, verified, testPayload]
+      properties:
+        membershipId:
+          type: string
+          format: uuid
+        proxyType:
+          $ref: "#/components/schemas/ProxyType"
+        proxyValue:
+          type: string
+          example: "+6591234567"
+        displayName:
+          type: string
+          description: Shown to payers and in the QR code, at most 25 characters.
+        sendAutomatically:
+          type: boolean
+          description: Send new requests at once instead of keeping them as drafts.
+        verified:
+          type: boolean
+        verifiedAt:
+          type: string
+          format: date-time
+        testPayload:
+          type: string
+          description: A PayNow code with no amount, to scan in the tutor's own banking app.
+
+    PayeeAccountInput:
+      type: object
+      required: [proxyType, proxyValue, displayName]
+      properties:
+        proxyType:
+          $ref: "#/components/schemas/ProxyType"
+        proxyValue:
+          type: string
+          maxLength: 20
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 25
+        sendAutomatically:
+          type: boolean
+          default: false
+
+    BillableLesson:
+      type: object
+      required: [lessonId, startsAt, status, students, feeCents, currency, payee]
+      properties:
+        lessonId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/LessonStatus"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/LessonStudent"
+        feeCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        payee:
+          $ref: "#/components/schemas/MemberRef"
+        coTaught:
+          type: boolean
+          description: Several tutors taught it; the lead bills and the split is arranged outside Penny.
+
+    BillableLessonList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BillableLesson"
+        nextCursor:
+          type: string
+
+    PaymentRequestStatus:
+      type: string
+      enum: [draft, open, paid, cancelled]
+
+    WaitingFor:
+      type: string
+      description: Who still has to confirm before an open request is paid.
+      enum: [both, payee, payer]
+
+    PaymentMethod:
+      type: string
+      enum: [paynow, bank_transfer, cash, other]
+
+    StudentRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    PaymentRequestSummary:
+      type: object
+      required: [id, reference, student, payee, amountCents, currency, dueOn, status, overdue, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reference:
+          type: string
+          example: PNY-7K3Q9X
+        student:
+          $ref: "#/components/schemas/StudentRef"
+        payee:
+          $ref: "#/components/schemas/MemberRef"
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        dueOn:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/PaymentRequestStatus"
+        waitingFor:
+          $ref: "#/components/schemas/WaitingFor"
+        overdue:
+          type: boolean
+          description: Open and past its due day in the team's timezone.
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentRequestList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentRequestSummary"
+        nextCursor:
+          type: string
+
+    PaymentRequestLine:
+      type: object
+      required: [description, amountCents]
+      properties:
+        lessonId:
+          type: string
+          format: uuid
+        description:
+          type: string
+          example: Guitar lesson, Thu 19 Nov
+        amountCents:
+          type: integer
+          format: int64
+
+    PaymentRecord:
+      type: object
+      required: [amountCents, paidOn, method, recordedBy, recordedAt]
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+        paidOn:
+          type: string
+          format: date
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+        recordedBy:
+          type: string
+          description: Who confirmed it.
+        recordedAt:
+          type: string
+          format: date-time
+
+    ReceiptRef:
+      type: object
+      required: [id, number, voided]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+          example: R-0042
+        voided:
+          type: boolean
+
+    PaymentRequest:
+      allOf:
+        - $ref: "#/components/schemas/PaymentRequestSummary"
+        - type: object
+          required: [lines, coTaught]
+          properties:
+            lines:
+              type: array
+              items:
+                $ref: "#/components/schemas/PaymentRequestLine"
+            note:
+              type: string
+            sentAt:
+              type: string
+              format: date-time
+            payerConfirmedAt:
+              type: string
+              format: date-time
+            payment:
+              $ref: "#/components/schemas/PaymentRecord"
+            receipt:
+              $ref: "#/components/schemas/ReceiptRef"
+            coTaught:
+              type: boolean
+              description: A line is a lesson several tutors taught; the payee bills it whole (ADR 018).
+
+    PaymentRequestWithLink:
+      type: object
+      required: [request]
+      properties:
+        request:
+          $ref: "#/components/schemas/PaymentRequest"
+        link:
+          type: string
+          description: The payment page. Shown only now; Penny keeps a hash of it.
+
+    ExtraLine:
+      type: object
+      required: [description, amountCents]
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+
+    PaymentRequestInput:
+      type: object
+      required: [studentId, payeeId, dueOn]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        payeeId:
+          type: string
+          format: uuid
+        dueOn:
+          type: string
+          format: date
+        lessonIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+        extraLines:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/ExtraLine"
+        note:
+          type: string
+          maxLength: 500
+
+    PaymentInput:
+      type: object
+      required: [amountCents, paidOn, method]
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        paidOn:
+          type: string
+          format: date
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+
+    Voided:
+      type: object
+      required: [at, reason, by]
+      properties:
+        at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        by:
+          type: string
+
+    Receipt:
+      type: object
+      required: [id, number, issuedAt, amountCents, currency, paidOn, method, payee, student, request, lines, contentSha256]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+          description: Sequential and gapless within the team.
+          example: R-0042
+        issuedAt:
+          type: string
+          format: date-time
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        paidOn:
+          type: string
+          format: date
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
+        payee:
+          $ref: "#/components/schemas/MemberRef"
+        student:
+          $ref: "#/components/schemas/StudentRef"
+        request:
+          type: object
+          required: [id, reference]
+          properties:
+            id:
+              type: string
+              format: uuid
+            reference:
+              type: string
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaymentRequestLine"
+        contentSha256:
+          type: string
+          description: Hex SHA-256 of the receipt's PDF.
+        voided:
+          $ref: "#/components/schemas/Voided"
+        replacesReceiptId:
+          type: string
+          format: uuid
+        replacedByReceiptId:
+          type: string
+          format: uuid
+
+    ReceiptSummary:
+      type: object
+      required: [id, number, issuedAt, amountCents, currency, student, payee, voided]
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        student:
+          $ref: "#/components/schemas/StudentRef"
+        payee:
+          $ref: "#/components/schemas/MemberRef"
+        voided:
+          type: boolean
+
+    ReceiptList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReceiptSummary"
+        nextCursor:
+          type: string
+
+    VoidReceiptInput:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        correction:
+          $ref: "#/components/schemas/PaymentInput"
+
+    PublicPaymentLine:
+      type: object
+      required: [description, amountCents]
+      properties:
+        description:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+
+    PublicPaymentRequest:
+      type: object
+      required: [teamName, payeeName, studentFirstName, amountCents, currency, reference, dueOn, lines, status, payerConfirmed, coTaught]
+      properties:
+        teamName:
+          type: string
+        payeeName:
+          type: string
+        studentFirstName:
+          type: string
+        amountCents:
+          type: integer
+          format: int64
+        currency:
+          type: string
+        reference:
+          type: string
+        dueOn:
+          type: string
+          format: date
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPaymentLine"
+        status:
+          $ref: "#/components/schemas/PaymentRequestStatus"
+        payerConfirmed:
+          type: boolean
+        paynowPayload:
+          type: string
+          description: The PayNow QR code's content. Absent once paid or cancelled.
+        coTaught:
+          type: boolean
+        cancellationPolicy:
+          type: string
+          description: The payee's cancellation policy, in their words.
+
     MembershipRole:
       type: string
       description: Student and parent are reserved and carry no capabilities yet.
@@ -2821,6 +3788,7 @@ components:
         - manage_students
         - view_own_students
         - manage_payments
+        - manage_own_payments
 
 security:
   - firebaseIdToken: []

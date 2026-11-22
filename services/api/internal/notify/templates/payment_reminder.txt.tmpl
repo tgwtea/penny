@@ -1,0 +1,15 @@
+{{define "subject"}}Reminder: {{.Amount}} for {{.StudentFirstName}}'s lessons was due {{.DueDate}}{{end}}
+{{define "text"}}Hi {{.ContactName}},
+
+{{.PayeeName}}'s request for {{.Amount}} for {{.StudentFirstName}}'s lessons was due on {{.DueDate}} and is not marked paid yet.
+{{range .Lines}}
+- {{.Description}}: {{.Amount}}{{end}}
+
+Pay with PayNow using the reference {{.Reference}}:
+{{.PayURL}}
+
+If you have paid already, tap "I've paid" on that page and these reminders stop.
+
+{{.TeamName}}, via Penny.{{if .UnsubscribeURL}}
+{{.UnsubscribeText}}: {{.UnsubscribeURL}}{{end}}
+{{end}}

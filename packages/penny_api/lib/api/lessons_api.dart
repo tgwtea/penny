@@ -450,7 +450,8 @@ class LessonsApi {
   /// Put a done, no-show or cancelled lesson back to scheduled
   /// Owners may reopen any lesson; the tutor who marked a lesson done or
   /// no-show may reopen it, which is how Undo works. Refused with 409
-  /// once a receipt covers the lesson.
+  /// while a payment request covers the lesson: withdraw the request, or
+  /// void its receipt, first.
   Future<Lesson> reopenLesson(
     String workspaceId,
     String lessonId,

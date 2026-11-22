@@ -104,3 +104,26 @@ func TestCancellationPolicyRules(t *testing.T) {
 		t.Errorf("teacher setting another's policy: %s, want forbidden", got)
 	}
 }
+
+func TestPaymentRules(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"owner bills for any payee", ManagePaymentsFor(owner, teacherM), "allowed"},
+		{"teacher bills for herself", ManagePaymentsFor(teacher, teacherM), "allowed"},
+		{"teacher cannot touch another payee's requests", ManagePaymentsFor(teacher, ownerM), "hidden"},
+		{"reserved roles cannot bill", ManagePaymentsFor(student, student.MembershipID), "forbidden"},
+		{"teachers see payments", SeePayments(teacher), "allowed"},
+		{"reserved roles see none", SeePayments(student), "forbidden"},
+		{"teacher sets her own PayNow", ManagePayeeAccount(teacher, teacherM), "allowed"},
+		{"teacher cannot set another's PayNow", ManagePayeeAccount(teacher, ownerM), "forbidden"},
+		{"owner sets anyone's PayNow", ManagePayeeAccount(owner, teacherM), "allowed"},
+	}
+	for _, tt := range tests {
+		if got := outcome(tt.err); got != tt.want {
+			t.Errorf("%s: %s, want %s", tt.name, got, tt.want)
+		}
+	}
+}

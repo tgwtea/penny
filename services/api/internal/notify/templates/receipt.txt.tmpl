@@ -1,0 +1,12 @@
+{{define "subject"}}Receipt {{.Number}} from {{.PayeeName}}: {{.Amount}}{{end}}
+{{define "text"}}Hi {{.ContactName}},
+
+Thank you. {{.PayeeName}} and you both confirmed the payment of {{.Amount}} for {{.StudentFirstName}}'s lessons ({{.Reference}}), received on {{.PaidOn}}. Receipt {{.Number}} is attached.
+{{if .Replaces}}
+This receipt replaces {{.Replaces}}, which was voided. Keep this one.
+{{end}}
+To check a copy is unaltered, its SHA-256 is:
+{{.SHA256}}
+
+{{.TeamName}}, via Penny.
+{{end}}

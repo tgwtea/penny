@@ -1,0 +1,12 @@
+{{define "subject"}}Payment request from {{.PayeeName}}: {{.Amount}} for {{.StudentFirstName}}'s lessons{{end}}
+{{define "body"}}<p style="margin:0 0 16px;">Hi {{.ContactName}},</p>
+<p style="margin:0 0 16px;">{{.PayeeName}} asks for <strong>{{.Amount}}</strong> for {{.StudentFirstName}}'s lessons, by <strong>{{.DueDate}}</strong>.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse;">
+{{range .Lines}}<tr><td style="padding:8px 0;border-bottom:1px solid #E3E8ED;">{{.Description}}</td><td align="right" style="padding:8px 0;border-bottom:1px solid #E3E8ED;font-variant-numeric:tabular-nums;white-space:nowrap;">{{.Amount}}</td></tr>
+{{end}}<tr><td style="padding:8px 0;"><strong>Total</strong></td><td align="right" style="padding:8px 0;font-variant-numeric:tabular-nums;white-space:nowrap;"><strong>{{.Amount}}</strong></td></tr>
+</table>
+{{if .Note}}<p style="margin:0 0 16px;"><strong>Note:</strong> {{.Note}}</p>{{end}}
+<p style="margin:0 0 16px;"><a href="{{.PayURL}}" style="display:inline-block;padding:12px 20px;background:#1C2B3A;color:#FFFFFF;border-radius:8px;text-decoration:none;font-weight:600;">Pay with PayNow</a></p>
+<p style="margin:0 0 16px;">Use the reference <strong>{{.Reference}}</strong> so the payment is matched. When you have paid, tap "I've paid" on that page. The request closes, and you get a receipt, once {{.PayeeName}} confirms the money arrived too.</p>
+{{if .CoTaught}}<p style="margin:0 0 16px;">A lesson here was shared by several tutors. {{.PayeeName}}, the lead tutor, bills it.</p>{{end}}
+{{if .Policy}}<p style="margin:0;"><strong>Cancellation policy:</strong> {{.Policy}}</p>{{end}}{{end}}

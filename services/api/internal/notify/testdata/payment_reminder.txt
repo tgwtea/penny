@@ -1,0 +1,15 @@
+Hi Priya,
+
+Mei Lin Tan's request for S$ 138.90 for Arjun's lessons was due on Thursday 26 November and is not marked paid yet.
+
+- Guitar, Grade 5, Tue 10 Nov 2026: S$ 60.00
+- Guitar, Grade 5, Tue 17 Nov 2026 (missed): S$ 60.00
+- Grade 5 theory book: S$ 18.90
+
+Pay with PayNow using the reference PNY-7K3Q9X:
+http://localhost:5173/pay/token
+
+If you have paid already, tap "I've paid" on that page and these reminders stop.
+
+Koh Guitar Studio, via Penny.
+Stop payment reminders: http://localhost:5173/unsubscribe/token

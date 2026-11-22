@@ -14,6 +14,7 @@ import (
 
 	"github.com/tgwtea/penny/services/api/internal/account"
 	"github.com/tgwtea/penny/services/api/internal/audit"
+	"github.com/tgwtea/penny/services/api/internal/billing"
 	"github.com/tgwtea/penny/services/api/internal/identity"
 	"github.com/tgwtea/penny/services/api/internal/notify"
 	"github.com/tgwtea/penny/services/api/internal/platform/clock"
@@ -50,6 +51,7 @@ type Services struct {
 	Account    *account.Service
 	Teams      *workspace.Service
 	Scheduling *scheduling.Service
+	Billing    *billing.Service
 	Notify     *notify.Service
 	Audit      *audit.Recorder
 }
@@ -67,13 +69,17 @@ func New(d Deps) (*Services, error) {
 	users := identity.NewService(d.Pool, d.Verifier, d.Clock)
 	teams := workspace.NewService(d.Pool, rec, d.Clock)
 	lessons := scheduling.NewService(d.Pool, teams, rec, d.Clock, d.PublicURL)
+	payments := billing.NewService(d.Pool, teams, lessons, rec, d.Clock, d.AppURL)
 	notifier := notify.NewService(notify.Deps{
-		Pool: d.Pool, Lessons: lessons, Teams: teams, Audit: rec, Clock: d.Clock,
+		Pool: d.Pool, Lessons: lessons, Teams: teams, Billing: payments, Contacts: lessons, Audit: rec, Clock: d.Clock,
 		Mailer: d.Mailer, Queue: d.Queue, Links: notify.Links{App: d.AppURL, API: d.PublicURL},
 		Secret: []byte(d.UnsubscribeSecret), Metrics: d.NotifyMetrics, Logger: d.Logger,
 	})
 
-	lessons.SetHooks(scheduling.Hooks{LessonChanged: notifier.LessonChanged})
+	lessons.SetHooks(scheduling.Hooks{LessonChanged: notifier.LessonChanged, Billed: payments.LessonBilled})
+	payments.SetHooks(billing.Hooks{
+		RequestSent: notifier.RequestSent, PayerConfirmed: notifier.PayerConfirmed, ReceiptIssued: notifier.ReceiptIssued,
+	})
 	teams.SetHooks(workspace.Hooks{MemberInvited: notifier.MemberInvited})
 
 	return &Services{
@@ -81,6 +87,7 @@ func New(d Deps) (*Services, error) {
 		Account:    account.NewService(d.Pool, users, teams, rec),
 		Teams:      teams,
 		Scheduling: lessons,
+		Billing:    payments,
 		Notify:     notifier,
 		Audit:      rec,
 	}, nil

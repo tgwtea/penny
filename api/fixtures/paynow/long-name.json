@@ -1,0 +1,13 @@
+{
+  "name": "a payee name longer than 25 characters is shortened",
+  "input": {
+    "proxyType": "uen",
+    "proxy": "T12LL1234A",
+    "amountCents": 5,
+    "editable": false,
+    "expiry": "",
+    "merchantName": "Koh Guitar Studio and Music School",
+    "reference": "PNY-0000AB"
+  },
+  "payload": "00020101021226370009SG.PAYNOW010120210T12LL1234A0301052040000530370254040.055802SG5925Koh Guitar Studio and Mus6009Singapore62140110PNY-0000AB6304722F"
+}

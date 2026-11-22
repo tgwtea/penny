@@ -54,6 +54,9 @@ const (
 	ManageStudents     Capability = "manage_students"
 	ViewOwnStudents    Capability = "view_own_students"
 	ManagePayments     Capability = "manage_payments"
+	// ManageOwnPayments covers payment requests where the member is the
+	// payee, for lessons they lead (ADR 024).
+	ManageOwnPayments Capability = "manage_own_payments"
 )
 
 // matrix is docs/architecture.md's authorization table: what each role may
@@ -62,9 +65,10 @@ var matrix = map[Role][]Capability{
 	Owner: {
 		ViewOwnLessons, ViewTeamTimetable, ManageTeam, ManageLessons, ReassignLessons,
 		CompleteOwnLessons, EditOwnLessonItems, ManageStudents, ViewOwnStudents, ManagePayments,
+		ManageOwnPayments,
 	},
 	Teacher: {
-		ViewOwnLessons, CompleteOwnLessons, EditOwnLessonItems, ViewOwnStudents,
+		ViewOwnLessons, CompleteOwnLessons, EditOwnLessonItems, ViewOwnStudents, ManageOwnPayments,
 	},
 	Student: {},
 	Parent:  {},

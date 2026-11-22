@@ -236,6 +236,7 @@ Set<Capability> capabilitiesOf(TeamRole role) => switch (role) {
     Capability.completeOwnLessons,
     Capability.editOwnLessonItems,
     Capability.viewOwnStudents,
+    Capability.manageOwnPayments,
   },
   TeamRole.student || TeamRole.parent => const {},
 };

@@ -12,6 +12,51 @@ import (
 	"github.com/google/uuid"
 )
 
+const billingContacts = `-- name: BillingContacts :many
+SELECT c.id, c.name, c.email, c.receives_payment_reminders FROM student_contacts c
+WHERE c.workspace_id = $1 AND c.student_id = $2
+  AND c.receives_billing AND c.email IS NOT NULL
+ORDER BY c.created_at, c.id
+`
+
+type BillingContactsParams struct {
+	WorkspaceID uuid.UUID
+	StudentID   uuid.UUID
+}
+
+type BillingContactsRow struct {
+	ID                       uuid.UUID
+	Name                     string
+	Email                    *string
+	ReceivesPaymentReminders bool
+}
+
+// Who gets a student's payment requests and receipts.
+func (q *Queries) BillingContacts(ctx context.Context, arg BillingContactsParams) ([]BillingContactsRow, error) {
+	rows, err := q.db.Query(ctx, billingContacts, arg.WorkspaceID, arg.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BillingContactsRow
+	for rows.Next() {
+		var i BillingContactsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.ReceivesPaymentReminders,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const contactsToRemind = `-- name: ContactsToRemind :many
 SELECT c.id, c.name, c.email, s.name AS student_name
 FROM lesson_participants p
@@ -503,6 +548,42 @@ type StopPaymentRemindersParams struct {
 func (q *Queries) StopPaymentReminders(ctx context.Context, arg StopPaymentRemindersParams) error {
 	_, err := q.db.Exec(ctx, stopPaymentReminders, arg.WorkspaceID, arg.ID)
 	return err
+}
+
+const studentNames = `-- name: StudentNames :many
+SELECT id, name, archived_at FROM students WHERE workspace_id = $1 AND id = ANY($2::uuid[])
+`
+
+type StudentNamesParams struct {
+	WorkspaceID uuid.UUID
+	Ids         []uuid.UUID
+}
+
+type StudentNamesRow struct {
+	ID         uuid.UUID
+	Name       string
+	ArchivedAt *time.Time
+}
+
+// Names for billing, archived students included.
+func (q *Queries) StudentNames(ctx context.Context, arg StudentNamesParams) ([]StudentNamesRow, error) {
+	rows, err := q.db.Query(ctx, studentNames, arg.WorkspaceID, arg.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StudentNamesRow
+	for rows.Next() {
+		var i StudentNamesRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.ArchivedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const studentTaughtBy = `-- name: StudentTaughtBy :one

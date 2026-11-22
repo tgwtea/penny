@@ -1,0 +1,13 @@
+{
+  "name": "a request to a studio's UEN",
+  "input": {
+    "proxyType": "uen",
+    "proxy": "201912345K",
+    "amountCents": 24050,
+    "editable": false,
+    "expiry": "2026-12-31",
+    "merchantName": "Koh Guitar Studio",
+    "reference": "PNY-H4MZ2P"
+  },
+  "payload": "00020101021226490009SG.PAYNOW010120210201912345K030100408202612315204000053037025406240.505802SG5917Koh Guitar Studio6009Singapore62140110PNY-H4MZ2P6304A10D"
+}

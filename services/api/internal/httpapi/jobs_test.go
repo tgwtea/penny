@@ -57,26 +57,14 @@ func (a *apiTest) tryJobs(delay time.Duration) (int, []error) {
 	ctx := context.Background()
 	ran := 0
 	var errs []error
-	for _, kind := range []string{"lesson_reminder", "member_invitation"} {
+	// In dependency order: a payment job can queue a receipt's email, and
+	// the queue of reminders queues reminders.
+	for _, kind := range jobKinds {
 		for _, j := range a.queued(kind) {
 			if at := j.ScheduledAt.Add(delay); kind == "lesson_reminder" && at.After(a.Clock.Now()) {
 				a.Clock.Set(at)
 			}
-			var err error
-			switch kind {
-			case "lesson_reminder":
-				var args notify.LessonReminderArgs
-				if err := json.Unmarshal(j.Args, &args); err != nil {
-					a.t.Fatal(err)
-				}
-				err = a.services.Notify.SendLessonReminder(ctx, args, j.ScheduledAt)
-			case "member_invitation":
-				var args notify.InvitationArgs
-				if err := json.Unmarshal(j.Args, &args); err != nil {
-					a.t.Fatal(err)
-				}
-				err = a.services.Notify.SendInvitation(ctx, args)
-			}
+			err := a.runJob(ctx, j)
 			ran++
 			if err != nil {
 				errs = append(errs, err)
@@ -88,4 +76,38 @@ func (a *apiTest) tryJobs(delay time.Duration) (int, []error) {
 		}
 	}
 	return ran, errs
+}
+
+var jobKinds = []string{
+	"lesson_reminder", "member_invitation", "payment_request_email", "payer_confirmed_email", "receipt_email", "payment_reminder",
+}
+
+// runJob runs one job the way its worker in internal/jobs does.
+func (a *apiTest) runJob(ctx context.Context, j queuedJob) error {
+	n := a.services.Notify
+	switch j.Kind {
+	case "lesson_reminder":
+		return n.SendLessonReminder(ctx, decodeArgs[notify.LessonReminderArgs](a, j), j.ScheduledAt)
+	case "member_invitation":
+		return n.SendInvitation(ctx, decodeArgs[notify.InvitationArgs](a, j))
+	case "payment_request_email":
+		return n.SendPaymentRequest(ctx, decodeArgs[notify.PaymentRequestArgs](a, j))
+	case "payer_confirmed_email":
+		return n.SendPayerConfirmed(ctx, decodeArgs[notify.PayerConfirmedArgs](a, j))
+	case "receipt_email":
+		return n.SendReceipt(ctx, decodeArgs[notify.ReceiptArgs](a, j))
+	case "payment_reminder":
+		return n.SendPaymentReminder(ctx, decodeArgs[notify.PaymentReminderArgs](a, j))
+	}
+	a.t.Fatalf("no runner for job kind %q", j.Kind)
+	return nil
+}
+
+func decodeArgs[T any](a *apiTest, j queuedJob) T {
+	a.t.Helper()
+	var args T
+	if err := json.Unmarshal(j.Args, &args); err != nil {
+		a.t.Fatal(err)
+	}
+	return args
 }
