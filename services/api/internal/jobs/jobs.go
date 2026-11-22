@@ -83,6 +83,39 @@ func (w *paymentRemindersWorker) Work(ctx context.Context, _ *river.Job[PaymentR
 	return err
 }
 
+// RetentionEvery is how often the worker purges what Penny no longer
+// keeps (docs/privacy.md).
+const RetentionEvery = 24 * time.Hour
+
+// RetentionArgs purges expired rows in every module that keeps any.
+type RetentionArgs struct{}
+
+// Kind names the job in River's table.
+func (RetentionArgs) Kind() string { return "retention" }
+
+// InsertOpts makes the job unique within its period.
+func (RetentionArgs) InsertOpts() river.InsertOpts {
+	return river.InsertOpts{UniqueOpts: river.UniqueOpts{ByPeriod: RetentionEvery}}
+}
+
+type retentionWorker struct {
+	river.WorkerDefaults[RetentionArgs]
+	services *app.Services
+	logger   *slog.Logger
+}
+
+func (w *retentionWorker) Work(ctx context.Context, _ *river.Job[RetentionArgs]) error {
+	billing, err := w.services.Billing.Purge(ctx)
+	if err != nil {
+		return err
+	}
+	emails, err := w.services.Notify.PurgeLog(ctx)
+	w.logger.InfoContext(ctx, "purged expired rows",
+		slog.Int64("idempotency_keys", billing.IdempotencyKeys), slog.Int64("payment_links", billing.PaymentLinks),
+		slog.Int64("email_log", emails))
+	return err
+}
+
 type lessonReminderWorker struct {
 	river.WorkerDefaults[notify.LessonReminderArgs]
 	services *app.Services
@@ -144,6 +177,7 @@ func Workers(services *app.Services, logger *slog.Logger) *river.Workers {
 	river.AddWorker(workers, &lessonReminderWorker{services: services})
 	river.AddWorker(workers, &invitationWorker{services: services})
 	river.AddWorker(workers, &paymentRemindersWorker{services: services, logger: logger})
+	river.AddWorker(workers, &retentionWorker{services: services, logger: logger})
 	river.AddWorker(workers, &paymentRequestWorker{services: services})
 	river.AddWorker(workers, &payerConfirmedWorker{services: services})
 	river.AddWorker(workers, &receiptWorker{services: services})
@@ -170,6 +204,11 @@ func NewWorkerClient(pool *pgxpool.Pool, services *app.Services, logger *slog.Lo
 				river.PeriodicInterval(PaymentRemindersEvery),
 				func() (river.JobArgs, *river.InsertOpts) { return PaymentRemindersArgs{}, nil },
 				&river.PeriodicJobOpts{ID: "payment_reminders", RunOnStart: true},
+			),
+			river.NewPeriodicJob(
+				river.PeriodicInterval(RetentionEvery),
+				func() (river.JobArgs, *river.InsertOpts) { return RetentionArgs{}, nil },
+				&river.PeriodicJobOpts{ID: "retention", RunOnStart: true},
 			),
 		},
 	})

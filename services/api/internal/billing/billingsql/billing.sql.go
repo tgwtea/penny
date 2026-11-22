@@ -1059,6 +1059,34 @@ func (q *Queries) OpenRequestsToRemind(ctx context.Context, arg OpenRequestsToRe
 	return items, nil
 }
 
+const purgeExpiredLinks = `-- name: PurgeExpiredLinks :execrows
+DELETE FROM payment_links WHERE expires_at < $1
+`
+
+// Links stop working when they expire; their hashes serve no purpose after.
+func (q *Queries) PurgeExpiredLinks(ctx context.Context, before time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeExpiredLinks, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const purgeIdempotencyKeys = `-- name: PurgeIdempotencyKeys :execrows
+
+DELETE FROM idempotency_keys WHERE created_at < $1
+`
+
+// Retention (docs/privacy.md). Each runs across teams.
+// A retry comes within minutes; a day covers any client's backoff.
+func (q *Queries) PurgeIdempotencyKeys(ctx context.Context, before time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeIdempotencyKeys, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const receiptReplacing = `-- name: ReceiptReplacing :one
 SELECT id FROM receipts WHERE workspace_id = $1 AND replaces_receipt_id = $2
 `
@@ -1130,8 +1158,8 @@ func (q *Queries) ReopenPaidRequest(ctx context.Context, arg ReopenPaidRequestPa
 }
 
 const saveIdempotencyKey = `-- name: SaveIdempotencyKey :exec
-INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO idempotency_keys (workspace_id, user_id, key, operation, entity_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type SaveIdempotencyKeyParams struct {
@@ -1140,8 +1168,10 @@ type SaveIdempotencyKeyParams struct {
 	Key         string
 	Operation   string
 	EntityID    uuid.UUID
+	Now         time.Time
 }
 
+// created_at is the service's clock, which retention compares against.
 func (q *Queries) SaveIdempotencyKey(ctx context.Context, arg SaveIdempotencyKeyParams) error {
 	_, err := q.db.Exec(ctx, saveIdempotencyKey,
 		arg.WorkspaceID,
@@ -1149,6 +1179,7 @@ func (q *Queries) SaveIdempotencyKey(ctx context.Context, arg SaveIdempotencyKey
 		arg.Key,
 		arg.Operation,
 		arg.EntityID,
+		arg.Now,
 	)
 	return err
 }

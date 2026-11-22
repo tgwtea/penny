@@ -306,9 +306,7 @@ func (s *Service) CreateRequest(ctx context.Context, userID, workspaceID uuid.UU
 			map[string]any{"amount_cents": total, "lines": len(lines), "payee_membership_id": in.PayeeID, "due_on": row.DueOn}); err != nil {
 			return err
 		}
-		if err := q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
-			WorkspaceID: workspaceID, UserID: userID, Key: key, Operation: "payment_request.create", EntityID: row.ID,
-		}); err != nil {
+		if err := s.saveKey(ctx, q, workspaceID, userID, key, "payment_request.create", row.ID); err != nil {
 			return fmt.Errorf("save idempotency key: %w", err)
 		}
 		if account.SendAutomatically {
@@ -521,9 +519,7 @@ func (s *Service) RecordPayment(ctx context.Context, userID, workspaceID, reques
 			map[string]any{"amount_cents": in.AmountCents, "paid_on": rec.PaidOn, "method": in.Method, "matches_request": in.AmountCents == row.AmountCents}); err != nil {
 			return err
 		}
-		if err := q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
-			WorkspaceID: workspaceID, UserID: userID, Key: key, Operation: "payment.record", EntityID: requestID,
-		}); err != nil {
+		if err := s.saveKey(ctx, q, workspaceID, userID, key, "payment.record", requestID); err != nil {
 			return fmt.Errorf("save idempotency key: %w", err)
 		}
 		if row.PayerConfirmedAt != nil {
@@ -819,6 +815,13 @@ func (s *Service) replayed(ctx context.Context, q *billingsql.Queries, workspace
 		return uuid.Nil, false, apperr.New(apperr.ErrConflict, "This Idempotency-Key was used for something else. Use a new one.")
 	}
 	return row.EntityID, true, nil
+}
+
+// saveKey records that key made entityID, for replayed to find.
+func (s *Service) saveKey(ctx context.Context, q *billingsql.Queries, workspaceID, userID uuid.UUID, key, operation string, entityID uuid.UUID) error {
+	return q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
+		WorkspaceID: workspaceID, UserID: userID, Key: strings.TrimSpace(key), Operation: operation, EntityID: entityID, Now: s.clock.Now(),
+	})
 }
 
 func (s *Service) checkPayee(ctx context.Context, tx pgx.Tx, workspaceID, membershipID uuid.UUID) error {

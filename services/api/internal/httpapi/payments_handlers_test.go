@@ -521,3 +521,42 @@ func TestAutomaticSendingSkipsTheDraft(t *testing.T) {
 		t.Errorf("queued %d request emails, want 1", n)
 	}
 }
+
+func TestRetentionPurgesWhatPennyNoLongerNeeds(t *testing.T) {
+	ps := newPaymentStudio(t)
+	r := ps.request(t, ps.teacher).Request
+	ps.send(t, r.Id)
+	ps.api.runJobs(0)
+	counts := func() (keys, links, emails int) {
+		t.Helper()
+		if err := ps.api.Pool.QueryRow(ps.ctx, `SELECT (SELECT count(*) FROM idempotency_keys), (SELECT count(*) FROM payment_links), (SELECT count(*) FROM email_log)`).Scan(&keys, &links, &emails); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if keys, links, emails := counts(); keys == 0 || links == 0 || emails == 0 {
+		t.Fatalf("nothing to purge: %d keys, %d links, %d emails", keys, links, emails)
+	}
+
+	ps.api.Clock.Set(testNow.Add(2 * 24 * time.Hour))
+	purged, err := ps.api.services.Billing.Purge(ps.ctx)
+	if err != nil || purged.IdempotencyKeys == 0 || purged.PaymentLinks != 0 {
+		t.Fatalf("after two days purged %+v, %v; want only the keys", purged, err)
+	}
+	// Links live 90 days past the due day, then 30 more as a hash.
+	ps.api.Clock.Set(time.Date(2027, 4, 1, 0, 0, 0, 0, time.UTC))
+	if purged, err = ps.api.services.Billing.Purge(ps.ctx); err != nil || purged.PaymentLinks == 0 {
+		t.Fatalf("in April purged %+v, %v; want the links", purged, err)
+	}
+	ps.api.Clock.Set(time.Date(2027, 12, 1, 0, 0, 0, 0, time.UTC))
+	if n, err := ps.api.services.Notify.PurgeLog(ps.ctx); err != nil || n == 0 {
+		t.Fatalf("a year on purged %d emails, %v", n, err)
+	}
+	if keys, links, emails := counts(); keys+links+emails != 0 {
+		t.Errorf("left %d keys, %d links, %d emails", keys, links, emails)
+	}
+	var requests int
+	if err := ps.api.Pool.QueryRow(ps.ctx, `SELECT count(*) FROM payment_requests`).Scan(&requests); err != nil || requests != 1 {
+		t.Errorf("payment requests = %d, %v; business records are kept", requests, err)
+	}
+}

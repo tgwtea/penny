@@ -124,3 +124,17 @@ func (q *Queries) LogEmail(ctx context.Context, arg LogEmailParams) error {
 	)
 	return err
 }
+
+const purgeEmailLog = `-- name: PurgeEmailLog :execrows
+DELETE FROM email_log WHERE sent_at < $1
+`
+
+// Retention (docs/privacy.md): the log answers "did it arrive?", which
+// nobody asks after a year.
+func (q *Queries) PurgeEmailLog(ctx context.Context, before time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeEmailLog, before)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

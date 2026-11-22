@@ -278,9 +278,7 @@ func (s *Service) VoidReceipt(ctx context.Context, userID, workspaceID, receiptI
 			map[string]any{"voided": false}, map[string]any{"voided": true, "corrected": correction != nil}); err != nil {
 			return err
 		}
-		if err := q.SaveIdempotencyKey(ctx, billingsql.SaveIdempotencyKeyParams{
-			WorkspaceID: workspaceID, UserID: userID, Key: key, Operation: "receipt.void", EntityID: receiptID,
-		}); err != nil {
+		if err := s.saveKey(ctx, q, workspaceID, userID, key, "receipt.void", receiptID); err != nil {
 			return fmt.Errorf("save idempotency key: %w", err)
 		}
 
