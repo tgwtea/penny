@@ -7,6 +7,9 @@ services:
   postgres:
     # Same major versions as production (CloudNativePG, Postgres 18 + PostGIS).
     image: postgis/postgis:18-3.7
+    # The image is published for amd64 only. Naming the platform lets Apple
+    # Silicon machines run it under emulation instead of failing to pull.
+    platform: linux/amd64
     environment:
       POSTGRES_USER: penny
       POSTGRES_PASSWORD: penny
